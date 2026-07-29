@@ -19,11 +19,13 @@ def test_cli_smoke(project: Path) -> None:
 
 def test_direct_mcp_protocol_smoke(project: Path) -> None:
     root = Path(__file__).parents[1]
+    executable = Path(sys.executable).with_name("mncs-forge-mcp")
+    assert executable.is_file()
     result = subprocess.run(
         [
             sys.executable,
             str(root / "scripts/mcp-smoke.py"),
-            str(root / ".venv/bin/mncs-forge-mcp"),
+            str(executable),
             str(project / "mncs-forge.toml"),
         ],
         check=True,
