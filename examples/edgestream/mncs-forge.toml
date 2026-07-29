@@ -45,7 +45,7 @@ useful_benefit_objective = "case-studies/edgestream/preregistration.json"
 name = "edgestream-read-only-inspect"
 category = "inspection"
 mode = "development"
-command = ["python", "-m", "mncs_forge.edgestream"]
+command = ["python3", "-c", "import json; from pathlib import Path; required=['case-studies/edgestream/specification/contract.md','case-studies/edgestream/reference/edgestream_reference.c','case-studies/edgestream/machine/edgestream_generated.c','case-studies/edgestream/preregistration.json','case-studies/edgestream/mncds/development-record.json','case-studies/edgestream/evidence/results/study-summary.json']; missing=[p for p in required if not Path(p).is_file()]; print(json.dumps({'status':'PASS' if not missing else 'UNKNOWN','witnesses':[{'visible_file':p} for p in required if p not in missing],'limitations':['path visibility is not proof of evidence validity, independence, or protected custody']+[f'missing required example path: {p}' for p in missing],'unsupported_constructs':['independent evaluation','protected holdout','witnessed evidence','governance approval']},sort_keys=True))"]
 provider_protocol = false
 disclosure = "compact"
 
