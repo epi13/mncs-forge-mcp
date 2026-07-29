@@ -1,0 +1,74 @@
+# Copy this file to the root of a machine-native-complexity-standard checkout.
+version = 1
+environment_allowlist = ["PATH", "LANG", "LC_ALL", "CC", "CFLAGS"]
+
+[project]
+name = "MNCS EdgeStream read-only integration"
+identity = "mncs-edgestream-forge-example-v1"
+root = "."
+
+[paths]
+candidates = ["case-studies/edgestream/machine"]
+generated = ["case-studies/edgestream/build"]
+contracts = ["case-studies/edgestream/specification"]
+references = ["case-studies/edgestream/reference"]
+evaluators = ["case-studies/edgestream/tools/study_evaluation.py", "case-studies/edgestream/tools/harness_regression.py"]
+acceptance_policies = ["case-studies/edgestream/preregistration.json"]
+development_evidence = ["case-studies/edgestream/evidence", "case-studies/edgestream/mncds"]
+protected = []
+outputs = [".mncs-forge/outputs"]
+
+[limits]
+timeout_seconds = 120
+output_bytes = 1048576
+
+[commands]
+mncs = ["mncs"]
+mncds = ["mncds"]
+
+[authority.development]
+may_write_candidates = true
+may_write_generated = true
+may_run_providers = true
+
+[authority.evaluator]
+candidate_read_only = true
+authority_read_only = true
+require_frozen_identities = true
+withhold_repair_feedback = true
+
+[policies]
+selection = "case-studies/edgestream/preregistration.json"
+useful_benefit_objective = "case-studies/edgestream/preregistration.json"
+
+[[workflows]]
+name = "edgestream-read-only-inspect"
+category = "inspection"
+mode = "development"
+command = ["python", "-m", "mncs_forge.edgestream"]
+provider_protocol = false
+disclosure = "compact"
+
+[[workflows]]
+name = "edgestream-smoke"
+category = "differential_behavior"
+mode = "development"
+command = ["python", "case-studies/edgestream/tools/smoke.py"]
+provider_protocol = false
+disclosure = "compact"
+
+[[workflows]]
+name = "edgestream-mncs-validate"
+category = "mncs_bundle_validation"
+mode = "both"
+command = ["mncs", "validate-bundle", "case-studies/edgestream", "--json"]
+provider_protocol = false
+disclosure = "status-only"
+
+[[workflows]]
+name = "edgestream-mncds-validate"
+category = "mncds_record_validation"
+mode = "both"
+command = ["mncds", "validate", "case-studies/edgestream/mncds/development-record.json", "--json"]
+provider_protocol = false
+disclosure = "status-only"

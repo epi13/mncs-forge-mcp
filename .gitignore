@@ -1,0 +1,12 @@
+.venv/
+.mncs-forge/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.joern/
+.joern-analysis/
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.py[cod]

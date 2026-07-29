@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/epi13/mncs-forge-mcp/schemas/mncs-forge-config.schema.json",
+  "title": "MNCS Forge project configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "project", "paths", "limits", "authority", "policies", "workflows"],
+  "properties": {
+    "version": {"const": 1},
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "identity", "root"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "identity": {"type": "string", "minLength": 1},
+        "root": {"$ref": "#/$defs/relativeRoot"}
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidates", "generated", "contracts", "references", "evaluators", "acceptance_policies", "development_evidence", "protected", "outputs"],
+      "properties": {
+        "candidates": {"$ref": "#/$defs/pathList"},
+        "generated": {"$ref": "#/$defs/pathList"},
+        "contracts": {"$ref": "#/$defs/pathList"},
+        "references": {"$ref": "#/$defs/pathList"},
+        "evaluators": {"$ref": "#/$defs/pathList"},
+        "acceptance_policies": {"$ref": "#/$defs/pathList"},
+        "development_evidence": {"$ref": "#/$defs/pathList"},
+        "protected": {"$ref": "#/$defs/pathList"},
+        "outputs": {"$ref": "#/$defs/pathList"}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timeout_seconds", "output_bytes"],
+      "properties": {
+        "timeout_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+        "output_bytes": {"type": "integer", "minimum": 1024, "maximum": 16777216}
+      }
+    },
+    "commands": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mncs": {"$ref": "#/$defs/command"},
+        "mncds": {"$ref": "#/$defs/command"}
+      }
+    },
+    "environment_allowlist": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}},
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["development", "evaluator"],
+      "properties": {
+        "development": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["may_write_candidates", "may_write_generated", "may_run_providers"],
+          "properties": {
+            "may_write_candidates": {"type": "boolean"},
+            "may_write_generated": {"type": "boolean"},
+            "may_run_providers": {"type": "boolean"}
+          }
+        },
+        "evaluator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["candidate_read_only", "authority_read_only", "require_frozen_identities", "withhold_repair_feedback"],
+          "properties": {
+            "candidate_read_only": {"const": true},
+            "authority_read_only": {"const": true},
+            "require_frozen_identities": {"const": true},
+            "withhold_repair_feedback": {"const": true}
+          }
+        }
+      }
+    },
+    "policies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selection", "useful_benefit_objective"],
+      "properties": {
+        "selection": {"$ref": "#/$defs/relativePath"},
+        "useful_benefit_objective": {"$ref": "#/$defs/relativePath"}
+      }
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "command"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+          "command": {"$ref": "#/$defs/command"},
+          "descriptor": {"$ref": "#/$defs/relativePath"}
+        }
+      }
+    },
+    "workflows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "category", "mode", "command", "provider_protocol"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+          "category": {"enum": ["build", "compiler_matrix", "differential_behavior", "mutation", "sanitizers", "bounded_structural_analysis", "resource_checks", "checkpoint_recovery", "benchmark", "evidence_derivation", "mncs_bundle_validation", "mncds_record_validation", "inspection"]},
+          "mode": {"enum": ["development", "evaluator", "both"]},
+          "command": {"$ref": "#/$defs/command"},
+          "provider_protocol": {"type": "boolean"},
+          "provider_id": {"type": "string"},
+          "environment": {"type": "object", "additionalProperties": {"type": "string"}},
+          "disclosure": {"enum": ["compact", "status-only"]}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "relativePath": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\u0000).+$"},
+    "relativeRoot": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\u0000).+$"},
+    "pathList": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/relativePath"}},
+    "command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  }
+}

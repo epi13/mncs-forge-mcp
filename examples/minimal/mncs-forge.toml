@@ -1,0 +1,45 @@
+version = 1
+environment_allowlist = ["PATH", "LANG", "LC_ALL"]
+
+[project]
+name = "MNCS Forge minimal example"
+identity = "mncs-forge-minimal-v1"
+root = "."
+
+[paths]
+candidates = ["candidate"]
+generated = ["generated-output"]
+contracts = ["contract"]
+references = ["reference"]
+evaluators = ["evaluator"]
+acceptance_policies = ["evaluator/policy.json"]
+development_evidence = ["evidence"]
+protected = []
+outputs = ["generated-output"]
+
+[limits]
+timeout_seconds = 30
+output_bytes = 1048576
+
+[authority.development]
+may_write_candidates = true
+may_write_generated = true
+may_run_providers = false
+
+[authority.evaluator]
+candidate_read_only = true
+authority_read_only = true
+require_frozen_identities = true
+withhold_repair_feedback = true
+
+[policies]
+selection = "evaluator/policy.json"
+useful_benefit_objective = "contract/contract.md"
+
+[[workflows]]
+name = "inspect"
+category = "inspection"
+mode = "development"
+command = ["python", "-c", "import json; print(json.dumps({'status':'PASS'}))"]
+provider_protocol = false
+disclosure = "compact"
