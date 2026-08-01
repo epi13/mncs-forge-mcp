@@ -10,5 +10,13 @@
 - Final evaluator-mode results are not repair feedback for the same development epoch.
 - Do not claim independence, protected custody, witnessing, governance approval, certification,
   or promotion from a local Forge result.
-- For graph-sensitive source changes, use real Joern analysis before and after the edit and
-  report graph findings and limitations.
+- Use Forge provider discovery and capability blockers to select an appropriate declared
+  structural, control-flow, or data-flow provider when a change requires that evidence.
+- Joern is one optional legacy provider, not the standard or default. Source reading,
+  grep, and line counts are review aids, not substitutes for unavailable structural
+  evidence.
+- Missing, unsupported, malformed, stale, or unavailable required capability remains
+  `UNKNOWN` or a blocker, never `PASS`.
+- When comparative graph-sensitive evidence is claimed, use the same provider, method,
+  scope, and relevant bounds before and after the change. Preserve historical Joern
+  outputs and frozen baselines.

@@ -26,3 +26,7 @@ Start a new Codex session before expecting discovery. Uninstall:
 ```
 
 The uninstaller removes only a registration whose command resolves to this checkout.
+
+The development registration exposes provider discovery and declared development workflows but
+does not expose final evaluation. Start evaluator mode as a separate deliberately configured
+stdio process only after freeze; never add evaluator mode to the development registration.

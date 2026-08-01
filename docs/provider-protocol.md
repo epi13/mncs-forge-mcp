@@ -10,3 +10,14 @@ Capabilities and health are protocol concepts. Forge does not automatically exec
 ordinary inspection. Timeouts terminate the provider process group where practical. Provider
 stderr never enters protocol stdout framing. Public MNCS `provider inspect`, `provider run`, and
 `provider verify-result` commands remain available for independent verification.
+
+`providers probe` sends a capabilities request only after executable containment, availability,
+and optional pinned-identity checks. The response must be one recognized capabilities object with
+provider name/id, identity/version, analyses, statuses, cancellation, health-check support, and
+well-formed extensions. Exit zero with text, malformed JSON, the wrong response type, timeout,
+output overflow, or identity drift remains UNKNOWN.
+
+Capability blockers are satisfied only by a current successful probe whose returned analyses
+include the required capability and do not mark it unsupported. Declared capability without a
+current probe is not PASS. See the [provider transition](provider-transition.md) for the optional
+legacy Joern adapter profile.

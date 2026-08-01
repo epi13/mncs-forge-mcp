@@ -6,11 +6,12 @@ candidate lineage, epochs, declared checks, evidence gaps, selection, freeze, an
 boundaries explicit.
 
 Forge is **not** required for MNCS conformance, an accredited certification system, a source of
-independence or protected custody, or another universal Code Property Graph system. It does not
-replace Joern. Joern, compilers, analyzers, benchmarks, mutation systems, sanitizers, and runtime
-harnesses remain replaceable evidence providers.
+independence or protected custody, or a graph analyzer. Joern is one optional legacy provider,
+not the default. Compilers, analyzers, benchmarks, mutation systems, sanitizers, and runtime
+harnesses remain replaceable evidence providers. Forge never substitutes source reading or grep
+for a missing structural capability.
 
-Version `0.1.0a1` is a reference experiment. Local results do not promote MNCS, MNCDS, RFCs, or
+Version `0.1.0a2` is a reference experiment. Local results do not promote MNCS, MNCDS, RFCs, or
 case studies. `REVIEW_REQUIRED` is a workflow disposition, not an MNCS result. Status aggregation
 is `FAIL > UNKNOWN > PASS`; absent or unsupported evidence never silently becomes `PASS`.
 
@@ -57,13 +58,16 @@ MCP servers dynamically. Uninstall with `./scripts/uninstall-codex-mcp.sh`.
 
 ## Interfaces
 
-The `mncs-forge` CLI provides `doctor`, `inspect`, `status`, `blockers`, `epoch begin`,
+The `mncs-forge` CLI provides `doctor`, `inspect`, `status`, `blockers`, provider
+list/probe/blockers, `epoch begin`,
 `candidate register/compare/select/reject`, `check development`, `explain`, `freeze`, `evaluate`,
 `reconcile`, `bundle`, `ledger verify`, and `config validate`.
 
-The `mncs-forge-mcp` stdio server exposes project inspection, separate claim status and blockers,
+The development `mncs-forge-mcp` stdio server exposes project inspection, separate claim status
+and blockers, provider list/probe/capability blockers,
 epoch/candidate control, declared checks, compact failure explanation, policy-bound comparison and
-disposition, freeze/final evaluation, reconciliation, and bundle orchestration. Read-only
+disposition, freeze, reconciliation, and bundle orchestration. Final evaluation is exposed only
+by a separately started evaluator-mode server. Read-only
 resources summarize authority, active state, evidence, blockers, and usage. Prompts guide the
 controlled workflow but cannot bypass tool authority checks.
 
@@ -76,6 +80,7 @@ controlled workflow but cannot bypass tool authority checks.
 - [Codex installation](docs/codex-cli.md)
 - [EdgeStream integration](docs/edgestream.md)
 - [Provider Protocol integration](docs/provider-protocol.md)
+- [Forge and provider transition](docs/provider-transition.md)
 - [Evidence and identity model](docs/evidence-model.md)
 - [Compatibility](docs/compatibility.md)
 

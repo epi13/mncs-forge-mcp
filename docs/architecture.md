@@ -8,6 +8,12 @@ Forge controls an agent-facing workflow; it does not decide normative conformanc
    commands; and
 4. public offline MNCS and MNCDS validators.
 
+Forge is orchestration, not analysis. Provider discovery records configured identity,
+version, argv/transport, capabilities, required/optional status, availability, constructs,
+limitations, executable identity, and the last explicit probe. A recognized capabilities
+response can satisfy discovery policy; it is not structural-analysis or conformance PASS.
+Missing capability remains UNKNOWN.
+
 Development mode can see declared contracts, references, and development evidence, register
 candidates, run declared development workflows, compare candidates under the configured policy,
 and write only candidate/generated/output/Forge-state paths. Evaluator mode requires frozen
@@ -18,3 +24,8 @@ status-only disclosure.
 The Forge state directory is `.mncs-forge/`. Epoch, candidate, action, result, selection,
 rejection, freeze, evaluation, and bundle records are immutable files plus a locked hash-linked
 JSONL ledger. Supersession and lineage are explicit.
+
+Project-scoped development workflows may run without candidate ledger state. Their subject
+is the declared project identity, and their PASS is limited to the development workflow.
+Candidate-scoped evidence keeps its candidate and epoch binding. Final evaluation is
+registered only by a separate evaluator-mode MCP process.
