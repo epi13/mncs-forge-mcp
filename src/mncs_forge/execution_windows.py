@@ -43,6 +43,17 @@ def collect_windows_pipes(
     overflow_name: list[str] = []
     overflow_lock = threading.Lock()
 
+    def raise_if_overflowed() -> None:
+        if not overflow.is_set():
+            return
+        name = overflow_name[0] if overflow_name else "output"
+        cap = stdout_cap if name == "stdout" else stderr_cap
+        _raise_after_termination(
+            process,
+            code="OUTPUT_LIMIT",
+            message=f"{name} exceeded the {cap}-byte cap",
+        )
+
     def read_stream(name: str, stream: BinaryIO, cap: int) -> None:
         target = outputs[name]
         while chunk := stream.read(65536):
@@ -70,14 +81,7 @@ def collect_windows_pipes(
         thread.start()
     deadline = time.monotonic() + timeout
     while any(thread.is_alive() for thread in threads):
-        if overflow.is_set():
-            name = overflow_name[0] if overflow_name else "output"
-            cap = stdout_cap if name == "stdout" else stderr_cap
-            _raise_after_termination(
-                process,
-                code="OUTPUT_LIMIT",
-                message=f"{name} exceeded the {cap}-byte cap",
-            )
+        raise_if_overflowed()
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             _raise_after_termination(
@@ -87,6 +91,7 @@ def collect_windows_pipes(
             )
         for thread in threads:
             thread.join(timeout=min(remaining, 0.01))
+    raise_if_overflowed()
     try:
         returncode = process.wait(timeout=max(0.1, deadline - time.monotonic()))
     except subprocess.TimeoutExpired:

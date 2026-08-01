@@ -91,6 +91,11 @@ bounded by count and total declared duration, and retain every individual result
 batch summary uses `FAIL > UNKNOWN > PASS`; it never turns several narrow results into a
 whole-program claim.
 
+Batch question parameters may use the reserved `shared` and `by_verifier` envelope keys.
+Verifier declarations cannot use either name in `parameter_keys`, which keeps envelope detection
+unambiguous. `shared` is an object applied to every verifier, while `by_verifier` maps only IDs in
+the current batch to per-verifier override objects.
+
 Forge sends one Provider Protocol 0.1 JSON Lines `analysis_request`, with `analysis` equal to the
 declared method, in the same reduced temporary workspace used by provider workflows. It accepts
 exactly one matching `analysis_response`. Timeout, process failure, malformed/multiple/empty

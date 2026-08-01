@@ -14,6 +14,7 @@ from .config import Provider, Verifier
 from .identity import content_identity, file_identity
 from .paths import resolve_contained
 from .serialization import local_json_identity
+from .verifier_disclosure import redact_status_only_result
 
 BATCH_SHARED_KEY = "shared"
 BATCH_BY_VERIFIER_KEY = "by_verifier"
@@ -147,6 +148,8 @@ def terminal_unknown_result(
         "disclosure": verifier.disclosure,
         "recorded_at": recorded_at,
     }
+    if action["mode"] == "evaluator" and verifier.disclosure == "status-only":
+        redact_status_only_result(result)
     result["output_identity"] = local_json_identity(result)
     return result
 
