@@ -1,0 +1,46 @@
+{
+  "record_type": "forge-cell-test-bundle",
+  "schema_version": "0.1",
+  "bundle_id": "forge-cell-reference-tests-0.1",
+  "policy_id": "forge-cell-reference-linux-0.1",
+  "files": [
+    {
+      "path": "bin/run-tests",
+      "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "size": 4096,
+      "role": "harness"
+    },
+    {
+      "path": "tests/test_reference.py",
+      "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "size": 2048,
+      "role": "test"
+    },
+    {
+      "path": "policy.json",
+      "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "size": 4096,
+      "role": "policy"
+    }
+  ],
+  "harness": {
+    "path": "bin/run-tests",
+    "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "argv_prefix": ["/test-bundle/bin/run-tests"]
+  },
+  "expected_outputs": [
+    {
+      "path": "results.json",
+      "required": true,
+      "media_type": "application/json"
+    }
+  ],
+  "custody": {
+    "classification": "local-operator",
+    "holder": "development operator",
+    "limitations": [
+      "The same operator controls the bundle, candidate, launcher, and host."
+    ]
+  },
+  "signatures": []
+}
