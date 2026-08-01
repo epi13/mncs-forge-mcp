@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import ForgeError
+from .execution_windows import collect_windows_pipes
 
 STATUSES = {"PASS", "FAIL", "UNKNOWN"}
 
@@ -102,6 +103,20 @@ def run_bounded(
         process.stdin.close()
     except BrokenPipeError:
         pass
+    if os.name == "nt":
+        returncode, stdout, stderr = collect_windows_pipes(
+            process,
+            timeout=timeout,
+            stdout_cap=caps["stdout"],
+            stderr_cap=caps["stderr"],
+        )
+        return ExecutionResult(
+            argv=argv,
+            returncode=returncode,
+            stdout=stdout,
+            stderr=stderr,
+            duration_seconds=round(time.monotonic() - started, 6),
+        )
     selector = selectors.DefaultSelector()
     selector.register(process.stdout, selectors.EVENT_READ, "stdout")
     selector.register(process.stderr, selectors.EVENT_READ, "stderr")
