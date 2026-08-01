@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def percentile(values: list[float], fraction: float) -> float:
     ordered = sorted(values)
-    index = max(0, min(len(ordered) - 1, int(round((len(ordered) - 1) * fraction))))
+    index = max(0, min(len(ordered) - 1, round((len(ordered) - 1) * fraction)))
     return ordered[index]
 
 
