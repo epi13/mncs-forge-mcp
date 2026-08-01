@@ -13,11 +13,10 @@ import json
 import platform
 import shutil
 import statistics
-import sys
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from mncs_forge import __version__
 from mncs_forge.config import load_config
