@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from mncs_forge.config import ForgeConfig
 from mncs_forge.engine import Forge
 
@@ -16,21 +14,18 @@ def begin_and_register(forge: Forge) -> dict[str, object]:
     )
 
 
-def test_deleted_changed_path_uses_explicit_absent_identity(
-    config: ForgeConfig,
-    project: Path,
-) -> None:
+def test_deleted_changed_path_uses_explicit_absent_identity(config: ForgeConfig) -> None:
     forge = Forge(config)
     candidate = begin_and_register(forge)
-    (project / "candidate/main.py").unlink()
+    deleted_path = "candidate/deleted.py"
     result = forge.verifier_run(
         "verify-pass",
         candidate_identity=str(candidate["candidate_id"]),
-        changed_paths=["candidate/main.py"],
+        changed_paths=[deleted_path],
         scope="file",
     )
     assert result["status"] == "PASS"
-    identity = result["input_identities"]["changed_path_identities"]["candidate/main.py"]
+    identity = result["input_identities"]["changed_path_identities"][deleted_path]
     assert str(identity).startswith("forge-json-sha256-v1:")
 
 
