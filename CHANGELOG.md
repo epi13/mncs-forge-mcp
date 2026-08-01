@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Streamline the repository entrypoint and add a documentation map and consolidated getting-started
+  guide.
+- Add a release-level development roadmap and an ordered Codex implementation queue with task
+  dependencies, invariants, acceptance criteria, validation commands, and explicit exclusions.
+- Add proposed architecture decision records for control-plane composition, versioned persistent
+  records, replaceable execution runners, and ledger checkpoint anchoring.
+- Expand contributor guidance and add evidence-aware pull request and roadmap-task templates.
+
 ## 0.1.0a2
 
 - Add the first machine-native micro-verifier foundation: declared capabilities over existing
