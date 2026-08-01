@@ -71,14 +71,20 @@ Planned adapters:
 - local process runner;
 - rootless Podman runner;
 - optional Docker runner;
+- Forge Cell Linux isolation runner;
 - SSH or remote-host runner;
 - periodic ledger checkpoints;
 - detached checkpoint signatures; and
 - optional external witness receipts or independently held checkpoint heads.
 
-Every recorded result must distinguish local validity, external anchoring, witnessing, protected
-custody, and independence. A signature or second machine controlled by the same operator does not
-establish organizational independence.
+The Forge Cell specification foundation now includes versioned policy, test-bundle, and execution-
+record schemas; offline validation; a fail-closed assurance assessment; reference fixtures; and a
+proposed ADR. It does not yet implement an OS sandbox. The implementation queue is maintained in
+[docs/codex-forge-cell-next-steps.md](docs/codex-forge-cell-next-steps.md).
+
+Every recorded result must distinguish local validity, execution assurance, external anchoring,
+witnessing, protected custody, and independence. A signature or second machine controlled by the
+same operator does not establish organizational independence.
 
 ## `0.3.0` — distributed Forge
 
@@ -94,13 +100,32 @@ Planned components:
 - artifact transfer identity verification;
 - cohort plans for cross-platform and different-performance hosts; and
 - explicit separation between replication, public reproduction, witnessing, and independent
-evaluation.
+  evaluation.
 
 The MCP server remains the agent-facing control plane. It should not become the distributed
 scheduler itself.
 
+## `0.3.x` — measured and externally held evaluation
+
+Goal: add stronger assurance backends only after local runner and challenge-bound record behavior is
+stable.
+
+Planned work:
+
+- signed, content-addressed test bundles and output manifests;
+- fresh challenge-bound execution records and an offline verifier;
+- an adversarial Forge Cell mutation, escape, exhaustion, and replay study;
+- TPM-backed measured execution;
+- one confidential-VM backend with protected-test key release; and
+- separately administered evaluator and custody adapters.
+
+These features may make silent local substitution detectable under a declared trust model. They do
+not automatically create organizational independence, evaluator competence, governance approval,
+or immunity from denial of service.
+
 ## Work queue
 
 Implementation order, constraints, acceptance criteria, likely file boundaries, and validation
-commands are maintained in [docs/codex-next-steps.md](docs/codex-next-steps.md). Architecture
+commands are maintained in [docs/codex-next-steps.md](docs/codex-next-steps.md). Forge Cell work is
+expanded in [docs/codex-forge-cell-next-steps.md](docs/codex-forge-cell-next-steps.md). Architecture
 decisions that affect those tasks are staged under [docs/adr/](docs/adr/).
