@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import ForgeError
+from .execution_windows import collect_windows_pipes
 
 STATUSES = {"PASS", "FAIL", "UNKNOWN"}
 
@@ -36,19 +37,29 @@ def validate_argv(command: object) -> list[str]:
     return list(command)
 
 
+def _kill_process_group(pid: int, sig: int) -> None:
+    """Invoke the POSIX-only process-group primitive without Windows stub errors."""
+
+    killpg = getattr(os, "killpg", None)
+    if killpg is None:
+        raise OSError("process-group termination is unavailable")
+    killpg(pid, sig)
+
+
 def _terminate(process: subprocess.Popen[bytes]) -> None:
     if process.poll() is not None:
         return
     try:
         if os.name == "posix":
-            os.killpg(process.pid, signal.SIGTERM)
+            _kill_process_group(process.pid, signal.SIGTERM)
         else:
             process.terminate()
         process.wait(timeout=1)
     except (OSError, subprocess.TimeoutExpired):
         try:
             if os.name == "posix":
-                os.killpg(process.pid, signal.SIGKILL)
+                kill_signal = int(getattr(signal, "SIGKILL", signal.SIGTERM))
+                _kill_process_group(process.pid, kill_signal)
             else:
                 process.kill()
         except OSError:
@@ -92,6 +103,20 @@ def run_bounded(
         process.stdin.close()
     except BrokenPipeError:
         pass
+    if os.name == "nt":
+        returncode, stdout, stderr = collect_windows_pipes(
+            process,
+            timeout=timeout,
+            stdout_cap=caps["stdout"],
+            stderr_cap=caps["stderr"],
+        )
+        return ExecutionResult(
+            argv=argv,
+            returncode=returncode,
+            stdout=stdout,
+            stderr=stderr,
+            duration_seconds=round(time.monotonic() - started, 6),
+        )
     selector = selectors.DefaultSelector()
     selector.register(process.stdout, selectors.EVENT_READ, "stdout")
     selector.register(process.stderr, selectors.EVENT_READ, "stderr")
