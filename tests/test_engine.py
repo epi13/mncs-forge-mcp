@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from mncs_forge.config import ForgeConfig
+from mncs_forge.config import ForgeConfig, Provider
 from mncs_forge.engine import Forge, aggregate_status
 from mncs_forge.errors import ForgeError
 
@@ -32,6 +33,106 @@ def test_project_inspection_and_doctor(config: ForgeConfig) -> None:
     assert result["active_candidate"] is None
 
 
+def test_no_providers_configured_is_explicit(config: ForgeConfig) -> None:
+    forge = Forge(replace(config, providers={}))
+    listing = forge.provider_list()
+    assert listing["configured_count"] == 0
+    assert listing["status"] == "UNKNOWN"
+    blockers = forge.capability_blockers()
+    assert blockers["status"] == "PASS"
+    assert blockers["no_requirement_note"]
+
+
+def test_optional_joern_absent_is_informational(config: ForgeConfig) -> None:
+    joern = Provider(
+        provider_id="joern-legacy",
+        name="Joern legacy adapter",
+        identity=None,
+        version=None,
+        command=["definitely-not-a-real-joern-adapter"],
+        transport="stdio-jsonl",
+        required=False,
+        capabilities=["control-flow"],
+        supported_constructs=[],
+        unsupported_constructs=[],
+        limitations=["legacy optional provider"],
+        executable_identity=None,
+        descriptor=None,
+        environment={},
+    )
+    forge = Forge(replace(config, providers={"joern-legacy": joern}))
+    listing = forge.provider_list()
+    provider = listing["providers"][0]  # type: ignore[index]
+    assert provider["availability"] == "UNAVAILABLE"
+    blockers = forge.capability_blockers()
+    assert blockers["blocked"] is False
+    assert blockers["informational_limitations"]
+
+
+def test_optional_joern_adapter_available_after_probe(config: ForgeConfig) -> None:
+    joern = replace(
+        config.providers["provider-pass"],
+        provider_id="joern-legacy",
+        name="Joern legacy adapter fixture",
+    )
+    forge = Forge(replace(config, providers={"joern-legacy": joern}))
+    result = forge.provider_probe("joern-legacy")
+    assert result["status"] == "PASS"
+    assert result["probed_capabilities"] == ["bounded-structural"]
+    listing = forge.provider_list()
+    provider = next(
+        item
+        for item in listing["providers"]  # type: ignore[union-attr]
+        if item["provider_id"] == "joern-legacy"
+    )
+    assert provider["availability"] == "AVAILABLE"
+    assert provider["status"] == "PASS"
+
+
+def test_required_capability_absent_is_unknown_blocker(config: ForgeConfig) -> None:
+    raw = {**config.raw, "required_capabilities": ["data-flow"]}
+    forge = Forge(replace(config, raw=raw))
+    result = forge.capability_blockers()
+    assert result["status"] == "UNKNOWN"
+    assert result["blocked"] is True
+    assert result["blockers"][0]["capability"] == "data-flow"  # type: ignore[index]
+
+
+def test_unsupported_capability_remains_unknown(config: ForgeConfig) -> None:
+    forge = Forge(config)
+    forge.provider_probe("provider-pass")
+    result = forge.capability_blockers(["whole-program-alias-analysis"])
+    assert result["status"] == "UNKNOWN"
+    assert result["blocked"] is True
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "error_code"),
+    [
+        ("provider-malformed", "PROVIDER_MALFORMED"),
+        ("provider-timeout", "TIMEOUT"),
+        ("provider-identity-drift", "PROVIDER_IDENTITY_DRIFT"),
+    ],
+)
+def test_provider_probe_failures_close_to_unknown(
+    config: ForgeConfig, provider_id: str, error_code: str
+) -> None:
+    result = Forge(config).provider_probe(provider_id)
+    assert result["status"] == "UNKNOWN"
+    assert result["error_code"] == error_code
+
+
+def test_executable_identity_drift_blocks_probe(config: ForgeConfig) -> None:
+    provider = replace(
+        config.providers["provider-pass"],
+        executable_identity="sha256:" + ("0" * 64),
+    )
+    forge = Forge(replace(config, providers={"provider-pass": provider}))
+    result = forge.provider_probe("provider-pass")
+    assert result["status"] == "UNKNOWN"
+    assert result["error_code"] == "PROVIDER_IDENTITY_DRIFT"
+
+
 def test_candidate_registration_and_lineage(config: ForgeConfig, project: Path) -> None:
     forge = Forge(config)
     begin(forge)
@@ -40,6 +141,13 @@ def test_candidate_registration_and_lineage(config: ForgeConfig, project: Path) 
     second = register(forge, parent=str(first["candidate_id"]))
     assert second["parent_candidate"] == first["candidate_id"]
     assert second["candidate_id"] != first["candidate_id"]
+
+
+def test_project_workflow_does_not_require_candidate_state(config: ForgeConfig) -> None:
+    result = Forge(config).development_checks_run(["project-check"])
+    assert result["candidate_identity"] is None
+    assert result["subject_identities"] == ["project:fixture-v1"]
+    assert result["aggregate_status"] == "PASS"
 
 
 def test_protected_changed_file_rejected(config: ForgeConfig) -> None:

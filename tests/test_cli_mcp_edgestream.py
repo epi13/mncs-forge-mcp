@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import subprocess
 import sys
 from pathlib import Path
+
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 from mncs_forge.cli import run
 from mncs_forge.edgestream import inspect
@@ -34,6 +38,42 @@ def test_direct_mcp_protocol_smoke(project: Path) -> None:
         timeout=30,
     )
     assert '"expected_tools_present": true' in result.stdout
+
+
+async def _provider_mcp_calls(executable: Path, config: Path) -> None:
+    parameters = StdioServerParameters(
+        command=str(executable),
+        args=["--config", str(config), "--mode", "development"],
+    )
+    async with (
+        stdio_client(parameters) as (reader, writer),
+        ClientSession(reader, writer) as session,
+    ):
+        await session.initialize()
+        tools = await session.list_tools()
+        names = {tool.name for tool in tools.tools}
+        assert "mncs_forge_providers_list" in names
+        assert "mncs_forge_provider_probe" in names
+        assert "mncs_forge_capability_blockers" in names
+        assert "mncs_forge_final_evaluation_run" not in names
+        listing = await session.call_tool("mncs_forge_providers_list", {})
+        assert not listing.isError
+        probe = await session.call_tool(
+            "mncs_forge_provider_probe", {"provider_id": "provider-pass"}
+        )
+        assert not probe.isError
+        assert probe.structuredContent["status"] == "PASS"  # type: ignore[index]
+        blockers = await session.call_tool(
+            "mncs_forge_capability_blockers",
+            {"required_capabilities": ["bounded-structural"]},
+        )
+        assert not blockers.isError
+        assert blockers.structuredContent["status"] == "PASS"  # type: ignore[index]
+
+
+def test_mcp_provider_list_probe_and_blockers(project: Path) -> None:
+    executable = Path(sys.executable).with_name("mncs-forge-mcp")
+    asyncio.run(_provider_mcp_calls(executable, project / "mncs-forge.toml"))
 
 
 def test_edgestream_read_only_integration_fixture(tmp_path: Path) -> None:

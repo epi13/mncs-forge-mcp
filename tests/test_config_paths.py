@@ -59,3 +59,25 @@ def test_undeclared_provider_command_rejected(project: Path) -> None:
     path.write_text(text, encoding="utf-8")
     with pytest.raises(ForgeError):
         load_config(path)
+
+
+def test_relative_provider_symlink_escape_is_unavailable(project: Path, tmp_path: Path) -> None:
+    outside = tmp_path.parent / f"{tmp_path.name}-provider-outside"
+    outside.write_text("#!/bin/sh\n", encoding="utf-8")
+    outside.chmod(0o755)
+    (project / "candidate/provider-link").symlink_to(outside)
+    path = project / "mncs-forge.toml"
+    text = path.read_text(encoding="utf-8")
+    marker = "[[providers]]\n"
+    first = text.index(marker)
+    command = text.index("command = ", first)
+    end = text.index("\n", command)
+    text = text[:command] + 'command = ["candidate/provider-link"]' + text[end:]
+    workflow = text.index("[[workflows]]", end)
+    workflow_command = text.index("command = ", workflow)
+    workflow_end = text.index("\n", workflow_command)
+    text = text[:workflow_command] + 'command = ["candidate/provider-link"]' + text[workflow_end:]
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ForgeError) as issue:
+        load_config(path)
+    assert issue.value.code == "SYMLINK_ESCAPE"

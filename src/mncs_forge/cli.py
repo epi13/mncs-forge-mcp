@@ -25,6 +25,13 @@ def _common_parser() -> argparse.ArgumentParser:
     commands.add_parser("status")
     blockers = commands.add_parser("blockers")
     blockers.add_argument("claim", nargs="?", default="promotion")
+    providers = commands.add_parser("providers")
+    provider_commands = providers.add_subparsers(dest="provider_command", required=True)
+    provider_commands.add_parser("list")
+    probe = provider_commands.add_parser("probe")
+    probe.add_argument("provider_id")
+    capability_blockers = provider_commands.add_parser("blockers")
+    capability_blockers.add_argument("capabilities", nargs="*")
 
     epoch = commands.add_parser("epoch")
     epoch_commands = epoch.add_subparsers(dest="epoch_command", required=True)
@@ -90,6 +97,13 @@ def _dispatch(forge: Forge, args: argparse.Namespace) -> object:
         return simple[command]()
     if command == "blockers":
         return forge.claim_blockers(str(args.claim))
+    if command == "providers":
+        provider_command = str(args.provider_command)
+        if provider_command == "list":
+            return forge.provider_list()
+        if provider_command == "probe":
+            return forge.provider_probe(str(args.provider_id))
+        return forge.capability_blockers(list(args.capabilities))
     if command == "epoch":
         return forge.epoch_begin(
             generator_identity=str(args.generator),

@@ -58,6 +58,7 @@
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}
     },
+    "required_capabilities": {"$ref": "#/$defs/stringList"},
     "authority": {
       "type": "object",
       "additionalProperties": false,
@@ -106,8 +107,25 @@
         "required": ["id", "command"],
         "properties": {
           "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+          "name": {"type": "string", "minLength": 1},
+          "identity": {"type": "string", "minLength": 1},
+          "version": {"type": "string", "minLength": 1},
           "command": {"$ref": "#/$defs/command"},
-          "descriptor": {"$ref": "#/$defs/relativePath"}
+          "transport": {"const": "stdio-jsonl"},
+          "required": {"type": "boolean"},
+          "capabilities": {"$ref": "#/$defs/stringList"},
+          "supported_constructs": {"$ref": "#/$defs/stringList"},
+          "unsupported_constructs": {"$ref": "#/$defs/stringList"},
+          "limitations": {"$ref": "#/$defs/stringList"},
+          "executable_identity": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "descriptor": {"$ref": "#/$defs/relativePath"},
+          "environment": {
+            "type": "object",
+            "additionalProperties": {"type": "string"}
+          }
         }
       }
     },
@@ -132,6 +150,7 @@
           "command": {"$ref": "#/$defs/command"},
           "provider_protocol": {"type": "boolean"},
           "provider_id": {"type": "string"},
+          "subject": {"enum": ["candidate", "project"]},
           "environment": {
             "type": "object",
             "additionalProperties": {"type": "string"}
@@ -156,6 +175,11 @@
       "type": "array",
       "uniqueItems": true,
       "items": {"$ref": "#/$defs/relativePath"}
+    },
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
     },
     "command": {
       "type": "array",

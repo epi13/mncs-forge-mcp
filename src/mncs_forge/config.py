@@ -32,6 +32,25 @@ class Workflow:
     provider_id: str | None
     environment: dict[str, str]
     disclosure: str
+    subject: str
+
+
+@dataclass(frozen=True)
+class Provider:
+    provider_id: str
+    name: str
+    identity: str | None
+    version: str | None
+    command: list[str]
+    transport: str
+    required: bool
+    capabilities: list[str]
+    supported_constructs: list[str]
+    unsupported_constructs: list[str]
+    limitations: list[str]
+    executable_identity: str | None
+    descriptor: str | None
+    environment: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -40,6 +59,7 @@ class ForgeConfig:
     root: Path
     raw: dict[str, Any]
     path_values: dict[str, list[str]]
+    providers: dict[str, Provider]
     workflows: dict[str, Workflow]
 
     @property
@@ -74,19 +94,29 @@ class ForgeConfig:
         ]
 
     def environment(self, workflow: Workflow) -> dict[str, str]:
+        return self._environment(workflow.environment, f"workflow {workflow.name}")
+
+    def provider_environment(self, provider: Provider) -> dict[str, str]:
+        return self._environment(provider.environment, f"provider {provider.provider_id}")
+
+    def _environment(self, declared: dict[str, str], label: str) -> dict[str, str]:
         allowed = set(self.raw.get("environment_allowlist", []))
         result: dict[str, str] = {}
         for key in allowed:
             if key in os.environ:
                 result[key] = os.environ[key]
-        for key, value in workflow.environment.items():
+        for key, value in declared.items():
             if key not in allowed:
                 raise ForgeError(
                     "ENVIRONMENT_FORBIDDEN",
-                    f"workflow {workflow.name} declares non-allowlisted environment key {key}",
+                    f"{label} declares non-allowlisted environment key {key}",
                 )
             result[key] = value
         return result
+
+    @property
+    def required_capabilities(self) -> list[str]:
+        return list(self.raw.get("required_capabilities", []))
 
     def public_commands(self) -> dict[str, list[str]]:
         commands = self.raw.get("commands", {})
@@ -156,12 +186,39 @@ def load_config(path: Path | str = Path("mncs-forge.toml")) -> ForgeConfig:
             provider_id=str(item["provider_id"]) if "provider_id" in item else None,
             environment=dict(item.get("environment", {})),
             disclosure=str(item.get("disclosure", "compact")),
+            subject=str(item.get("subject", "candidate")),
         )
-    providers: set[tuple[str, ...]] = set()
-    for provider in raw.get("providers", []):
-        providers.add(tuple(validate_argv(provider["command"])))
+    providers: dict[str, Provider] = {}
+    provider_commands: set[tuple[str, ...]] = set()
+    for item in raw.get("providers", []):
+        provider_id = str(item["id"])
+        if provider_id in providers:
+            raise ForgeError("CONFIG_INVALID", f"duplicate provider id: {provider_id}")
+        command = validate_argv(item["command"])
+        provider_commands.add(tuple(command))
+        descriptor = str(item["descriptor"]) if "descriptor" in item else None
+        if descriptor is not None:
+            resolve_contained(root, descriptor, must_exist=False)
+        providers[provider_id] = Provider(
+            provider_id=provider_id,
+            name=str(item.get("name", provider_id)),
+            identity=str(item["identity"]) if "identity" in item else None,
+            version=str(item["version"]) if "version" in item else None,
+            command=command,
+            transport=str(item.get("transport", "stdio-jsonl")),
+            required=bool(item.get("required", False)),
+            capabilities=list(item.get("capabilities", [])),
+            supported_constructs=list(item.get("supported_constructs", [])),
+            unsupported_constructs=list(item.get("unsupported_constructs", [])),
+            limitations=list(item.get("limitations", [])),
+            executable_identity=(
+                str(item["executable_identity"]) if "executable_identity" in item else None
+            ),
+            descriptor=descriptor,
+            environment=dict(item.get("environment", {})),
+        )
     for workflow in workflows.values():
-        if workflow.provider_protocol and tuple(workflow.command) not in providers:
+        if workflow.provider_protocol and tuple(workflow.command) not in provider_commands:
             raise ForgeError(
                 "UNDECLARED_COMMAND",
                 f"provider workflow {workflow.name} command is not declared in providers",
@@ -171,5 +228,6 @@ def load_config(path: Path | str = Path("mncs-forge.toml")) -> ForgeConfig:
         root=root,
         raw=raw,
         path_values=path_values,
+        providers=providers,
         workflows=workflows,
     )

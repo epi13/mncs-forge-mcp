@@ -166,3 +166,41 @@ def parse_provider_response(stdout: bytes) -> dict[str, Any]:
     if value.get("type") == "analysis_response" and value.get("status") not in STATUSES:
         raise ForgeError("PROVIDER_MALFORMED", "analysis result status must be PASS/FAIL/UNKNOWN")
     return value
+
+
+def parse_provider_capabilities(stdout: bytes) -> dict[str, Any]:
+    value = parse_provider_response(stdout)
+    if value.get("type") != "capabilities":
+        raise ForgeError(
+            "PROVIDER_MALFORMED", "capability probe must return a capabilities response"
+        )
+    analyses = value.get("analyses")
+    statuses = value.get("statuses")
+    if (
+        not isinstance(analyses, list)
+        or not all(isinstance(item, str) and item for item in analyses)
+        or len(set(analyses)) != len(analyses)
+    ):
+        raise ForgeError("PROVIDER_MALFORMED", "provider analyses must be unique non-empty strings")
+    if (
+        not isinstance(statuses, list)
+        or not statuses
+        or not all(isinstance(item, str) and item in STATUSES for item in statuses)
+    ):
+        raise ForgeError(
+            "PROVIDER_MALFORMED", "provider statuses must contain only PASS/FAIL/UNKNOWN"
+        )
+    if not isinstance(value.get("cancellation"), bool):
+        raise ForgeError("PROVIDER_MALFORMED", "provider cancellation must be boolean")
+    if not isinstance(value.get("health_checks"), bool):
+        raise ForgeError("PROVIDER_MALFORMED", "provider health_checks must be boolean")
+    extensions = value["extensions"]
+    for key in ("supported_constructs", "unsupported_constructs", "limitations"):
+        if key in extensions and (
+            not isinstance(extensions[key], list)
+            or not all(isinstance(item, str) and item for item in extensions[key])
+        ):
+            raise ForgeError(
+                "PROVIDER_MALFORMED", f"provider extension {key} must be a string array"
+            )
+    return value

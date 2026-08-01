@@ -38,12 +38,20 @@ def project(tmp_path: Path) -> Path:
         ("provider-unknown", "UNKNOWN"),
         ("provider-malformed", "MALFORMED"),
         ("provider-oversize", "OVERSIZE"),
+        ("provider-timeout", "TIMEOUT"),
+        ("provider-identity-drift", "IDENTITY_DRIFT"),
     ]
     provider_tables = "\n".join(
         (
             "[[providers]]\n"
             f"id = {json.dumps(name)}\n"
+            f"name = {json.dumps(name)}\n"
             f"command = {json.dumps([python, str(fixture), mode])}\n"
+            'transport = "stdio-jsonl"\n'
+            "required = false\n"
+            'capabilities = ["bounded-structural"]\n'
+            f"identity = {json.dumps('fake-' + mode.lower())}\n"
+            'version = "1"\n'
         )
         for name, mode in providers
     )
@@ -111,6 +119,14 @@ category = "inspection"
 mode = "development"
 command = {json.dumps([python, "-c", "import json; print(json.dumps({'status':'PASS'}))"])}
 provider_protocol = false
+
+[[workflows]]
+name = "project-check"
+category = "inspection"
+mode = "development"
+command = {json.dumps([python, "-c", "import json; print(json.dumps({'status':'PASS'}))"])}
+provider_protocol = false
+subject = "project"
 
 [[workflows]]
 name = "fail-check"

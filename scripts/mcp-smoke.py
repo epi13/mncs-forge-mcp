@@ -15,6 +15,9 @@ EXPECTED = {
     "mncs_forge_project_inspect",
     "mncs_forge_claim_status",
     "mncs_forge_claim_blockers",
+    "mncs_forge_providers_list",
+    "mncs_forge_provider_probe",
+    "mncs_forge_capability_blockers",
     "mncs_forge_epoch_begin",
     "mncs_forge_candidate_register",
     "mncs_forge_development_checks_run",
@@ -23,7 +26,6 @@ EXPECTED = {
     "mncs_forge_candidate_select",
     "mncs_forge_candidate_reject",
     "mncs_forge_candidate_freeze",
-    "mncs_forge_final_evaluation_run",
     "mncs_forge_evidence_reconcile",
     "mncs_forge_bundle_build",
 }
@@ -47,6 +49,12 @@ async def smoke(executable: Path, config: Path) -> dict[str, object]:
         result = await session.call_tool("mncs_forge_project_inspect", {})
         if result.isError:
             raise RuntimeError("project inspection MCP call failed")
+        providers = await session.call_tool("mncs_forge_providers_list", {})
+        if providers.isError:
+            raise RuntimeError("provider list MCP call failed")
+        blockers = await session.call_tool("mncs_forge_capability_blockers", {})
+        if blockers.isError:
+            raise RuntimeError("capability blockers MCP call failed")
         return {
             "ok": True,
             "server": initialization.serverInfo.name,
@@ -54,6 +62,8 @@ async def smoke(executable: Path, config: Path) -> dict[str, object]:
             "tool_count": len(names),
             "expected_tools_present": True,
             "project_inspection_succeeded": True,
+            "provider_list_succeeded": True,
+            "capability_blockers_succeeded": True,
         }
 
 

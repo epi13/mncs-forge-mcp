@@ -12,9 +12,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .config import ForgeConfig, Workflow
+from . import __version__
+from .config import ForgeConfig, Provider, Workflow
 from .errors import ForgeError
-from .execution import STATUSES, ExecutionResult, parse_provider_response, run_bounded
+from .execution import (
+    STATUSES,
+    ExecutionResult,
+    parse_provider_capabilities,
+    parse_provider_response,
+    run_bounded,
+)
 from .identity import content_identity, file_identity, identity_map
 from .ledger import Ledger
 from .paths import is_within, resolve_contained, validate_relative_path
@@ -168,7 +175,7 @@ class Forge:
         }
         return {
             "ok": bool(ledger.get("ok", False)),
-            "forge_version": "0.1.0a1",
+            "forge_version": __version__,
             "config": str(self.config.config_path),
             "project_root": str(self.config.root),
             "mode": self.mode,
@@ -182,6 +189,7 @@ class Forge:
         epoch = self._latest_payload("epoch")
         candidate = self._latest_payload("candidate")
         commands = self.config.public_commands()
+        providers = self.provider_list()
         return {
             "project": {
                 "name": self.config.project_name,
@@ -209,6 +217,7 @@ class Forge:
                     "category": item.category,
                     "mode": item.mode,
                     "provider_protocol": item.provider_protocol,
+                    "subject": item.subject,
                 }
                 for item in self.config.workflows.values()
             ],
@@ -218,7 +227,350 @@ class Forge:
             "detected_versions": {
                 name: self._command_version(command) for name, command in commands.items()
             },
+            "configured_providers": providers["providers"],
+            "required_capabilities": self.config.required_capabilities,
+            "provider_discovery_status": providers["status"],
             "limitations": PUBLIC_LIMITATIONS,
+        }
+
+    def _latest_provider_probe(self, provider_id: str) -> dict[str, Any] | None:
+        for entry in reversed(self._records("provider_probe")):
+            payload = entry["payload"]
+            if payload.get("provider_id") == provider_id:
+                return dict(payload)
+        return None
+
+    def _provider_executable(self, provider: Provider) -> tuple[Path, str]:
+        value = provider.command[0]
+        if "/" in value:
+            path = Path(value)
+            if path.is_absolute():
+                try:
+                    executable = path.resolve(strict=True)
+                except OSError as exc:
+                    raise ForgeError(
+                        "PROVIDER_UNAVAILABLE",
+                        f"provider {provider.provider_id} executable is unavailable: {exc}",
+                    ) from exc
+            else:
+                executable = resolve_contained(self.config.root, value, must_exist=True)
+        else:
+            resolved = shutil.which(
+                value, path=self.config.provider_environment(provider).get("PATH", "")
+            )
+            if resolved is None:
+                raise ForgeError(
+                    "PROVIDER_UNAVAILABLE",
+                    f"provider {provider.provider_id} executable is not on the allowlisted PATH",
+                )
+            executable = Path(resolved).resolve(strict=True)
+        if not executable.is_file() or not os.access(executable, os.X_OK):
+            raise ForgeError(
+                "PROVIDER_UNAVAILABLE",
+                f"provider {provider.provider_id} executable is not an executable file",
+            )
+        identity = file_identity(executable)
+        if provider.executable_identity and identity != provider.executable_identity:
+            raise ForgeError(
+                "PROVIDER_IDENTITY_DRIFT",
+                f"provider {provider.provider_id} executable identity drifted",
+            )
+        return executable, identity
+
+    @staticmethod
+    def _provider_declared_model(provider: Provider) -> dict[str, object]:
+        return {
+            "provider_id": provider.provider_id,
+            "name": provider.name,
+            "declared_identity": provider.identity,
+            "declared_version": provider.version,
+            "command": [_redact(item, 1024) for item in provider.command],
+            "transport": provider.transport,
+            "required": provider.required,
+            "declared_capabilities": provider.capabilities,
+            "supported_constructs": provider.supported_constructs,
+            "unsupported_constructs": provider.unsupported_constructs,
+            "limitations": provider.limitations,
+            "expected_executable_identity": provider.executable_identity,
+            "descriptor": provider.descriptor,
+        }
+
+    def _provider_inventory_item(self, provider: Provider) -> dict[str, object]:
+        item = self._provider_declared_model(provider)
+        latest = self._latest_provider_probe(provider.provider_id)
+        item.update(
+            {
+                "availability": "UNKNOWN",
+                "status": "UNKNOWN",
+                "executable": None,
+                "executable_identity": None,
+                "last_probe_result": latest,
+                "probe_stale": False,
+            }
+        )
+        try:
+            executable, identity = self._provider_executable(provider)
+        except ForgeError as exc:
+            item.update(
+                {
+                    "availability": "UNAVAILABLE",
+                    "limitations": [*provider.limitations, exc.message],
+                    "availability_error": exc.code,
+                }
+            )
+            return item
+        probe_stale = bool(latest and latest.get("executable_identity") != identity)
+        item.update(
+            {
+                "availability": "AVAILABLE",
+                "executable": str(executable),
+                "executable_identity": identity,
+                "status": (
+                    "PASS"
+                    if latest and latest.get("status") == "PASS" and not probe_stale
+                    else "UNKNOWN"
+                ),
+                "probe_stale": probe_stale,
+            }
+        )
+        return item
+
+    def provider_list(self) -> dict[str, object]:
+        providers = [
+            self._provider_inventory_item(provider) for provider in self.config.providers.values()
+        ]
+        return {
+            "providers": providers,
+            "configured_count": len(providers),
+            "required_capabilities": self.config.required_capabilities,
+            "status": aggregate_status(str(item["status"]) for item in providers),
+            "limitations": (
+                [
+                    "no providers are configured; Forge does not infer structural capability "
+                    "from source reading or command availability"
+                ]
+                if not providers
+                else [
+                    "availability is not analysis evidence; a recognized explicit capability "
+                    "probe is required before a capability can satisfy policy"
+                ]
+            ),
+            "dominance": "FAIL > UNKNOWN > PASS",
+        }
+
+    def _record_provider_probe(self, record: dict[str, object]) -> dict[str, object]:
+        record["output_identity"] = local_json_identity(record)
+        self._write_immutable("provider-probes", str(record["output_identity"]), record)
+        self.ledger.append("provider_probe", record)
+        return record
+
+    def provider_probe(self, provider_id: str) -> dict[str, object]:
+        self._require_mode("development")
+        try:
+            provider = self.config.providers[provider_id]
+        except KeyError as exc:
+            raise ForgeError(
+                "PROVIDER_NOT_CONFIGURED", f"provider is not configured: {provider_id}"
+            ) from exc
+        started_at = _now()
+        executable_identity: str | None = None
+        executable: Path | None = None
+        try:
+            executable, executable_identity = self._provider_executable(provider)
+            request = {
+                "protocol_version": "0.1",
+                "type": "capabilities",
+                "request_id": "forge-capabilities-"
+                + local_json_identity(
+                    {
+                        "provider": provider.provider_id,
+                        "executable": executable_identity,
+                        "at": started_at,
+                    }
+                ).split(":", 1)[1][:24],
+                "extensions": {},
+            }
+            with tempfile.TemporaryDirectory(prefix="mncs-forge-provider-probe-") as temporary:
+                execution = run_bounded(
+                    [str(executable), *provider.command[1:]],
+                    cwd=Path(temporary),
+                    timeout=self.config.timeout,
+                    output_cap=self.config.output_cap,
+                    environment=self.config.provider_environment(provider),
+                    stdin=canonical_bytes(request) + b"\n",
+                )
+            if execution.returncode != 0:
+                raise ForgeError(
+                    "PROVIDER_EXIT",
+                    f"provider exited {execution.returncode}: "
+                    + _redact(execution.stderr.decode("utf-8", errors="replace")),
+                )
+            response = parse_provider_capabilities(execution.stdout)
+            response_identity = dict(response["provider"])
+            if not any(
+                isinstance(response_identity.get(key), str) and response_identity.get(key)
+                for key in ("id", "name")
+            ) or not any(
+                isinstance(response_identity.get(key), str) and response_identity.get(key)
+                for key in ("identity", "version")
+            ):
+                raise ForgeError(
+                    "PROVIDER_MALFORMED",
+                    "provider probe requires a name/id and an identity/version",
+                )
+            if (
+                provider.identity is not None
+                and response_identity.get("identity") != provider.identity
+            ):
+                raise ForgeError(
+                    "PROVIDER_IDENTITY_DRIFT",
+                    f"provider {provider.provider_id} reported a different identity",
+                )
+            if (
+                provider.version is not None
+                and response_identity.get("version") != provider.version
+            ):
+                raise ForgeError(
+                    "PROVIDER_IDENTITY_DRIFT",
+                    f"provider {provider.provider_id} reported a different version",
+                )
+            extensions = dict(response["extensions"])
+            probed_capabilities = list(response["analyses"])
+            unsupported = list(extensions.get("unsupported_constructs", []))
+            record: dict[str, object] = {
+                **self._provider_declared_model(provider),
+                "availability": "AVAILABLE",
+                "status": "PASS",
+                "probe_kind": "provider-protocol-capabilities",
+                "provider_identity": response_identity,
+                "executable": str(executable),
+                "executable_identity": executable_identity,
+                "probed_capabilities": probed_capabilities,
+                "supported_constructs": list(
+                    extensions.get("supported_constructs", provider.supported_constructs)
+                ),
+                "unsupported_constructs": sorted(
+                    set([*provider.unsupported_constructs, *unsupported])
+                ),
+                "limitations": [
+                    *provider.limitations,
+                    *list(extensions.get("limitations", [])),
+                    "capability-probe PASS is not analysis or conformance PASS",
+                ],
+                "protocol_statuses": list(response["statuses"]),
+                "cancellation": bool(response["cancellation"]),
+                "health_checks": bool(response["health_checks"]),
+                "duration_seconds": execution.duration_seconds,
+                "stderr_diagnostic": _redact(execution.stderr.decode("utf-8", errors="replace")),
+                "returncode": execution.returncode,
+                "recorded_at": _now(),
+            }
+            return self._record_provider_probe(record)
+        except ForgeError as exc:
+            record = {
+                **self._provider_declared_model(provider),
+                "availability": (
+                    "UNAVAILABLE"
+                    if exc.code in {"PROVIDER_UNAVAILABLE", "COMMAND_START"}
+                    else "UNKNOWN"
+                ),
+                "status": "UNKNOWN",
+                "probe_kind": "provider-protocol-capabilities",
+                "provider_identity": None,
+                "executable": str(executable) if executable else None,
+                "executable_identity": executable_identity,
+                "probed_capabilities": [],
+                "limitations": [*provider.limitations, exc.message],
+                "error_code": exc.code,
+                "recorded_at": _now(),
+            }
+            return self._record_provider_probe(record)
+
+    def capability_blockers(
+        self, required_capabilities: list[str] | None = None
+    ) -> dict[str, object]:
+        required = sorted(set([*self.config.required_capabilities, *(required_capabilities or [])]))
+        inventory = {
+            provider.provider_id: self._provider_inventory_item(provider)
+            for provider in self.config.providers.values()
+        }
+        blockers: list[dict[str, object]] = []
+        satisfied: list[dict[str, object]] = []
+        informational: list[dict[str, object]] = []
+        for provider in self.config.providers.values():
+            item = inventory[provider.provider_id]
+            if provider.required and item["status"] != "PASS":
+                blockers.append(
+                    {
+                        "kind": "required_provider",
+                        "provider_id": provider.provider_id,
+                        "status": "UNKNOWN",
+                        "problem": (
+                            "required provider is unavailable, unprobed, stale, or inconclusive"
+                        ),
+                    }
+                )
+            elif not provider.required and item["availability"] != "AVAILABLE":
+                informational.append(
+                    {
+                        "kind": "optional_provider",
+                        "provider_id": provider.provider_id,
+                        "status": "UNKNOWN",
+                        "problem": "optional provider is unavailable",
+                    }
+                )
+        for capability in required:
+            candidates = [
+                item
+                for provider_id, item in inventory.items()
+                if capability in self.config.providers[provider_id].capabilities
+            ]
+            established = [
+                item
+                for item in candidates
+                if item["status"] == "PASS"
+                and isinstance(item["last_probe_result"], dict)
+                and capability in item["last_probe_result"].get("probed_capabilities", [])
+                and capability not in item["last_probe_result"].get("unsupported_constructs", [])
+            ]
+            if established:
+                satisfied.append(
+                    {
+                        "capability": capability,
+                        "status": "PASS",
+                        "providers": sorted(str(item["provider_id"]) for item in established),
+                        "scope": "validated capability discovery only",
+                    }
+                )
+            else:
+                blockers.append(
+                    {
+                        "kind": "required_capability",
+                        "capability": capability,
+                        "status": "UNKNOWN",
+                        "providers": sorted(str(item["provider_id"]) for item in candidates),
+                        "problem": (
+                            "no current recognized provider probe established this capability"
+                        ),
+                    }
+                )
+        return {
+            "required_capabilities": required,
+            "satisfied": satisfied,
+            "blockers": blockers,
+            "informational_limitations": informational,
+            "blocked": bool(blockers),
+            "status": aggregate_status(str(item["status"]) for item in [*satisfied, *blockers])
+            if required or blockers
+            else "PASS",
+            "no_requirement_note": (
+                "PASS with no required capabilities means only that no capability policy "
+                "is blocked; it is not structural-analysis evidence"
+                if not required and not blockers
+                else None
+            ),
+            "missing_is_pass": False,
+            "dominance": "FAIL > UNKNOWN > PASS",
         }
 
     def epoch_begin(
@@ -491,6 +843,7 @@ class Forge:
             witnesses = []
         record: dict[str, object] = {
             "candidate_identity": candidate["candidate_id"],
+            "subject_type": workflow.subject,
             "provider_or_evaluator_identity": provider,
             "method": method,
             "workflow": workflow.name,
@@ -517,16 +870,30 @@ class Forge:
         self, workflow_names: list[str], candidate_id: str | None = None
     ) -> dict[str, object]:
         self._require_mode("development")
-        candidate = self._candidate(candidate_id)
         results: list[dict[str, object]] = []
+        candidate: dict[str, Any] | None = None
         for name in workflow_names:
             workflow = self._workflow(name, "development")
-            result = self._run_workflow(workflow, candidate, evaluator=False)
+            if workflow.subject == "project":
+                if candidate_id is not None:
+                    raise ForgeError(
+                        "WORKFLOW_SUBJECT",
+                        f"project workflow {name} does not accept a candidate identity",
+                    )
+                subject = {
+                    "candidate_id": f"project:{self.config.project_identity}",
+                    "source_epoch": None,
+                }
+            else:
+                candidate = candidate or self._candidate(candidate_id)
+                subject = candidate
+            result = self._run_workflow(workflow, subject, evaluator=False)
             self._write_immutable("results", str(result["output_identity"]), result)
             self.ledger.append("result", result)
             results.append(result)
         return {
-            "candidate_identity": candidate["candidate_id"],
+            "candidate_identity": candidate["candidate_id"] if candidate else None,
+            "subject_identities": sorted({str(item["candidate_identity"]) for item in results}),
             "results": results,
             "aggregate_status": aggregate_status(str(item["status"]) for item in results),
             "dominance": "FAIL > UNKNOWN > PASS",

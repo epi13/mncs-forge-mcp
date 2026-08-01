@@ -39,6 +39,26 @@ def build_server(forge: Forge) -> FastMCP:
 
         return forge.claim_blockers(requested_claim)
 
+    @server.tool(name="mncs_forge_providers_list")
+    def providers_list() -> dict[str, object]:
+        """List configured providers, declared capabilities, availability, and last probes."""
+
+        return forge.provider_list()
+
+    @server.tool(name="mncs_forge_provider_probe")
+    def provider_probe(provider_id: str) -> dict[str, object]:
+        """Explicitly probe one provider using bounded Provider Protocol capabilities."""
+
+        return forge.provider_probe(provider_id)
+
+    @server.tool(name="mncs_forge_capability_blockers")
+    def capability_blockers(
+        required_capabilities: list[str] | None = None,
+    ) -> dict[str, object]:
+        """Report UNKNOWN blockers for required capabilities not established by a current probe."""
+
+        return forge.capability_blockers(required_capabilities)
+
     @server.tool(name="mncs_forge_epoch_begin")
     def epoch_begin(
         generator_identity: str,
@@ -125,11 +145,13 @@ def build_server(forge: Forge) -> FastMCP:
             required_evidence_plan=required_evidence_plan,
         )
 
-    @server.tool(name="mncs_forge_final_evaluation_run")
-    def final_evaluation_run(workflow_names: list[str]) -> dict[str, object]:
-        """Run frozen evaluator workflows without repair feedback."""
+    if forge.mode == "evaluator":
 
-        return forge.final_evaluation_run(workflow_names)
+        @server.tool(name="mncs_forge_final_evaluation_run")
+        def final_evaluation_run(workflow_names: list[str]) -> dict[str, object]:
+            """Run frozen evaluator workflows without repair feedback."""
+
+            return forge.final_evaluation_run(workflow_names)
 
     @server.tool(name="mncs_forge_evidence_reconcile")
     def evidence_reconcile(candidate_identity: str | None = None) -> dict[str, object]:
@@ -164,6 +186,14 @@ def build_server(forge: Forge) -> FastMCP:
     @server.resource("mncs-forge://claims/blockers")
     def blockers_resource() -> str:
         return json.dumps(forge.claim_blockers("promotion"), sort_keys=True)
+
+    @server.resource("mncs-forge://providers/configured")
+    def configured_providers() -> str:
+        return json.dumps(forge.provider_list(), sort_keys=True)
+
+    @server.resource("mncs-forge://providers/capability-blockers")
+    def provider_blockers_resource() -> str:
+        return json.dumps(forge.capability_blockers(), sort_keys=True)
 
     @server.resource("mncs-forge://guide/usage")
     def usage_guide() -> str:
