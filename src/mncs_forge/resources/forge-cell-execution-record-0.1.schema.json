@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mncs-forge:schema:forge-cell-execution-record-0.1",
+  "title": "Forge Cell execution record 0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_type",
+    "schema_version",
+    "request_id",
+    "policy_id",
+    "challenge_nonce",
+    "requested_assurance",
+    "enforced_assurance",
+    "unmet_assurance",
+    "identities",
+    "execution",
+    "result",
+    "outputs",
+    "attestation",
+    "limitations"
+  ],
+  "properties": {
+    "record_type": {"const": "forge-cell-execution"},
+    "schema_version": {"const": "0.1"},
+    "request_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+    "policy_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+    "challenge_nonce": {"type": "string", "minLength": 16, "maxLength": 1024},
+    "requested_assurance": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/assuranceLevel"}
+    },
+    "enforced_assurance": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/assuranceLevel"}
+    },
+    "unmet_assurance": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/assuranceLevel"}
+    },
+    "identities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate",
+        "test_bundle",
+        "runner",
+        "sandbox_policy",
+        "rootfs",
+        "executable",
+        "environment"
+      ],
+      "properties": {
+        "candidate": {"$ref": "#/$defs/sha256"},
+        "test_bundle": {"$ref": "#/$defs/sha256"},
+        "runner": {"$ref": "#/$defs/sha256"},
+        "sandbox_policy": {"$ref": "#/$defs/sha256"},
+        "rootfs": {"$ref": "#/$defs/sha256"},
+        "executable": {"$ref": "#/$defs/sha256"},
+        "environment": {"$ref": "#/$defs/sha256"},
+        "kernel_measurement": {"type": "string", "minLength": 1, "maxLength": 4096}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "finished_at", "duration_ms", "exit_code", "termination"],
+      "properties": {
+        "started_at": {"type": "string", "format": "date-time"},
+        "finished_at": {"type": "string", "format": "date-time"},
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "exit_code": {"type": ["integer", "null"]},
+        "termination": {
+          "enum": ["exited", "timeout", "output-limit", "resource-limit", "signal", "launcher-error"]
+        }
+      }
+    },
+    "result": {"enum": ["PASS", "FAIL", "UNKNOWN"]},
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stdout_digest", "stderr_digest", "manifest_digest"],
+      "properties": {
+        "stdout_digest": {"$ref": "#/$defs/sha256"},
+        "stderr_digest": {"$ref": "#/$defs/sha256"},
+        "manifest_digest": {"$ref": "#/$defs/sha256"},
+        "stdout_bytes": {"type": "integer", "minimum": 0},
+        "stderr_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "verification_status", "nonce_binding"],
+      "properties": {
+        "kind": {
+          "enum": ["none", "local-signature", "tpm-quote", "confidential-vm", "external-evaluator"]
+        },
+        "verification_status": {"enum": ["ABSENT", "PRESENT", "VERIFIED", "REJECTED"]},
+        "nonce_binding": {"type": "boolean"},
+        "evidence_digest": {"$ref": "#/$defs/sha256"},
+        "signer_identity": {"type": "string", "minLength": 1, "maxLength": 512}
+      }
+    },
+    "resource_observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "peak_memory_bytes": {"type": "integer", "minimum": 0},
+        "cpu_time_ms": {"type": "integer", "minimum": 0},
+        "max_pids": {"type": "integer", "minimum": 0}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 2048}
+    }
+  },
+  "$defs": {
+    "assuranceLevel": {
+      "enum": [
+        "policy-bound",
+        "process-isolated",
+        "verity-enforced",
+        "platform-attested",
+        "confidential-attested",
+        "external-custody"
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}
