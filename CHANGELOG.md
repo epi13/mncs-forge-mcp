@@ -2,6 +2,9 @@
 
 ## 0.1.0a2
 
+- Add the first machine-native micro-verifier foundation: declared capabilities over existing
+  providers/workflows, deterministic matching, bounded single/batch execution, immutable
+  action/result lineage, freshness envelopes, CLI/MCP surfaces, examples, and security tests.
 - Add provider-neutral configuration for identity/version, argv transport, declared
   capabilities, required/optional status, constructs, limitations, executable identity,
   environment, and last capability probe.

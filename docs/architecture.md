@@ -29,3 +29,11 @@ Project-scoped development workflows may run without candidate ledger state. The
 is the declared project identity, and their PASS is limited to the development workflow.
 Candidate-scoped evidence keeps its candidate and epoch binding. Final evaluation is
 registered only by a separate evaluator-mode MCP process.
+
+Micro-verifiers are capability declarations over the same Provider Protocol workflows, bounded
+runner, temporary workspace, freeze checks, immutable record store, and ledger. They do not form a
+parallel execution or evidence system. Forge controls matching and invocation; the provider owns
+the narrow verification method; offline MNCS/MNCDS validators retain normative result authority.
+
+See [Machine-native micro-verifiers](micro-verifiers.md) for the bounded query flow and freshness
+model.

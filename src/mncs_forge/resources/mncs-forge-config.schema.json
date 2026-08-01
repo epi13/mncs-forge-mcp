@@ -42,6 +42,21 @@
         "output_bytes": {"type": "integer", "minimum": 1024, "maximum": 16777216}
       }
     },
+    "verifier_limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_batch": {"type": "integer", "minimum": 1, "maximum": 32},
+        "request_bytes": {"type": "integer", "minimum": 1024, "maximum": 1048576},
+        "batch_timeout_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+        "witness_bytes": {"type": "integer", "minimum": 256, "maximum": 1048576},
+        "stderr_bytes": {"type": "integer", "minimum": 256, "maximum": 1048576},
+        "result_bytes": {"type": "integer", "minimum": 2048, "maximum": 4194304},
+        "max_changed_paths": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "max_dependency_identities": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "max_question_parameters": {"type": "integer", "minimum": 0, "maximum": 128}
+      }
+    },
     "commands": {
       "type": "object",
       "additionalProperties": false,
@@ -110,6 +125,36 @@
           "executable_identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "descriptor": {"$ref": "#/$defs/relativePath"},
           "environment": {"type": "object", "additionalProperties": {"type": "string"}}
+        }
+      }
+    },
+    "verifiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "version", "workflow", "provider", "method", "claim", "category", "modes", "scopes", "input_kinds", "cost"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+          "version": {"type": "string", "pattern": ".*\\S.*", "maxLength": 128},
+          "workflow": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+          "provider": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+          "method": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+          "claim": {"type": "string", "pattern": ".*\\S.*", "maxLength": 2048},
+          "category": {"enum": ["build", "compiler_matrix", "differential_behavior", "mutation", "sanitizers", "bounded_structural_analysis", "resource_checks", "checkpoint_recovery", "benchmark", "evidence_derivation", "mncs_bundle_validation", "mncds_record_validation", "inspection"]},
+          "modes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["development", "evaluator"]}},
+          "languages": {"$ref": "#/$defs/stringList"},
+          "artifact_types": {"$ref": "#/$defs/stringList"},
+          "scopes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["region", "function", "file", "module", "package", "candidate", "contract", "artifact", "evidence", "dependency-slice"]}},
+          "input_kinds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["candidate_identity", "changed_paths", "source_region", "contract_identity", "dependency_slice_identities", "prior_artifact_identity", "question_parameters"]}},
+          "limitations": {"$ref": "#/$defs/stringList"},
+          "assumptions": {"$ref": "#/$defs/stringList"},
+          "timeout_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+          "cost": {"enum": ["low", "medium", "high"]},
+          "uncertainty_classes": {"$ref": "#/$defs/stringList"},
+          "tags": {"$ref": "#/$defs/stringList"},
+          "parameter_keys": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
+          "disclosure": {"enum": ["compact", "status-only"]}
         }
       }
     },

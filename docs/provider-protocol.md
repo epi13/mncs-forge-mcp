@@ -21,3 +21,10 @@ Capability blockers are satisfied only by a current successful probe whose retur
 include the required capability and do not mark it unsupported. Declared capability without a
 current probe is not PASS. See the [provider transition](provider-transition.md) for the optional
 legacy Joern adapter profile.
+
+Micro-verifiers use the same `analysis_request`/`analysis_response` framing. The declared verifier
+method must appear in the referenced provider's configured capabilities and becomes the request
+`analysis`. Forge adds bounded component data and identities under the `mncs_forge` extension.
+Providers may return assumptions and a dependency envelope there. Operational protocol failure is
+recorded as `UNKNOWN`; process completion is never converted to `PASS`. See
+[Machine-native micro-verifiers](micro-verifiers.md).

@@ -24,6 +24,7 @@ from .execution import (
 )
 from .identity import content_identity, file_identity, identity_map
 from .ledger import Ledger
+from .micro_verifiers import MicroVerifierService
 from .paths import is_within, resolve_contained, validate_relative_path
 from .serialization import canonical_bytes, local_json_identity, read_json
 
@@ -230,6 +231,7 @@ class Forge:
             "configured_providers": providers["providers"],
             "required_capabilities": self.config.required_capabilities,
             "provider_discovery_status": providers["status"],
+            "declared_micro_verifiers": MicroVerifierService(self).list_declared()["verifiers"],
             "limitations": PUBLIC_LIMITATIONS,
         }
 
@@ -572,6 +574,88 @@ class Forge:
             "missing_is_pass": False,
             "dominance": "FAIL > UNKNOWN > PASS",
         }
+
+    def verifier_list(self) -> dict[str, object]:
+        return MicroVerifierService(self).list_declared()
+
+    def verifier_describe(self, verifier_id: str) -> dict[str, object]:
+        return MicroVerifierService(self).describe(verifier_id)
+
+    def verifier_match(
+        self,
+        *,
+        uncertainty_classes: list[str],
+        language: str | None = None,
+        artifact_type: str | None = None,
+        changed_paths: list[str] | None = None,
+        scope: str | None = None,
+        maximum_cost: str = "high",
+        required_category: str | None = None,
+        active_mode: str | None = None,
+    ) -> dict[str, object]:
+        return MicroVerifierService(self).match(
+            uncertainty_classes=uncertainty_classes,
+            language=language,
+            artifact_type=artifact_type,
+            changed_paths=changed_paths,
+            scope=scope,
+            maximum_cost=maximum_cost,
+            required_category=required_category,
+            active_mode=active_mode,
+        )
+
+    def verifier_run(
+        self,
+        verifier_id: str,
+        *,
+        candidate_identity: str | None = None,
+        changed_paths: list[str] | None = None,
+        scope: str | None = None,
+        source_region: dict[str, object] | None = None,
+        contract_identity: str | None = None,
+        dependency_slice_identities: dict[str, str] | None = None,
+        prior_artifact_identity: str | None = None,
+        question_parameters: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        return MicroVerifierService(self).run(
+            verifier_id,
+            candidate_identity=candidate_identity,
+            changed_paths=changed_paths,
+            scope=scope,
+            source_region=source_region,
+            contract_identity=contract_identity,
+            dependency_slice_identities=dependency_slice_identities,
+            prior_artifact_identity=prior_artifact_identity,
+            question_parameters=question_parameters,
+        )
+
+    def verifier_batch(
+        self,
+        verifier_ids: list[str],
+        *,
+        candidate_identity: str | None = None,
+        changed_paths: list[str] | None = None,
+        scope: str | None = None,
+        source_region: dict[str, object] | None = None,
+        contract_identity: str | None = None,
+        dependency_slice_identities: dict[str, str] | None = None,
+        prior_artifact_identity: str | None = None,
+        question_parameters: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        return MicroVerifierService(self).batch(
+            verifier_ids,
+            candidate_identity=candidate_identity,
+            changed_paths=changed_paths,
+            scope=scope,
+            source_region=source_region,
+            contract_identity=contract_identity,
+            dependency_slice_identities=dependency_slice_identities,
+            prior_artifact_identity=prior_artifact_identity,
+            question_parameters=question_parameters,
+        )
+
+    def verifier_explain(self, output_identity: str) -> dict[str, object]:
+        return MicroVerifierService(self).explain(output_identity)
 
     def epoch_begin(
         self,

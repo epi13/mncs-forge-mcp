@@ -9,6 +9,10 @@ import pytest
 from mncs_forge.config import ForgeConfig, load_config
 
 
+def _verifier_modes(mode: str) -> str:
+    return json.dumps(["development", "evaluator"] if mode == "PASS" else ["development"])
+
+
 @pytest.fixture
 def project(tmp_path: Path) -> Path:
     for directory in (
@@ -40,6 +44,12 @@ def project(tmp_path: Path) -> Path:
         ("provider-oversize", "OVERSIZE"),
         ("provider-timeout", "TIMEOUT"),
         ("provider-identity-drift", "IDENTITY_DRIFT"),
+        ("provider-multiple", "MULTIPLE"),
+        ("provider-nonzero", "NONZERO"),
+        ("provider-stderr", "STDERR"),
+        ("provider-zero-unknown", "ZERO_UNKNOWN"),
+        ("provider-protected-check", "PROTECTED_CHECK"),
+        ("provider-witness", "WITNESS"),
     ]
     provider_tables = "\n".join(
         (
@@ -60,10 +70,32 @@ def project(tmp_path: Path) -> Path:
             "[[workflows]]\n"
             f"name = {json.dumps(name)}\n"
             'category = "bounded_structural_analysis"\n'
-            'mode = "development"\n'
+            f"mode = {json.dumps('both' if name == 'provider-pass' else 'development')}\n"
             f"command = {json.dumps([python, str(fixture), mode])}\n"
             "provider_protocol = true\n"
             f"provider_id = {json.dumps(name)}\n"
+        )
+        for name, mode in providers
+    )
+    verifier_tables = "\n".join(
+        (
+            "[[verifiers]]\n"
+            f"id = {json.dumps('verify-' + mode.lower().replace('_', '-'))}\n"
+            'version = "1"\n'
+            f"workflow = {json.dumps(name)}\n"
+            f"provider = {json.dumps(name)}\n"
+            'method = "bounded-structural"\n'
+            f"claim = {json.dumps('Fixture bounded claim for ' + mode)}\n"
+            'category = "bounded_structural_analysis"\n'
+            f"modes = {_verifier_modes(mode)}\n"
+            'languages = ["python"]\n'
+            'artifact_types = ["source"]\n'
+            'scopes = ["file"]\n'
+            'input_kinds = ["candidate_identity", "changed_paths", "question_parameters"]\n'
+            'uncertainty_classes = ["structural", "change-impact"]\n'
+            f"cost = {json.dumps('low' if mode == 'PASS' else 'medium')}\n"
+            'parameter_keys = ["note"]\n'
+            "timeout_seconds = 0.25\n"
         )
         for name, mode in providers
     )
@@ -112,6 +144,33 @@ useful_benefit_objective = "contract/contract.md"
 
 {provider_tables}
 {provider_workflows}
+{verifier_tables}
+
+[[workflows]]
+name = "evaluator-provider-pass"
+category = "bounded_structural_analysis"
+mode = "evaluator"
+command = {json.dumps([python, str(fixture), "PASS"])}
+provider_protocol = true
+provider_id = "provider-pass"
+disclosure = "status-only"
+
+[[verifiers]]
+id = "evaluator.status-only"
+version = "1"
+workflow = "evaluator-provider-pass"
+provider = "provider-pass"
+method = "bounded-structural"
+claim = "Fixture evaluator status-only bounded claim."
+category = "bounded_structural_analysis"
+modes = ["evaluator"]
+languages = ["python"]
+scopes = ["file"]
+input_kinds = ["candidate_identity", "changed_paths"]
+uncertainty_classes = ["structural"]
+cost = "low"
+timeout_seconds = 0.25
+disclosure = "status-only"
 
 [[workflows]]
 name = "pass-check"

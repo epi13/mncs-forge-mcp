@@ -12,6 +12,19 @@ expected executable SHA-256 identity, descriptor, and allowlisted environment ov
 `required_capabilities` declares project capability policy. Providers are absent and optional by
 default; the configuration never infers a provider from PATH.
 
+Optional `[[verifiers]]` declarations bind a stable verifier ID/version and narrow claim to an
+existing Provider Protocol workflow, provider capability/method, category, modes, supported
+language/artifact/scope metadata, accepted input kinds, limitations, assumptions, timeout, cost,
+matching classes/tags, question-parameter keys, and disclosure. They cannot declare commands or
+environment. Verifier category, command, provider, mode, timeout, and disclosure may only retain
+or narrow the referenced workflow/provider authority.
+
+Optional `[verifier_limits]` bounds batch count, request bytes, total batch duration, witness,
+stderr, and result bytes, changed paths, dependency identities, and question parameters.
+Defaults are conservative and existing configurations without verifiers remain valid. See the
+[minimal example](../examples/minimal/mncs-forge.toml) and
+[micro-verifier guide](micro-verifiers.md).
+
 All project paths are relative to the configured root. Absolute paths, `..`, NULs, symlink escape,
 and protected/writable overlap are rejected. Every command is a non-empty argument array. Forge
 never uses `shell=True` and has no arbitrary shell MCP tool.

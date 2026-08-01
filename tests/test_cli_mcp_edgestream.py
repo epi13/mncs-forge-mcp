@@ -55,6 +55,12 @@ async def _provider_mcp_calls(executable: Path, config: Path) -> None:
         assert "mncs_forge_providers_list" in names
         assert "mncs_forge_provider_probe" in names
         assert "mncs_forge_capability_blockers" in names
+        assert "mncs_forge_verifier_list" in names
+        assert "mncs_forge_verifier_describe" in names
+        assert "mncs_forge_verifier_match" in names
+        assert "mncs_forge_verifier_run" in names
+        assert "mncs_forge_verifier_batch" in names
+        assert "mncs_forge_verifier_explain" in names
         assert "mncs_forge_final_evaluation_run" not in names
         listing = await session.call_tool("mncs_forge_providers_list", {})
         assert not listing.isError
@@ -69,6 +75,58 @@ async def _provider_mcp_calls(executable: Path, config: Path) -> None:
         )
         assert not blockers.isError
         assert blockers.structuredContent["status"] == "PASS"  # type: ignore[index]
+        verifiers = await session.call_tool("mncs_forge_verifier_list", {})
+        assert not verifiers.isError
+        assert verifiers.structuredContent["configured_count"] > 0  # type: ignore[index]
+        described = await session.call_tool(
+            "mncs_forge_verifier_describe", {"verifier_id": "verify-pass"}
+        )
+        assert not described.isError
+        assert described.structuredContent["method"] == "bounded-structural"  # type: ignore[index]
+        matched = await session.call_tool(
+            "mncs_forge_verifier_match",
+            {
+                "uncertainty_classes": ["structural"],
+                "language": "python",
+                "artifact_type": "source",
+                "scope": "file",
+                "maximum_cost": "low",
+            },
+        )
+        assert not matched.isError
+        assert matched.structuredContent["match_outcome"] == "MATCHED"  # type: ignore[index]
+        epoch = await session.call_tool(
+            "mncs_forge_epoch_begin",
+            {
+                "generator_identity": "mcp-generator",
+                "evaluator_identity": "mcp-evaluator",
+            },
+        )
+        assert not epoch.isError
+        candidate = await session.call_tool(
+            "mncs_forge_candidate_register",
+            {
+                "changed_files": ["candidate/main.py"],
+                "hypothesis": "MCP verifier response shape",
+                "generator_identity": "mcp-generator",
+                "generator_config_identity": "mcp-generator-config",
+            },
+        )
+        assert not candidate.isError
+        verified = await session.call_tool(
+            "mncs_forge_verifier_run",
+            {
+                "verifier_id": "verify-pass",
+                "candidate_identity": candidate.structuredContent["candidate_id"],
+                "changed_paths": ["candidate/main.py"],
+                "scope": "file",
+            },
+        )
+        assert not verified.isError
+        assert verified.structuredContent["status"] == "PASS"  # type: ignore[index]
+        assert str(verified.structuredContent["output_identity"]).startswith(
+            "forge-json-sha256-v1:"
+        )
 
 
 def test_mcp_provider_list_probe_and_blockers(project: Path) -> None:

@@ -23,4 +23,14 @@ rewriting; it does not provide external timestamping, protected custody, signatu
 or independent governance. Secret redaction is defensive and cannot guarantee removal of every
 possible secret representation. Ordinary operation requires no network.
 
+Micro-verifier callers cannot supply argv, executables, shell fragments, environment, or working
+directories. Changed paths are restricted to candidate/generated scopes and checked for absolute
+paths, traversal, containment, file type, protected overlap, and symlink escape. Source regions,
+JSON parameter keys/depth/size, request/batch duration, stdout/stderr, witnesses, and result
+records are bounded. Commands and environment values are omitted from verifier discovery.
+Evaluator runs require freeze/drift checks; status-only disclosure removes repair-enabling detail.
+
+A configured provider is still trusted code with ambient host permissions. The reduced temporary
+workspace and no-shell runner are not an OS or network sandbox.
+
 Report vulnerabilities according to [SECURITY.md](../SECURITY.md).

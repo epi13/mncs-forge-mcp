@@ -21,10 +21,21 @@ outputs = ["generated-output"]
 timeout_seconds = 30
 output_bytes = 1048576
 
+[verifier_limits]
+max_batch = 4
+request_bytes = 65536
+batch_timeout_seconds = 30
+witness_bytes = 16384
+stderr_bytes = 4096
+result_bytes = 131072
+max_changed_paths = 32
+max_dependency_identities = 32
+max_question_parameters = 16
+
 [authority.development]
 may_write_candidates = true
 may_write_generated = true
-may_run_providers = false
+may_run_providers = true
 
 [authority.evaluator]
 candidate_read_only = true
@@ -35,6 +46,68 @@ withhold_repair_feedback = true
 [policies]
 selection = "evaluator/policy.json"
 useful_benefit_objective = "contract/contract.md"
+
+[[providers]]
+id = "minimal-micro-verifier-provider"
+name = "Minimal micro-verifier example provider"
+identity = "minimal-micro-verifier-provider-v1"
+version = "0.1"
+command = ["python", "evaluator/micro_verifier_provider.py"]
+transport = "stdio-jsonl"
+required = false
+capabilities = ["evidence-change-impact", "python-bounded-equivalence"]
+supported_constructs = ["bounded-path-overlap", "simple-python-expression"]
+unsupported_constructs = ["dynamic-dispatch", "whole-program-semantics"]
+limitations = ["example provider with two intentionally narrow methods"]
+
+[[workflows]]
+name = "minimal-micro-verifiers"
+category = "bounded_structural_analysis"
+mode = "development"
+command = ["python", "evaluator/micro_verifier_provider.py"]
+provider_protocol = true
+provider_id = "minimal-micro-verifier-provider"
+disclosure = "compact"
+
+[[verifiers]]
+id = "evidence.change-impact"
+version = "0.1"
+workflow = "minimal-micro-verifiers"
+provider = "minimal-micro-verifier-provider"
+method = "evidence-change-impact"
+claim = "Listed candidate changes do not intersect the caller-declared evidence dependency envelope."
+category = "bounded_structural_analysis"
+modes = ["development"]
+artifact_types = ["evidence"]
+scopes = ["evidence"]
+input_kinds = ["candidate_identity", "changed_paths", "question_parameters"]
+limitations = ["Path separation does not prove semantic independence."]
+assumptions = ["dependency_paths completely names the intended bounded evidence dependency envelope"]
+timeout_seconds = 5
+cost = "low"
+uncertainty_classes = ["evidence-freshness", "change-impact"]
+tags = ["identity", "metadata"]
+parameter_keys = ["dependency_paths"]
+
+[[verifiers]]
+id = "python.bounded-add-equivalence"
+version = "0.1"
+workflow = "minimal-micro-verifiers"
+provider = "minimal-micro-verifier-provider"
+method = "python-bounded-equivalence"
+claim = "The candidate and reference add functions agree for integer pairs in the bounded domain [-2, 2]."
+category = "bounded_structural_analysis"
+modes = ["development"]
+languages = ["python"]
+artifact_types = ["source"]
+scopes = ["function"]
+input_kinds = ["candidate_identity", "changed_paths"]
+limitations = ["Only one simple pure expression function and a finite integer domain are covered."]
+assumptions = ["candidate/generated.py and reference/reference.py are the intended artifacts"]
+timeout_seconds = 5
+cost = "low"
+uncertainty_classes = ["bounded-equivalence", "generated-binding-drift"]
+tags = ["behavioral", "bounded"]
 
 [[workflows]]
 name = "inspect"

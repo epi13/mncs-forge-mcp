@@ -34,6 +34,11 @@ MCP is the interactive Codex interface. Provider Protocol 0.1 is the determinist
 interface. MNCS and MNCDS validators remain offline result authorities. Forge never copies their
 conformance logic into its control plane.
 
+Machine-native micro-verifiers add a declared, bounded question-and-answer layer on the same
+Provider Protocol workflows and ledger. Discovery and deterministic matching do not execute
+providers; explicit runs preserve narrow statuses, witnesses, limitations, identities, and
+freshness without implying whole-program or normative conformance.
+
 ## Quick start
 
 ```bash
@@ -59,14 +64,15 @@ MCP servers dynamically. Uninstall with `./scripts/uninstall-codex-mcp.sh`.
 ## Interfaces
 
 The `mncs-forge` CLI provides `doctor`, `inspect`, `status`, `blockers`, provider
-list/probe/blockers, `epoch begin`,
+list/probe/blockers, verifier list/describe/match/run/batch/explain, `epoch begin`,
 `candidate register/compare/select/reject`, `check development`, `explain`, `freeze`, `evaluate`,
 `reconcile`, `bundle`, `ledger verify`, and `config validate`.
 
 The development `mncs-forge-mcp` stdio server exposes project inspection, separate claim status
-and blockers, provider list/probe/capability blockers,
-epoch/candidate control, declared checks, compact failure explanation, policy-bound comparison and
-disposition, freeze, reconciliation, and bundle orchestration. Final evaluation is exposed only
+and blockers, provider list/probe/capability blockers, micro-verifier
+discovery/matching/execution/explanation, epoch/candidate control, declared checks, compact
+failure explanation, policy-bound comparison and disposition, freeze, reconciliation, and bundle
+orchestration. Final evaluation is exposed only
 by a separately started evaluator-mode server. Read-only
 resources summarize authority, active state, evidence, blockers, and usage. Prompts guide the
 controlled workflow but cannot bypass tool authority checks.
@@ -80,6 +86,7 @@ controlled workflow but cannot bypass tool authority checks.
 - [Codex installation](docs/codex-cli.md)
 - [EdgeStream integration](docs/edgestream.md)
 - [Provider Protocol integration](docs/provider-protocol.md)
+- [Machine-native micro-verifiers](docs/micro-verifiers.md)
 - [Forge and provider transition](docs/provider-transition.md)
 - [Evidence and identity model](docs/evidence-model.md)
 - [Compatibility](docs/compatibility.md)

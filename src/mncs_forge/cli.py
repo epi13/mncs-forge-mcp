@@ -14,6 +14,17 @@ from .engine import Forge
 from .errors import ForgeError
 
 
+def _verifier_run_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--candidate")
+    parser.add_argument("--changed", action="append", default=[])
+    parser.add_argument("--scope")
+    parser.add_argument("--source-region", help="bounded JSON source-region object")
+    parser.add_argument("--contract")
+    parser.add_argument("--dependency", action="append", default=[], metavar="NAME=IDENTITY")
+    parser.add_argument("--prior-artifact")
+    parser.add_argument("--parameters", default="{}", help="JSON object of declared parameters")
+
+
 def _common_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="mncs-forge")
     parser.add_argument("--config", type=Path, default=Path("mncs-forge.toml"))
@@ -32,6 +43,29 @@ def _common_parser() -> argparse.ArgumentParser:
     probe.add_argument("provider_id")
     capability_blockers = provider_commands.add_parser("blockers")
     capability_blockers.add_argument("capabilities", nargs="*")
+
+    verifier = commands.add_parser("verifier")
+    verifier_commands = verifier.add_subparsers(dest="verifier_command", required=True)
+    verifier_commands.add_parser("list")
+    verifier_describe = verifier_commands.add_parser("describe")
+    verifier_describe.add_argument("verifier_id")
+    verifier_match = verifier_commands.add_parser("match")
+    verifier_match.add_argument("--uncertainty", action="append", default=[])
+    verifier_match.add_argument("--language")
+    verifier_match.add_argument("--artifact-type")
+    verifier_match.add_argument("--changed", action="append", default=[])
+    verifier_match.add_argument("--scope")
+    verifier_match.add_argument("--maximum-cost", choices=("low", "medium", "high"), default="high")
+    verifier_match.add_argument("--category")
+    verifier_match.add_argument("--active-mode", choices=("development", "evaluator"))
+    verifier_run = verifier_commands.add_parser("run")
+    verifier_run.add_argument("verifier_id")
+    _verifier_run_arguments(verifier_run)
+    verifier_batch = verifier_commands.add_parser("batch")
+    verifier_batch.add_argument("verifier_ids", nargs="+")
+    _verifier_run_arguments(verifier_batch)
+    verifier_explain = verifier_commands.add_parser("explain")
+    verifier_explain.add_argument("output_identity")
 
     epoch = commands.add_parser("epoch")
     epoch_commands = epoch.add_subparsers(dest="epoch_command", required=True)
@@ -86,6 +120,41 @@ def _common_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _json_object(value: str, label: str) -> dict[str, object]:
+    parsed = json.loads(value)
+    if not isinstance(parsed, dict):
+        raise ForgeError("CLI_INPUT", f"{label} must be a JSON object")
+    return {str(key): item for key, item in parsed.items()}
+
+
+def _dependencies(values: list[str]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for value in values:
+        name, separator, identity = value.partition("=")
+        if not separator or not name or not identity:
+            raise ForgeError("CLI_INPUT", "dependency must use NAME=IDENTITY")
+        if name in result:
+            raise ForgeError("CLI_INPUT", f"duplicate dependency name: {name}")
+        result[name] = identity
+    return result
+
+
+def _verifier_inputs(args: argparse.Namespace) -> dict[str, Any]:
+    source_region = (
+        _json_object(str(args.source_region), "source-region") if args.source_region else None
+    )
+    return {
+        "candidate_identity": args.candidate,
+        "changed_paths": list(args.changed),
+        "scope": args.scope,
+        "source_region": source_region,
+        "contract_identity": args.contract,
+        "dependency_slice_identities": _dependencies(list(args.dependency)),
+        "prior_artifact_identity": args.prior_artifact,
+        "question_parameters": _json_object(str(args.parameters), "parameters"),
+    }
+
+
 def _dispatch(forge: Forge, args: argparse.Namespace) -> object:
     command = str(args.command)
     simple: dict[str, Callable[[], object]] = {
@@ -104,6 +173,28 @@ def _dispatch(forge: Forge, args: argparse.Namespace) -> object:
         if provider_command == "probe":
             return forge.provider_probe(str(args.provider_id))
         return forge.capability_blockers(list(args.capabilities))
+    if command == "verifier":
+        verifier_command = str(args.verifier_command)
+        if verifier_command == "list":
+            return forge.verifier_list()
+        if verifier_command == "describe":
+            return forge.verifier_describe(str(args.verifier_id))
+        if verifier_command == "match":
+            return forge.verifier_match(
+                uncertainty_classes=list(args.uncertainty),
+                language=args.language,
+                artifact_type=args.artifact_type,
+                changed_paths=list(args.changed),
+                scope=args.scope,
+                maximum_cost=str(args.maximum_cost),
+                required_category=args.category,
+                active_mode=args.active_mode,
+            )
+        if verifier_command == "run":
+            return forge.verifier_run(str(args.verifier_id), **_verifier_inputs(args))
+        if verifier_command == "batch":
+            return forge.verifier_batch(list(args.verifier_ids), **_verifier_inputs(args))
+        return forge.verifier_explain(str(args.output_identity))
     if command == "epoch":
         return forge.epoch_begin(
             generator_identity=str(args.generator),

@@ -62,12 +62,14 @@ def run_bounded(
     cwd: Path,
     timeout: float,
     output_cap: int,
+    stderr_cap: int | None = None,
     environment: dict[str, str],
     stdin: bytes = b"",
 ) -> ExecutionResult:
     argv = validate_argv(command)
-    if timeout <= 0 or output_cap <= 0:
+    if timeout <= 0 or output_cap <= 0 or (stderr_cap is not None and stderr_cap <= 0):
         raise ForgeError("INVALID_LIMIT", "timeout and output cap must be positive")
+    caps = {"stdout": output_cap, "stderr": stderr_cap or output_cap}
     started = time.monotonic()
     try:
         process = subprocess.Popen(
@@ -111,11 +113,10 @@ def run_bounded(
                     continue
                 target = chunks[str(key.data)]
                 target.extend(data)
-                if len(target) > output_cap:
+                cap = caps[str(key.data)]
+                if len(target) > cap:
                     _terminate(process)
-                    raise ForgeError(
-                        "OUTPUT_LIMIT", f"{key.data} exceeded the {output_cap}-byte cap"
-                    )
+                    raise ForgeError("OUTPUT_LIMIT", f"{key.data} exceeded the {cap}-byte cap")
         returncode = process.wait(timeout=max(0.1, deadline - time.monotonic()))
     except subprocess.TimeoutExpired as exc:
         _terminate(process)

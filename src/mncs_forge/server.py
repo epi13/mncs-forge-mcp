@@ -59,6 +59,100 @@ def build_server(forge: Forge) -> FastMCP:
 
         return forge.capability_blockers(required_capabilities)
 
+    @server.tool(name="mncs_forge_verifier_list")
+    def verifier_list() -> dict[str, object]:
+        """List declared micro-verifiers without executing providers."""
+
+        return forge.verifier_list()
+
+    @server.tool(name="mncs_forge_verifier_describe")
+    def verifier_describe(verifier_id: str) -> dict[str, object]:
+        """Describe one declared micro-verifier and its bounded authority."""
+
+        return forge.verifier_describe(verifier_id)
+
+    @server.tool(name="mncs_forge_verifier_match")
+    def verifier_match(
+        uncertainty_classes: list[str],
+        language: str | None = None,
+        artifact_type: str | None = None,
+        changed_paths: list[str] | None = None,
+        scope: str | None = None,
+        maximum_cost: str = "high",
+        required_category: str | None = None,
+        active_mode: str | None = None,
+    ) -> dict[str, object]:
+        """Deterministically match declared verifiers; never execute a match."""
+
+        return forge.verifier_match(
+            uncertainty_classes=uncertainty_classes,
+            language=language,
+            artifact_type=artifact_type,
+            changed_paths=changed_paths,
+            scope=scope,
+            maximum_cost=maximum_cost,
+            required_category=required_category,
+            active_mode=active_mode,
+        )
+
+    @server.tool(name="mncs_forge_verifier_run")
+    def verifier_run(
+        verifier_id: str,
+        candidate_identity: str | None = None,
+        changed_paths: list[str] | None = None,
+        scope: str | None = None,
+        source_region: dict[str, object] | None = None,
+        contract_identity: str | None = None,
+        dependency_slice_identities: dict[str, str] | None = None,
+        prior_artifact_identity: str | None = None,
+        question_parameters: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        """Run one declared verifier through bounded Provider Protocol execution."""
+
+        return forge.verifier_run(
+            verifier_id,
+            candidate_identity=candidate_identity,
+            changed_paths=changed_paths,
+            scope=scope,
+            source_region=source_region,
+            contract_identity=contract_identity,
+            dependency_slice_identities=dependency_slice_identities,
+            prior_artifact_identity=prior_artifact_identity,
+            question_parameters=question_parameters,
+        )
+
+    @server.tool(name="mncs_forge_verifier_batch")
+    def verifier_batch(
+        verifier_ids: list[str],
+        candidate_identity: str | None = None,
+        changed_paths: list[str] | None = None,
+        scope: str | None = None,
+        source_region: dict[str, object] | None = None,
+        contract_identity: str | None = None,
+        dependency_slice_identities: dict[str, str] | None = None,
+        prior_artifact_identity: str | None = None,
+        question_parameters: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        """Run an explicit bounded verifier batch and retain every result."""
+
+        return forge.verifier_batch(
+            verifier_ids,
+            candidate_identity=candidate_identity,
+            changed_paths=changed_paths,
+            scope=scope,
+            source_region=source_region,
+            contract_identity=contract_identity,
+            dependency_slice_identities=dependency_slice_identities,
+            prior_artifact_identity=prior_artifact_identity,
+            question_parameters=question_parameters,
+        )
+
+    @server.tool(name="mncs_forge_verifier_explain")
+    def verifier_explain(output_identity: str) -> dict[str, object]:
+        """Explain one verifier result and its current freshness limitations."""
+
+        return forge.verifier_explain(output_identity)
+
     @server.tool(name="mncs_forge_epoch_begin")
     def epoch_begin(
         generator_identity: str,
@@ -195,13 +289,18 @@ def build_server(forge: Forge) -> FastMCP:
     def provider_blockers_resource() -> str:
         return json.dumps(forge.capability_blockers(), sort_keys=True)
 
+    @server.resource("mncs-forge://verifiers/declared")
+    def declared_verifiers() -> str:
+        return json.dumps(forge.verifier_list(), sort_keys=True)
+
     @server.resource("mncs-forge://guide/usage")
     def usage_guide() -> str:
         return (
             "Inspect authority, begin an epoch, register candidates, run declared development "
-            "checks, compare under policy, select, freeze, then start a separate evaluator-mode "
-            "server. Never use final evaluation as repair feedback. MNCS/MNCDS validators remain "
-            "offline authorities; missing evidence stays UNKNOWN."
+            "checks or explicitly selected bounded micro-verifiers, compare under policy, select, "
+            "freeze, then start a separate evaluator-mode server. Never use final evaluation as "
+            "repair feedback. MNCS/MNCDS validators remain offline authorities; missing evidence "
+            "stays UNKNOWN."
         )
 
     @server.prompt(name="start_controlled_machine_native_epoch")
