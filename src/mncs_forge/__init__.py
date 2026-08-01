@@ -8,4 +8,4 @@ __version__ = "0.1.0a2"
 from . import micro_verifiers as _micro_verifiers
 from .micro_verifiers_hardened import HardenedMicroVerifierService
 
-setattr(_micro_verifiers, "MicroVerifierService", HardenedMicroVerifierService)
+_micro_verifiers.MicroVerifierService = HardenedMicroVerifierService  # type: ignore[misc]
