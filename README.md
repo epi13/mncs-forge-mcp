@@ -1,43 +1,39 @@
 # MNCS Forge MCP
 
-MNCS Forge is an experimental, non-normative Model Context Protocol server and CLI that gives
-Codex an MNCS-native development and evidence control plane. It makes project authority,
-candidate lineage, epochs, declared checks, evidence gaps, selection, freeze, and evaluator-mode
+MNCS Forge is an experimental, non-normative Model Context Protocol server and CLI for
+machine-native development and evidence control. It makes project authority, candidate lineage,
+declared checks, provider capabilities, evidence gaps, selection, freeze, and evaluator-mode
 boundaries explicit.
 
-Forge is **not** required for MNCS conformance, an accredited certification system, a source of
-independence or protected custody, or a graph analyzer. Joern is one optional legacy provider,
-not the default. Compilers, analyzers, benchmarks, mutation systems, sanitizers, and runtime
-harnesses remain replaceable evidence providers. Forge never substitutes source reading or grep
-for a missing structural capability.
+> Forge is not required for MNCS conformance, an accredited certification system, a source of
+> independent evaluation or protected custody, or a universal program analyzer.
 
 Version `0.1.0a2` is a reference experiment. Local results do not promote MNCS, MNCDS, RFCs, or
-case studies. `REVIEW_REQUIRED` is a workflow disposition, not an MNCS result. Status aggregation
-is `FAIL > UNKNOWN > PASS`; absent or unsupported evidence never silently becomes `PASS`.
+case studies. Status aggregation is `FAIL > UNKNOWN > PASS`; absent, stale, unsupported, or
+unavailable evidence remains `UNKNOWN`.
 
-## Architecture
+## What Forge does
+
+- exposes one project-scoped control plane through a CLI and local stdio MCP server;
+- runs only declared argument-array workflows and Provider Protocol capabilities;
+- records epochs, candidates, actions, results, selection, freeze, and evaluation lineage;
+- keeps development and evaluator-mode authority separate;
+- provides bounded machine-native micro-verifier discovery and execution; and
+- delegates normative MNCS and MNCDS decisions to the public offline validators.
 
 ```mermaid
 flowchart LR
-  Codex[Codex / MCP client] -->|MCP stdio| Forge[MNCS Forge control plane]
-  Human[Human CLI] --> Forge
-  Forge -->|declared argv only| Providers[Provider Protocol 0.1 providers]
-  Forge -->|declared workflows| Harnesses[compilers, tests, benchmarks, analyzers]
-  Providers --> Records[append-only local records]
-  Harnesses --> Records
+  Codex[Codex / MCP client] --> Forge[Forge control plane]
+  Human[CLI user] --> Forge
+  Forge --> Providers[Declared providers and harnesses]
+  Providers --> Records[Immutable records and local hash-linked ledger]
   Forge --> Records
-  Records -->|public commands and schemas| Validators[MNCS and MNCDS offline validators]
-  Validators --> Separate[separate MNCS / MNCDS results]
+  Records --> Validators[Offline MNCS / MNCDS validators]
 ```
 
-MCP is the interactive Codex interface. Provider Protocol 0.1 is the deterministic analyzer
-interface. MNCS and MNCDS validators remain offline result authorities. Forge never copies their
-conformance logic into its control plane.
-
-Machine-native micro-verifiers add a declared, bounded question-and-answer layer on the same
-Provider Protocol workflows and ledger. Discovery and deterministic matching do not execute
-providers; explicit runs preserve narrow statuses, witnesses, limitations, identities, and
-freshness without implying whole-program or normative conformance.
+Forge is orchestration, not analysis. Joern is an optional legacy provider rather than a default
+dependency. Compilers, analyzers, benchmarks, mutation systems, sanitizers, and runtime harnesses
+remain replaceable providers.
 
 ## Quick start
 
@@ -49,46 +45,28 @@ mncs-forge --config examples/minimal/mncs-forge.toml config validate
 mncs-forge --config examples/minimal/mncs-forge.toml inspect
 ```
 
-For an MNCS checkout containing the committed EdgeStream integration configuration:
-
-```bash
-./scripts/install-codex-mcp.sh \
-  /absolute/path/to/machine-native-complexity-standard/mncs-forge.toml
-./scripts/verify-codex-mcp.sh \
-  /absolute/path/to/machine-native-complexity-standard/mncs-forge.toml
-```
-
-Start a new Codex session after registration; an already-running process is not assumed to reload
-MCP servers dynamically. Uninstall with `./scripts/uninstall-codex-mcp.sh`.
-
-## Interfaces
-
-The `mncs-forge` CLI provides `doctor`, `inspect`, `status`, `blockers`, provider
-list/probe/blockers, verifier list/describe/match/run/batch/explain, `epoch begin`,
-`candidate register/compare/select/reject`, `check development`, `explain`, `freeze`, `evaluate`,
-`reconcile`, `bundle`, `ledger verify`, and `config validate`.
-
-The development `mncs-forge-mcp` stdio server exposes project inspection, separate claim status
-and blockers, provider list/probe/capability blockers, micro-verifier
-discovery/matching/execution/explanation, epoch/candidate control, declared checks, compact
-failure explanation, policy-bound comparison and disposition, freeze, reconciliation, and bundle
-orchestration. Final evaluation is exposed only
-by a separately started evaluator-mode server. Read-only
-resources summarize authority, active state, evidence, blockers, and usage. Prompts guide the
-controlled workflow but cannot bypass tool authority checks.
+See [Getting started](docs/getting-started.md) for installation, CLI, MCP registration, and the
+minimal controlled workflow.
 
 ## Documentation
 
+- [Documentation map](docs/README.md)
 - [Architecture and trust boundaries](docs/architecture.md)
-- [Configuration](docs/configuration.md)
 - [Security model and residual risks](docs/security.md)
-- [CLI and MCP surface](docs/interfaces.md)
-- [Codex installation](docs/codex-cli.md)
-- [EdgeStream integration](docs/edgestream.md)
+- [Configuration](docs/configuration.md)
+- [CLI and MCP interfaces](docs/interfaces.md)
 - [Provider Protocol integration](docs/provider-protocol.md)
 - [Machine-native micro-verifiers](docs/micro-verifiers.md)
-- [Forge and provider transition](docs/provider-transition.md)
 - [Evidence and identity model](docs/evidence-model.md)
-- [Compatibility](docs/compatibility.md)
+- [Development roadmap](ROADMAP.md)
+- [Codex implementation queue](docs/codex-next-steps.md)
+
+## Current development priority
+
+The next release should stabilize the internal architecture before adding more verifier types,
+distributed execution, or sandbox backends. The immediate priority is to remove import-time
+verifier replacement, introduce versioned persistent records and explicit state transitions, and
+then split the control plane behind stable interfaces. The ordered work and acceptance criteria
+are maintained in the [Codex implementation queue](docs/codex-next-steps.md).
 
 Licensed under Apache-2.0.
