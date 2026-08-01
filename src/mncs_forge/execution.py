@@ -36,19 +36,29 @@ def validate_argv(command: object) -> list[str]:
     return list(command)
 
 
+def _kill_process_group(pid: int, sig: int) -> None:
+    """Invoke the POSIX-only process-group primitive without Windows stub errors."""
+
+    killpg = getattr(os, "killpg", None)
+    if killpg is None:
+        raise OSError("process-group termination is unavailable")
+    killpg(pid, sig)
+
+
 def _terminate(process: subprocess.Popen[bytes]) -> None:
     if process.poll() is not None:
         return
     try:
         if os.name == "posix":
-            os.killpg(process.pid, signal.SIGTERM)
+            _kill_process_group(process.pid, signal.SIGTERM)
         else:
             process.terminate()
         process.wait(timeout=1)
     except (OSError, subprocess.TimeoutExpired):
         try:
             if os.name == "posix":
-                os.killpg(process.pid, signal.SIGKILL)
+                kill_signal = int(getattr(signal, "SIGKILL", signal.SIGTERM))
+                _kill_process_group(process.pid, kill_signal)
             else:
                 process.kill()
         except OSError:
