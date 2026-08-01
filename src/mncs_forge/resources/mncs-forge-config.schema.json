@@ -153,7 +153,7 @@
           "cost": {"enum": ["low", "medium", "high"]},
           "uncertainty_classes": {"$ref": "#/$defs/stringList"},
           "tags": {"$ref": "#/$defs/stringList"},
-          "parameter_keys": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
+          "parameter_keys": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$", "not": {"enum": ["shared", "by_verifier"]}}},
           "disclosure": {"enum": ["compact", "status-only"]}
         }
       }

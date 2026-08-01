@@ -53,12 +53,28 @@ def test_protected_writable_overlap_rejected(project: Path) -> None:
 
 def test_undeclared_provider_command_rejected(project: Path) -> None:
     path = project / "mncs-forge.toml"
-    text = path.read_text(encoding="utf-8").replace(
-        'command = ["/', 'command = ["not-declared", "/', 1
-    )
+    text = path.read_text(encoding="utf-8")
+    provider = text.index("[[providers]]")
+    command = text.index("command = ", provider)
+    command_end = text.index("\n", command)
+    text = text[:command] + 'command = ["not-declared"]' + text[command_end:]
     path.write_text(text, encoding="utf-8")
     with pytest.raises(ForgeError):
         load_config(path)
+
+
+@pytest.mark.parametrize("reserved", ["shared", "by_verifier"])
+def test_batch_parameter_envelope_keys_are_reserved(project: Path, reserved: str) -> None:
+    path = project / "mncs-forge.toml"
+    text = path.read_text(encoding="utf-8").replace(
+        'parameter_keys = ["note"]',
+        f'parameter_keys = ["{reserved}"]',
+        1,
+    )
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ForgeError) as issue:
+        load_config(path)
+    assert issue.value.code == "CONFIG_INVALID"
 
 
 def test_relative_provider_symlink_escape_is_unavailable(project: Path, tmp_path: Path) -> None:

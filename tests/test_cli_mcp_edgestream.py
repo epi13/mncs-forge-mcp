@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -10,6 +11,12 @@ from mcp.client.stdio import stdio_client
 
 from mncs_forge.cli import run
 from mncs_forge.edgestream import inspect
+
+
+def installed_mcp_executable() -> Path:
+    executable = shutil.which("mncs-forge-mcp")
+    assert executable is not None
+    return Path(executable)
 
 
 def test_cli_smoke(project: Path) -> None:
@@ -23,8 +30,7 @@ def test_cli_smoke(project: Path) -> None:
 
 def test_direct_mcp_protocol_smoke(project: Path) -> None:
     root = Path(__file__).parents[1]
-    executable = Path(sys.executable).with_name("mncs-forge-mcp")
-    assert executable.is_file()
+    executable = installed_mcp_executable()
     result = subprocess.run(
         [
             sys.executable,
@@ -130,7 +136,7 @@ async def _provider_mcp_calls(executable: Path, config: Path) -> None:
 
 
 def test_mcp_provider_list_probe_and_blockers(project: Path) -> None:
-    executable = Path(sys.executable).with_name("mncs-forge-mcp")
+    executable = installed_mcp_executable()
     asyncio.run(_provider_mcp_calls(executable, project / "mncs-forge.toml"))
 
 

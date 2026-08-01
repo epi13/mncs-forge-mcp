@@ -15,6 +15,7 @@ from .identity import content_identity, file_identity
 from .ledger import Ledger
 from .paths import is_within, resolve_contained, validate_relative_path
 from .serialization import canonical_bytes, local_json_identity
+from .verifier_disclosure import redact_status_only_result
 
 COST_ORDER = {"low": 0, "medium": 1, "high": 2}
 STATUS_ORDER = {"PASS": 0, "UNKNOWN": 1, "FAIL": 2}
@@ -568,7 +569,7 @@ class MicroVerifierService:
                     f"verifier changed path is outside candidate/generated scopes: {value}",
                 )
             resolved = resolve_contained(self.config.root, value, must_exist=require_files)
-            if require_files and not resolved.is_file():
+            if resolved.exists() and not resolved.is_file():
                 raise ForgeError("VERIFIER_PATH", f"verifier selected path is not a file: {value}")
             result.append(value)
         return result
@@ -935,19 +936,6 @@ class MicroVerifierService:
             for entry in self.forge._records("verifier_result")
         )
         disclosure = verifier.disclosure
-        if self.forge.mode == "evaluator" and disclosure == "status-only":
-            witnesses = []
-            assumptions = []
-            unsupported = []
-            limitations = ["status-only evaluator disclosure withholds repair-enabling details"]
-            summary = "status-only evaluator verifier result"
-            dependency_envelope = {
-                "paths": [],
-                "path_identities": {},
-                "additional_identities": {},
-                "complete": False,
-                "identity": dependency_envelope.get("identity"),
-            }
         result: dict[str, object] = {
             "action_id": action["action_id"],
             "verifier_id": verifier.verifier_id,
@@ -1003,6 +991,8 @@ class MicroVerifierService:
             "disclosure": disclosure,
             "recorded_at": self._now(),
         }
+        if self.forge.mode == "evaluator" and disclosure == "status-only":
+            redact_status_only_result(result)
         result["output_identity"] = local_json_identity(result)
         if len(canonical_bytes(result)) > int(self.config.verifier_limits["result_bytes"]):
             result["witnesses"] = []

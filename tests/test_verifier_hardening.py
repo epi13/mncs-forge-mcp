@@ -1,7 +1,16 @@
 from __future__ import annotations
 
+import subprocess
+import sys
+from collections.abc import Callable
+
+import pytest
+
 from mncs_forge.config import ForgeConfig
 from mncs_forge.engine import Forge
+from mncs_forge.errors import ForgeError
+from mncs_forge.execution_windows import collect_windows_pipes
+from mncs_forge.micro_verifiers_hardened import HardenedMicroVerifierService
 
 
 def begin_and_register(forge: Forge) -> dict[str, object]:
@@ -27,6 +36,58 @@ def test_deleted_changed_path_uses_explicit_absent_identity(config: ForgeConfig)
     assert result["status"] == "PASS"
     identity = result["input_identities"]["changed_path_identities"][deleted_path]
     assert str(identity).startswith("forge-json-sha256-v1:")
+
+
+def test_changed_path_rejects_existing_directory(config: ForgeConfig) -> None:
+    forge = Forge(config)
+    begin_and_register(forge)
+    with pytest.raises(ForgeError, match="not a file"):
+        forge.verifier_run(
+            "verify-pass",
+            changed_paths=["candidate"],
+            scope="file",
+        )
+
+
+def test_windows_overflow_checked_after_reader_threads_exit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class InlineThread:
+        def __init__(
+            self,
+            *,
+            target: Callable[..., None],
+            args: tuple[object, ...],
+            daemon: bool,
+        ) -> None:
+            self.target = target
+            self.args = args
+            self.daemon = daemon
+
+        def start(self) -> None:
+            self.target(*self.args)
+
+        def is_alive(self) -> bool:
+            return False
+
+        def join(self, timeout: float | None = None) -> None:
+            del timeout
+
+    monkeypatch.setattr("mncs_forge.execution_windows.threading.Thread", InlineThread)
+    process = subprocess.Popen(
+        [sys.executable, "-c", "import sys; sys.stdout.write('x' * 1024)"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    with pytest.raises(ForgeError) as issue:
+        collect_windows_pipes(
+            process,
+            timeout=5,
+            stdout_cap=16,
+            stderr_cap=16,
+        )
+    assert issue.value.code == "OUTPUT_LIMIT"
 
 
 def test_started_action_receives_terminal_unknown_on_authority_drift(
@@ -55,6 +116,47 @@ def test_started_action_receives_terminal_unknown_on_authority_drift(
     assert result["operational_error"]["code"] == "PROVIDER_MUTATION"
     kinds = [entry["kind"] for entry in forge.ledger.records()]
     assert kinds[-2:] == ["verifier_action", "verifier_result"]
+
+
+def test_evaluator_terminal_unknown_is_redacted_before_recording(
+    config: ForgeConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    development = Forge(config)
+    candidate = begin_and_register(development)
+    development.development_checks_run(["pass-check"])
+    development.candidate_disposition(
+        str(candidate["candidate_id"]),
+        disposition="selected",
+        reason="fixture PASS",
+    )
+    development.candidate_freeze(
+        str(candidate["candidate_id"]),
+        environment_identity="environment-v1",
+        required_evidence_plan="evaluator/policy.json",
+    )
+
+    def late_failure(*args: object, **kwargs: object) -> dict[str, object]:
+        del args, kwargs
+        raise ForgeError("SENSITIVE_LATE_FAILURE", "repair-enabling evaluator detail")
+
+    monkeypatch.setattr(HardenedMicroVerifierService, "_execute", late_failure)
+    evaluator = Forge(config, mode="evaluator")
+    disclosed = evaluator.verifier_run(
+        "evaluator.status-only",
+        changed_paths=["candidate/main.py"],
+        scope="file",
+    )
+    assert disclosed["status"] == "UNKNOWN"
+    assert disclosed["repair_feedback_withheld"] is True
+    assert "repair-enabling evaluator detail" not in str(disclosed)
+
+    recorded = evaluator.ledger.records()[-1]["payload"]
+    assert recorded["assumptions"] == []
+    assert recorded["unsupported_constructs"] == []
+    assert recorded["operational_error"] is None
+    assert recorded["returncode"] is None
+    assert "repair-enabling evaluator detail" not in str(recorded)
 
 
 def test_batch_supports_per_verifier_parameters(config: ForgeConfig) -> None:
