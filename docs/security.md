@@ -33,4 +33,32 @@ Evaluator runs require freeze/drift checks; status-only disclosure removes repai
 A configured provider is still trusted code with ambient host permissions. The reduced temporary
 workspace and no-shell runner are not an OS or network sandbox.
 
+## Forge Cell specification boundary
+
+Forge Cell adds versioned schemas and offline validation for a future stronger execution boundary.
+The current reference implementation can validate a declared policy, test-bundle manifest, and
+execution record and can assess whether every requested assurance property was accounted for. It
+does not currently enforce namespaces, mounts, seccomp, Landlock, cgroups, network isolation,
+`fs-verity`, TPM measurements, confidential execution, or external custody.
+
+Forge Cell intentionally separates a test result from execution assurance. A test may report
+`PASS` while assurance remains `UNKNOWN` because process isolation, integrity enforcement,
+attestation, or custody was requested but not established. Identity or challenge contradictions
+are failures. See [Forge Cell execution assurance](forge-cell.md).
+
+The proposed assurance properties are:
+
+- `policy-bound`;
+- `process-isolated`;
+- `verity-enforced`;
+- `platform-attested`;
+- `confidential-attested`; and
+- `external-custody`.
+
+A local process or container boundary can constrain a candidate but still trusts the host kernel
+and administrator. Host root can generally deny service and may defeat local-only controls. A claim
+that root cannot silently forge an accepted result requires fresh external or hardware-backed
+evidence, such as an accepted TPM quote, confidential-VM attestation, or separately administered
+evaluator. Those backends remain future work and must document their own trusted computing base.
+
 Report vulnerabilities according to [SECURITY.md](../SECURITY.md).

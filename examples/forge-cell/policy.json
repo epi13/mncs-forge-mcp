@@ -1,0 +1,79 @@
+{
+  "record_type": "forge-cell-policy",
+  "schema_version": "0.1",
+  "policy_id": "forge-cell-reference-linux-0.1",
+  "requested_assurance": ["policy-bound", "process-isolated"],
+  "command": {
+    "argv": ["/test-bundle/bin/run-tests", "--candidate", "/candidate"],
+    "cwd": "workspace",
+    "shell": false
+  },
+  "environment": {
+    "LANG": "C.UTF-8",
+    "PATH": "/usr/bin:/bin",
+    "PYTHONHASHSEED": "0"
+  },
+  "network": {
+    "mode": "disabled",
+    "allowed_endpoints": []
+  },
+  "filesystem": {
+    "rootfs": {
+      "identity": "forge-cell-rootfs-python-3.13",
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "read_only": true
+    },
+    "mounts": [
+      {
+        "source_scope": "candidate",
+        "source_identity": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "target": "/candidate",
+        "access": "read-only",
+        "required": true
+      },
+      {
+        "source_scope": "test-bundle",
+        "source_identity": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "target": "/test-bundle",
+        "access": "read-only",
+        "required": true
+      },
+      {
+        "source_scope": "output",
+        "target": "/output",
+        "access": "writable",
+        "required": true
+      }
+    ]
+  },
+  "resource_limits": {
+    "timeout_seconds": 300,
+    "stdout_bytes": 1048576,
+    "stderr_bytes": 1048576,
+    "pids": 128,
+    "memory_bytes": 1073741824,
+    "cpu_quota_micros": 200000
+  },
+  "platform_requirements": {
+    "os": "linux",
+    "architecture": ["x86_64", "aarch64"],
+    "features": [
+      "user-namespace",
+      "mount-namespace",
+      "pid-namespace",
+      "ipc-namespace",
+      "uts-namespace",
+      "network-namespace",
+      "pivot-root",
+      "no-new-privs",
+      "seccomp",
+      "landlock",
+      "cgroup-v2"
+    ],
+    "seccomp_profile_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "attestation": {
+    "fresh_challenge_required": true,
+    "accepted_kinds": ["none", "local-signature", "tpm-quote", "external-evaluator"]
+  }
+}

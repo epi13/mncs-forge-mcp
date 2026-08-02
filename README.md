@@ -53,6 +53,7 @@ minimal controlled workflow.
 - [Documentation map](docs/README.md)
 - [Architecture and trust boundaries](docs/architecture.md)
 - [Security model and residual risks](docs/security.md)
+- [Forge Cell execution assurance](docs/forge-cell.md)
 - [Configuration](docs/configuration.md)
 - [CLI and MCP interfaces](docs/interfaces.md)
 - [Provider Protocol integration](docs/provider-protocol.md)
@@ -60,13 +61,15 @@ minimal controlled workflow.
 - [Evidence and identity model](docs/evidence-model.md)
 - [Development roadmap](ROADMAP.md)
 - [Codex implementation queue](docs/codex-next-steps.md)
+- [Forge Cell Codex queue](docs/codex-forge-cell-next-steps.md)
 
 ## Current development priority
 
 The next release should stabilize the internal architecture before adding more verifier types,
 distributed execution, or sandbox backends. The immediate priority is to remove import-time
 verifier replacement, introduce versioned persistent records and explicit state transitions, and
-then split the control plane behind stable interfaces. The ordered work and acceptance criteria
-are maintained in the [Codex implementation queue](docs/codex-next-steps.md).
+then split the control plane behind stable interfaces. Forge Cell schemas and fail-closed assurance
+assessment are available as a specification foundation; the actual Linux isolation and attestation
+backends remain ordered follow-up work.
 
 Licensed under Apache-2.0.

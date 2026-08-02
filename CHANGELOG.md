@@ -7,8 +7,15 @@
 - Add a release-level development roadmap and an ordered Codex implementation queue with task
   dependencies, invariants, acceptance criteria, validation commands, and explicit exclusions.
 - Add proposed architecture decision records for control-plane composition, versioned persistent
-  records, replaceable execution runners, and ledger checkpoint anchoring.
+  records, replaceable execution runners, ledger checkpoint anchoring, and Forge Cell assurance.
 - Expand contributor guidance and add evidence-aware pull request and roadmap-task templates.
+- Add versioned Forge Cell policy, test-bundle, and execution-record schemas as packaged resources.
+- Add offline Forge Cell document validation and fail-closed assurance assessment that keeps test
+  results separate from execution assurance.
+- Add reference Forge Cell artifacts and tests covering missing isolation, identity substitution,
+  challenge replay, contradictory assurance claims, and malformed evidence.
+- Add a dedicated Codex queue for Linux isolation, immutable test bundles, challenge-bound
+  attestation, adversarial studies, TPM, confidential execution, and external custody.
 
 ## 0.1.0a2
 

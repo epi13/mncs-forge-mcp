@@ -16,6 +16,7 @@ development planning. The root README remains a short project entrypoint.
 - [Architecture and trust boundaries](architecture.md)
 - [Evidence and identity model](evidence-model.md)
 - [Security model and residual risks](security.md)
+- [Forge Cell execution assurance](forge-cell.md)
 - [Compatibility](compatibility.md)
 
 ## Providers and integrations
@@ -31,6 +32,9 @@ development planning. The root README remains a short project entrypoint.
 - [Development roadmap](../ROADMAP.md) — release-level direction and sequencing.
 - [Codex implementation queue](codex-next-steps.md) — ordered implementation tasks, constraints,
   acceptance criteria, and validation requirements for coding agents.
+- [Forge Cell Codex queue](codex-forge-cell-next-steps.md) — ordered implementation tasks for Linux
+  isolation, immutable test bundles, challenge-bound attestations, adversarial studies, TPM,
+  confidential execution, and external custody.
 - [Architecture decision records](adr/README.md) — proposed decisions that should be resolved
   before the corresponding implementation work lands.
 
@@ -42,5 +46,5 @@ Documentation must preserve the same boundaries as the implementation:
 - missing or unsupported evidence remains `UNKNOWN`;
 - workflow completion alone is not normative conformance;
 - local operation does not create independence, protected custody, or governance approval; and
-- Forge is not an operating-system or network sandbox unless a future runner explicitly provides
-  and records those properties.
+- Forge is not an operating-system or network sandbox unless a runner explicitly provides and
+  records those properties.

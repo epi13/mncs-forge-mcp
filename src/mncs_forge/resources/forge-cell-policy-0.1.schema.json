@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mncs-forge:schema:forge-cell-policy-0.1",
+  "title": "Forge Cell execution policy 0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_type",
+    "schema_version",
+    "policy_id",
+    "requested_assurance",
+    "command",
+    "environment",
+    "network",
+    "filesystem",
+    "resource_limits",
+    "platform_requirements",
+    "attestation"
+  ],
+  "properties": {
+    "record_type": {"const": "forge-cell-policy"},
+    "schema_version": {"const": "0.1"},
+    "policy_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"},
+    "requested_assurance": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/assuranceLevel"}
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv", "cwd", "shell"],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {"type": "string", "minLength": 1, "maxLength": 4096}
+        },
+        "cwd": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+        },
+        "shell": {"const": false}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[A-Z_][A-Z0-9_]*$"},
+      "additionalProperties": {"type": "string", "maxLength": 8192},
+      "maxProperties": 64
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {"enum": ["disabled", "loopback-only", "declared-egress"]},
+        "allowed_endpoints": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "declared-egress"}}},
+          "then": {"required": ["allowed_endpoints"]},
+          "else": {
+            "properties": {"allowed_endpoints": {"maxItems": 0}}
+          }
+        }
+      ]
+    },
+    "filesystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rootfs", "mounts"],
+      "properties": {
+        "rootfs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "digest", "read_only"],
+          "properties": {
+            "identity": {"type": "string", "minLength": 1, "maxLength": 256},
+            "digest": {"$ref": "#/$defs/sha256"},
+            "read_only": {"const": true}
+          }
+        },
+        "mounts": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source_scope", "target", "access"],
+            "properties": {
+              "source_scope": {
+                "enum": ["candidate", "test-bundle", "toolchain", "declared-input", "output"]
+              },
+              "source_identity": {"$ref": "#/$defs/sha256"},
+              "target": {
+                "type": "string",
+                "pattern": "^/(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+              },
+              "access": {"enum": ["read-only", "writable"]},
+              "required": {"type": "boolean", "default": true}
+            }
+          }
+        }
+      }
+    },
+    "resource_limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeout_seconds",
+        "stdout_bytes",
+        "stderr_bytes",
+        "pids",
+        "memory_bytes"
+      ],
+      "properties": {
+        "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 86400},
+        "stdout_bytes": {"type": "integer", "minimum": 0, "maximum": 1073741824},
+        "stderr_bytes": {"type": "integer", "minimum": 0, "maximum": 1073741824},
+        "pids": {"type": "integer", "minimum": 1, "maximum": 65536},
+        "memory_bytes": {"type": "integer", "minimum": 1048576},
+        "cpu_quota_micros": {"type": "integer", "minimum": 1000}
+      }
+    },
+    "platform_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "architecture", "features"],
+      "properties": {
+        "os": {"enum": ["linux"]},
+        "architecture": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["x86_64", "aarch64"]}
+        },
+        "features": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "user-namespace",
+              "mount-namespace",
+              "pid-namespace",
+              "ipc-namespace",
+              "uts-namespace",
+              "network-namespace",
+              "pivot-root",
+              "no-new-privs",
+              "seccomp",
+              "landlock",
+              "cgroup-v2",
+              "fs-verity",
+              "tpm-quote",
+              "confidential-vm"
+            ]
+          }
+        },
+        "seccomp_profile_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fresh_challenge_required", "accepted_kinds"],
+      "properties": {
+        "fresh_challenge_required": {"type": "boolean"},
+        "accepted_kinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "none",
+              "local-signature",
+              "tpm-quote",
+              "confidential-vm",
+              "external-evaluator"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "assuranceLevel": {
+      "enum": [
+        "policy-bound",
+        "process-isolated",
+        "verity-enforced",
+        "platform-attested",
+        "confidential-attested",
+        "external-custody"
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}
