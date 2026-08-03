@@ -167,3 +167,15 @@ provider capability declaration, add a verifier declaration that references an a
 workflow, and return compact witnesses and explicit `UNKNOWN` limitations. Forge itself should
 not absorb analyzer-specific algorithms. Joern can back reachability/data-flow verifiers or serve
 as an escalation path, but the stable abstraction is the bounded claim, not the analyzer brand.
+
+## Query-driven micro-debugging extension
+
+The planned [query-driven micro-debugging architecture](micro-debugging.md) keeps the verifier
+action/result pair authoritative while adding development records for sessions, reusable provider
+snapshots, normalized events, falsifiable hypotheses, probe linkage, and diagnostic interpretation.
+
+It does not turn Forge into a compiler or create a parallel evidence system. Large analyzers remain
+providers and deliberate escalation paths; the diagnostic layer lets an agent ask compact,
+identity-bound questions against reusable representations when that is cheaper and more precise than
+another report dump. Runtime implementation is ordered separately in the
+[micro-debugging Codex queue](codex-micro-debugging-next-steps.md).
