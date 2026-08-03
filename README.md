@@ -58,10 +58,12 @@ minimal controlled workflow.
 - [CLI and MCP interfaces](docs/interfaces.md)
 - [Provider Protocol integration](docs/provider-protocol.md)
 - [Machine-native micro-verifiers](docs/micro-verifiers.md)
+- [Query-driven micro-debugging](docs/micro-debugging.md)
 - [Evidence and identity model](docs/evidence-model.md)
 - [Development roadmap](ROADMAP.md)
 - [Codex implementation queue](docs/codex-next-steps.md)
 - [Forge Cell Codex queue](docs/codex-forge-cell-next-steps.md)
+- [Micro-debugging Codex queue](docs/codex-micro-debugging-next-steps.md)
 
 ## Current development priority
 
@@ -70,6 +72,8 @@ distributed execution, or sandbox backends. The immediate priority is to remove 
 verifier replacement, introduce versioned persistent records and explicit state transitions, and
 then split the control plane behind stable interfaces. Forge Cell schemas and fail-closed assurance
 assessment are available as a specification foundation; the actual Linux isolation and attestation
-backends remain ordered follow-up work.
+backends remain ordered follow-up work. Query-driven micro-debugging now also has an architecture,
+versioned reference vocabulary, and a separate implementation queue; runtime sessions and reusable
+analyzer snapshots remain future work after the core typed-record and service boundaries stabilize.
 
 Licensed under Apache-2.0.

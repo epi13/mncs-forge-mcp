@@ -16,6 +16,10 @@
   challenge replay, contradictory assurance claims, and malformed evidence.
 - Add a dedicated Codex queue for Linux isolation, immutable test bundles, challenge-bound
   attestation, adversarial studies, TPM, confidential execution, and external custody.
+- Define query-driven micro-debugging architecture, status separation, identity/invalidation
+  rules, and a provider-neutral escalation model over the existing verifier evidence system.
+- Add a six-record micro-debugging vocabulary, proposed ADR, and ordered implementation queue for
+  sessions, snapshots, queries, a Clang/LLVM pilot, benchmarks, and adversarial validation.
 
 ## 0.1.0a2
 

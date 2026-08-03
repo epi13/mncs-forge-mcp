@@ -86,6 +86,34 @@ Every recorded result must distinguish local validity, execution assurance, exte
 witnessing, protected custody, and independence. A signature or second machine controlled by the
 same operator does not establish organizational independence.
 
+## `0.2.x` — query-driven micro-debugging
+
+Goal: let agents use compilers and analyzers as identity-bound query engines instead of depending
+primarily on large report dumps.
+
+The specification foundation defines diagnostic sessions, reusable snapshots, normalized events,
+falsifiable hypotheses, bounded probes, and diagnostic interpretations that link to the existing
+verifier action/result system. It also defines `micro`, `incremental`, and `full-scan` escalation
+levels without changing verifier status or evidence authority.
+
+Planned work:
+
+- typed diagnostic records and cross-record validation;
+- normalized compiler, test, runtime, verifier, analyzer, contract, and human events;
+- identity-bound snapshot lifecycle and invalidation;
+- a minimal Provider Protocol extension for snapshot-backed queries;
+- agent-facing hypothesis and probe operations through the shared operation registry;
+- safe identity-bound snapshot and result reuse;
+- a Clang/LLVM pilot provider;
+- latency, output-size, repair-localization, and escalation benchmarks; and
+- stale-state, substitution, resource, and disclosure adversarial studies.
+
+The architecture is documented in [docs/micro-debugging.md](docs/micro-debugging.md), with the
+ordered implementation handoff in
+[docs/codex-micro-debugging-next-steps.md](docs/codex-micro-debugging-next-steps.md). Runtime work
+depends on the core typed-record, transaction, state-machine, modular-service, operation-registry,
+and runner tasks.
+
 ## `0.3.0` — distributed Forge
 
 Goal: coordinate bounded jobs across heterogeneous machines while preserving identities,
@@ -127,5 +155,7 @@ or immunity from denial of service.
 
 Implementation order, constraints, acceptance criteria, likely file boundaries, and validation
 commands are maintained in [docs/codex-next-steps.md](docs/codex-next-steps.md). Forge Cell work is
-expanded in [docs/codex-forge-cell-next-steps.md](docs/codex-forge-cell-next-steps.md). Architecture
+expanded in [docs/codex-forge-cell-next-steps.md](docs/codex-forge-cell-next-steps.md), and
+micro-debugging work is expanded in
+[docs/codex-micro-debugging-next-steps.md](docs/codex-micro-debugging-next-steps.md). Architecture
 decisions that affect those tasks are staged under [docs/adr/](docs/adr/).
