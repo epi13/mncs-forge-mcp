@@ -23,6 +23,7 @@ development planning. The root README remains a short project entrypoint.
 
 - [Provider Protocol integration](provider-protocol.md)
 - [Machine-native micro-verifiers](micro-verifiers.md)
+- [Query-driven micro-debugging](micro-debugging.md)
 - [Forge and provider transition](provider-transition.md)
 - [EdgeStream integration](edgestream.md)
 - [Codex installation details](codex-cli.md)
@@ -35,6 +36,9 @@ development planning. The root README remains a short project entrypoint.
 - [Forge Cell Codex queue](codex-forge-cell-next-steps.md) — ordered implementation tasks for Linux
   isolation, immutable test bundles, challenge-bound attestations, adversarial studies, TPM,
   confidential execution, and external custody.
+- [Micro-debugging Codex queue](codex-micro-debugging-next-steps.md) — ordered implementation
+  tasks for diagnostic records, snapshots, provider queries, a Clang/LLVM pilot, benchmarks, and
+  adversarial validation.
 - [Architecture decision records](adr/README.md) — proposed decisions that should be resolved
   before the corresponding implementation work lands.
 
