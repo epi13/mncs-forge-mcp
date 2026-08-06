@@ -20,3 +20,11 @@
 - When comparative graph-sensitive evidence is claimed, use the same provider, method,
   scope, and relevant bounds before and after the change. Preserve historical Joern
   outputs and frozen baselines.
+- Treat suspicious or non-orthodox constructs as requests for bounded evidence, not automatic
+  failures or automatic exceptions. Orthodoxy is a heuristic; declared invariants remain
+  authoritative.
+- An intentional-deviation declaration may explain purpose, assumptions, compiler envelope, and
+  required checks, but it must never suppress, overwrite, or reinterpret a verifier `FAIL`.
+- Keep local invariant results, attack-path reachability, freshness, severity, and workflow
+  disposition separate. Absence of a demonstrated exploit chain does not convert a confirmed
+  weakness into `PASS`.
