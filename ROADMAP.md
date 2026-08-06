@@ -114,6 +114,37 @@ ordered implementation handoff in
 depends on the core typed-record, transaction, state-machine, modular-service, operation-registry,
 and runner tasks.
 
+## `0.3.x` — intent-aware security verification
+
+Goal: harden machine-native code without treating unfamiliar or non-orthodox implementation
+structure as automatic failure, while ensuring declared intent can never waive a failed safety
+invariant.
+
+The proposed architecture separates suspicious-pattern routing, local and trust-boundary verifier
+results, attack-path composition, freshness, and project workflow disposition. It introduces
+identity-bound intentional-deviation and deviation-evaluation records rather than broad scanner
+suppression or syntax whitelists.
+
+Planned work:
+
+- versioned records and policy for intentional deviations and their evaluations;
+- deterministic routing from bounded suspicion witnesses to required verifier capabilities;
+- explicit approval, expiration, scope, and revalidation rules;
+- local-invariant, trust-boundary, and compiler-aware verifier pilots;
+- compiler, target, IR/object, reference-semantics, and deployment identity binding where material;
+- a bounded attack-path composition pilot that cannot rewrite underlying verifier results;
+- adversarial tests for forged links, stale declarations, broad whitelists, incomplete dependency
+  envelopes, copied exceptions, and attempted `FAIL` suppression;
+- agentic repair studies comparing compile/test-only feedback with verifier-guided hardening; and
+- recursive-learning controls that preserve complete evidence-backed patterns rather than copying
+  unusual syntax outside its verified envelope.
+
+The architecture is documented in
+[docs/intent-aware-security-verification.md](docs/intent-aware-security-verification.md) and proposed
+by [ADR 0007](docs/adr/0007-intent-aware-security-verification.md). Implementation depends on typed
+records, transactional storage, the shared operation registry, micro-verifier capability matching,
+query-driven diagnostics, and stable freshness semantics.
+
 ## `0.3.0` — distributed Forge
 
 Goal: coordinate bounded jobs across heterogeneous machines while preserving identities,
