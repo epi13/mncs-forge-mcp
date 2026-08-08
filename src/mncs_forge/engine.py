@@ -39,6 +39,7 @@ from .records import (
     new_record,
 )
 from .serialization import canonical_bytes, local_json_identity, read_json
+from .state_machine import ForgeStateMachine
 
 STATUS_ORDER = {"PASS": 0, "UNKNOWN": 1, "FAIL": 2}
 CLAIM_CLASSES = (
@@ -98,10 +99,6 @@ class Forge:
     def _records(self, kind: str) -> list[LedgerEntry]:
         return self.ledger.records(kind)
 
-    def _latest_payload(self, kind: str) -> ForgeRecord | None:
-        records = self._records(kind)
-        return records[-1].payload if records else None
-
     def _record_by_id(self, kind: str, identity: str, key: str) -> ForgeRecord:
         for entry in reversed(self._records(kind)):
             payload = entry.payload
@@ -159,6 +156,142 @@ class Forge:
     def _current_authority_identities(self) -> dict[str, str]:
         return identity_map(self.config.root, self._authority_paths())
 
+    def _selection_evidence_policy(self) -> tuple[str, tuple[str, ...], str | None]:
+        policy_path = resolve_contained(
+            self.config.root,
+            str(self.config.raw["policies"]["selection"]),
+            must_exist=False,
+        )
+        policy_identity = content_identity(self.config.root, [policy_path])
+        try:
+            value = read_json(policy_path, byte_cap=self.config.output_cap)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return policy_identity, (), f"selection policy cannot be read: {exc}"
+        if not isinstance(value, dict):
+            return policy_identity, (), "selection policy must be a JSON object"
+        raw = value.get("required_workflows", value.get("required"))
+        if (
+            not isinstance(raw, list)
+            or not raw
+            or not all(isinstance(item, str) and item for item in raw)
+        ):
+            return (
+                policy_identity,
+                (),
+                "selection policy must declare a non-empty required_workflows or required list",
+            )
+        return policy_identity, tuple(dict.fromkeys(raw)), None
+
+    def _evidence_envelopes(
+        self,
+    ) -> tuple[dict[str, tuple[str, ...]], dict[str, str], dict[str, str]]:
+        workflow_environment_keys = {
+            name: tuple(sorted(self.config.environment(workflow)))
+            for name, workflow in self.config.workflows.items()
+        }
+        verifier_environment_identities = {
+            verifier_id: local_json_identity(
+                self.config.environment(self.config.workflows[verifier.workflow])
+            )
+            for verifier_id, verifier in self.config.verifiers.items()
+        }
+        policy_paths = [
+            *self.config.paths("acceptance_policies"),
+            resolve_contained(
+                self.config.root,
+                str(self.config.raw["policies"]["selection"]),
+                must_exist=False,
+            ),
+            resolve_contained(
+                self.config.root,
+                str(self.config.raw["policies"]["useful_benefit_objective"]),
+                must_exist=False,
+            ),
+        ]
+        verifier_policy_identity = content_identity(self.config.root, policy_paths)
+        return (
+            workflow_environment_keys,
+            verifier_environment_identities,
+            {verifier_id: verifier_policy_identity for verifier_id in self.config.verifiers},
+        )
+
+    def _current_freeze_bindings(
+        self,
+        candidate_identity: str | None = None,
+        freeze: Mapping[str, object] | None = None,
+    ) -> dict[str, str]:
+        bindings = {
+            "candidate_identity": candidate_identity or self._current_candidate_identity(),
+            "contract_identity": content_identity(self.config.root, self.config.paths("contracts")),
+            "reference_identity": content_identity(
+                self.config.root, self.config.paths("references")
+            ),
+            "evaluator_identity": content_identity(
+                self.config.root, self.config.paths("evaluators")
+            ),
+            "acceptance_policy_identity": content_identity(
+                self.config.root, self.config.paths("acceptance_policies")
+            ),
+            "protected_identity": content_identity(
+                self.config.root, self.config.paths("protected")
+            ),
+        }
+        plan = freeze.get("required_evidence_plan") if freeze is not None else None
+        if isinstance(plan, str):
+            plan_path = resolve_contained(self.config.root, plan, must_exist=False)
+            bindings["required_evidence_plan_identity"] = content_identity(
+                self.config.root, [plan_path]
+            )
+        return bindings
+
+    def _state_machine(
+        self,
+        *,
+        observe_epoch_authority: bool = True,
+        observe_freeze_bindings: bool = True,
+        observe_policy: bool = True,
+        history_kinds: frozenset[str] | None = None,
+    ) -> ForgeStateMachine:
+        policy_identity, required_evidence, policy_error = (
+            self._selection_evidence_policy() if observe_policy else ("", (), None)
+        )
+        environment_keys, environment_identities, policy_identities = (
+            self._evidence_envelopes() if observe_policy else ({}, {}, {})
+        )
+        current_candidate_identity = self._current_candidate_identity()
+        history = (
+            self.ledger.records_for(history_kinds)
+            if history_kinds is not None
+            else self.ledger.records()
+        )
+        current_freeze = next(
+            (entry.payload for entry in reversed(history) if entry.kind == "freeze"), None
+        )
+        return ForgeStateMachine(
+            mode=self.mode,
+            history=history,
+            current_candidate_identity=current_candidate_identity,
+            current_authority_identities=(
+                self._current_authority_identities() if observe_epoch_authority else {}
+            ),
+            current_freeze_bindings=(
+                self._current_freeze_bindings(current_candidate_identity, current_freeze)
+                if observe_freeze_bindings
+                else {}
+            ),
+            selection_policy_identity=policy_identity,
+            required_evidence=required_evidence,
+            selection_policy_error=policy_error,
+            evidence_environment_keys=environment_keys,
+            evidence_environment_identities=environment_identities,
+            evidence_policy_identities=policy_identities,
+        )
+
+    def state_inspect(self) -> dict[str, object]:
+        """Explain the lifecycle stage, legal next operations, and stable blockers."""
+
+        return self._state_machine().inspect()
+
     def _command_version(self, command: list[str]) -> str:
         try:
             result = run_bounded(
@@ -213,8 +346,10 @@ class Forge:
         }
 
     def project_inspect(self) -> dict[str, object]:
-        epoch = self._latest_payload("epoch")
-        candidate = self._latest_payload("candidate")
+        state_machine = self._state_machine()
+        lifecycle = state_machine.inspect()
+        epoch = state_machine.projection.active_epoch
+        candidate = state_machine.projection.current_candidate
         commands = self.config.public_commands()
         providers = self.provider_list()
         return {
@@ -250,6 +385,7 @@ class Forge:
             ],
             "current_epoch": epoch.to_object_dict() if epoch is not None else None,
             "active_candidate": candidate.to_object_dict() if candidate is not None else None,
+            "lifecycle": lifecycle,
             "available_public_commands": list(commands),
             "detected_versions": {
                 name: self._command_version(command) for name, command in commands.items()
@@ -691,9 +827,7 @@ class Forge:
         parent_epoch: str | None = None,
         authority_overlap: list[str] | None = None,
     ) -> dict[str, object]:
-        self._require_mode("development")
-        if parent_epoch:
-            self._record_by_id("epoch", parent_epoch, "epoch_id")
+        self._state_machine().authorize_epoch_begin(parent_epoch)
         contract = content_identity(self.config.root, self.config.paths("contracts"))
         objective_path = resolve_contained(
             self.config.root,
@@ -762,17 +896,13 @@ class Forge:
         parent_candidate: str | None = None,
         expected_identity: str | None = None,
     ) -> dict[str, object]:
-        self._require_mode("development")
-        epoch = self._latest_payload("epoch")
-        if epoch is None:
-            raise ForgeError("NO_ACTIVE_EPOCH", "begin an epoch before registering a candidate")
-        if self._current_authority_identities() != epoch["authority_identities"]:
-            raise ForgeError("STALE_BASELINE", "protected authority drifted since the epoch began")
-        if parent_candidate:
-            self._record_by_id("candidate", parent_candidate, "candidate_id")
         current = self._current_candidate_identity()
         if expected_identity is not None and expected_identity != current:
             raise ForgeError("STALE_CANDIDATE", "candidate identity does not match current content")
+        epoch = self._state_machine().authorize_candidate_register(
+            parent_candidate=parent_candidate,
+            proposed_identity=current,
+        )
         current_files = self._validate_changed_files(changed_files)
         objective_path = resolve_contained(
             self.config.root,
@@ -799,20 +929,6 @@ class Forge:
         self._write_immutable("candidates", current, record)
         self.ledger.append("candidate", record)
         return record.to_object_dict()
-
-    def _candidate(self, candidate_id: str | None) -> ForgeRecord:
-        candidate = (
-            self._record_by_id("candidate", candidate_id, "candidate_id")
-            if candidate_id
-            else self._latest_payload("candidate")
-        )
-        if candidate is None:
-            raise ForgeError("NO_CANDIDATE", "no registered candidate exists")
-        if candidate["candidate_id"] != self._current_candidate_identity():
-            raise ForgeError(
-                "STALE_CANDIDATE", "registered candidate no longer matches current content"
-            )
-        return candidate
 
     def _workflow(self, name: str, expected_mode: str) -> Workflow:
         try:
@@ -1009,24 +1125,24 @@ class Forge:
     def development_checks_run(
         self, workflow_names: list[str], candidate_id: str | None = None
     ) -> dict[str, object]:
-        self._require_mode("development")
+        state_machine = self._state_machine()
         results: list[WorkflowResultRecord] = []
         candidate: ForgeRecord | None = None
         for name in workflow_names:
             workflow = self._workflow(name, "development")
             subject: Mapping[str, object]
             if workflow.subject == "project":
-                if candidate_id is not None:
-                    raise ForgeError(
-                        "WORKFLOW_SUBJECT",
-                        f"project workflow {name} does not accept a candidate identity",
-                    )
+                state_machine.authorize_development_work(candidate_id, project_scoped=True)
                 subject = {
                     "candidate_id": f"project:{self.config.project_identity}",
                     "source_epoch": None,
                 }
             else:
-                candidate = candidate or self._candidate(candidate_id)
+                candidate = candidate or state_machine.authorize_development_work(
+                    candidate_id, project_scoped=False
+                )
+                if candidate is None:
+                    raise ForgeError("NO_CANDIDATE", "candidate workflow requires a candidate")
                 subject = candidate
             result = self._run_workflow(workflow, subject, evaluator=False)
             if not isinstance(result, WorkflowResultRecord):
@@ -1108,13 +1224,13 @@ class Forge:
     def candidate_compare(self, candidate_ids: list[str]) -> dict[str, object]:
         if len(candidate_ids) < 2:
             raise ForgeError("COMPARE_INPUT", "at least two candidate identities are required")
+        self._state_machine().authorize_candidate_comparison(candidate_ids)
         policy_path = resolve_contained(
             self.config.root, str(self.config.raw["policies"]["selection"]), must_exist=False
         )
         policy_identity = content_identity(self.config.root, [policy_path])
         candidates: list[dict[str, object]] = []
         for candidate_id in candidate_ids:
-            self._record_by_id("candidate", candidate_id, "candidate_id")
             results = [record.to_object_dict() for record in self._result_records(candidate_id)]
             statuses = [str(item["status"]) for item in results]
             candidates.append(
@@ -1154,27 +1270,15 @@ class Forge:
     def candidate_disposition(
         self, candidate_id: str, *, disposition: str, reason: str
     ) -> dict[str, object]:
-        self._require_mode("development")
-        self._record_by_id("candidate", candidate_id, "candidate_id")
-        if disposition not in {"selected", "rejected"}:
-            raise ForgeError("INVALID_DISPOSITION", "disposition must be selected or rejected")
-        results = self._result_records(candidate_id)
-        aggregate = aggregate_status(str(item["status"]) for item in results)
-        if disposition == "selected" and aggregate != "PASS":
-            raise ForgeError(
-                "SELECTION_BLOCKED",
-                f"selection requires complete comparable PASS evidence; aggregate is {aggregate}",
-            )
-        policy_path = resolve_contained(
-            self.config.root, str(self.config.raw["policies"]["selection"]), must_exist=False
-        )
+        state_machine = self._state_machine()
+        _, readiness = state_machine.authorize_candidate_disposition(candidate_id, disposition)
         fields: dict[str, object] = {
             "candidate_identity": candidate_id,
             "disposition": disposition,
             "reason": reason,
             "selection_rule": str(self.config.raw["policies"]["selection"]),
-            "selection_policy_identity": content_identity(self.config.root, [policy_path]),
-            "evidence_status": aggregate,
+            "selection_policy_identity": state_machine.selection_policy_identity,
+            "evidence_status": readiness.status,
             "recorded_at": _now(),
         }
         record = new_record(RecordType.CANDIDATE_DISPOSITION, fields)
@@ -1185,17 +1289,24 @@ class Forge:
     def candidate_freeze(
         self, candidate_id: str, *, environment_identity: str, required_evidence_plan: str
     ) -> dict[str, object]:
-        self._require_mode("development")
-        candidate = self._candidate(candidate_id)
-        selections = [
-            entry.payload
-            for entry in self._records("disposition")
-            if entry.payload.get("candidate_identity") == candidate_id
-            and entry.payload.get("disposition") == "selected"
-        ]
-        if not selections:
-            raise ForgeError("FREEZE_BLOCKED", "candidate must have an immutable selection record")
-        plan_path = resolve_contained(self.config.root, required_evidence_plan, must_exist=True)
+        plan_path = resolve_contained(self.config.root, required_evidence_plan, must_exist=False)
+        try:
+            plan = read_json(plan_path, byte_cap=self.config.output_cap)
+        except (OSError, ValueError, json.JSONDecodeError):
+            plan = None
+        raw_plan = (
+            plan.get("required_workflows", plan.get("required")) if isinstance(plan, dict) else None
+        )
+        plan_requirements = (
+            tuple(dict.fromkeys(raw_plan))
+            if isinstance(raw_plan, list)
+            and raw_plan
+            and all(isinstance(item, str) and item for item in raw_plan)
+            else None
+        )
+        candidate, selection = self._state_machine().authorize_candidate_freeze(
+            candidate_id, evidence_plan_requirements=plan_requirements
+        )
         paths = self.config.raw["paths"]
         fields: dict[str, object] = {
             "candidate_identity": candidate["candidate_id"],
@@ -1212,7 +1323,7 @@ class Forge:
             "protected_identity": content_identity(
                 self.config.root, self.config.paths("protected")
             ),
-            "selection_record": selections[-1]["disposition_id"],
+            "selection_record": selection["disposition_id"],
             "environment": environment_identity,
             "required_evidence_plan": required_evidence_plan,
             "required_evidence_plan_identity": content_identity(self.config.root, [plan_path]),
@@ -1228,37 +1339,14 @@ class Forge:
         return record.to_object_dict()
 
     def _verify_freeze(self, freeze: Mapping[str, object]) -> None:
-        checks = {
-            "candidate_identity": self._current_candidate_identity(),
-            "contract_identity": content_identity(self.config.root, self.config.paths("contracts")),
-            "reference_identity": content_identity(
-                self.config.root, self.config.paths("references")
-            ),
-            "evaluator_identity": content_identity(
-                self.config.root, self.config.paths("evaluators")
-            ),
-            "acceptance_policy_identity": content_identity(
-                self.config.root, self.config.paths("acceptance_policies")
-            ),
-            "protected_identity": content_identity(
-                self.config.root, self.config.paths("protected")
-            ),
-        }
-        drift = [name for name, value in checks.items() if freeze.get(name) != value]
-        if drift:
-            raise ForgeError(
-                "FREEZE_DRIFT", "frozen identities drifted: " + ", ".join(sorted(drift))
-            )
+        current, _ = self._state_machine(observe_epoch_authority=False).authorize_evaluator_entry()
+        if current["freeze_id"] != freeze.get("freeze_id"):
+            raise ForgeError("FREEZE_SUPERSEDED", "freeze is not the current lifecycle freeze")
 
     def final_evaluation_run(self, workflow_names: list[str]) -> dict[str, object]:
-        self._require_mode("evaluator")
-        freeze = self._latest_payload("freeze")
-        if freeze is None:
-            raise ForgeError("NO_FREEZE", "evaluator mode requires a frozen candidate")
-        self._verify_freeze(freeze)
-        candidate = self._record_by_id(
-            "candidate", str(freeze["candidate_identity"]), "candidate_id"
-        )
+        freeze, candidate = self._state_machine(
+            observe_epoch_authority=False
+        ).authorize_evaluator_entry()
         results: list[FinalEvaluationRecord] = []
         for name in workflow_names:
             workflow = self._workflow(name, "evaluator")
@@ -1434,7 +1522,13 @@ class Forge:
         }
 
     def evidence_reconcile(self, candidate_id: str | None = None) -> dict[str, object]:
-        results = [record.to_object_dict() for record in self._result_records(candidate_id)]
+        resolved_candidate = self._state_machine().authorize_reconciliation(candidate_id)
+        selected_results = self._result_records(resolved_candidate)
+        if resolved_candidate is None:
+            selected_results = [
+                record for record in selected_results if record.get("subject_type") == "project"
+            ]
+        results = [record.to_object_dict() for record in selected_results]
         by_category: dict[str, list[dict[str, object]]] = {}
         for result in results:
             by_category.setdefault(str(result["category"]), []).append(result)
@@ -1463,7 +1557,7 @@ class Forge:
             str(value["status"]) for value in categories.values() if isinstance(value, dict)
         )
         fields: dict[str, object] = {
-            "candidate_identity": candidate_id,
+            "candidate_identity": resolved_candidate,
             "required_gate_aggregation": aggregate,
             "categories": categories,
             "conflicting_evidence": conflicts,
@@ -1484,7 +1578,7 @@ class Forge:
     def bundle_build(
         self, workflow_name: str, candidate_id: str | None = None
     ) -> dict[str, object]:
-        candidate = self._candidate(candidate_id)
+        candidate = self._state_machine().authorize_bundle(candidate_id)
         workflow = self._workflow(workflow_name, self.mode)
         if workflow.category not in {"mncs_bundle_validation", "mncds_record_validation"}:
             raise ForgeError("WORKFLOW_CATEGORY", "bundle requires an MNCS or MNCDS workflow")

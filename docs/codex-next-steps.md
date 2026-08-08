@@ -180,6 +180,8 @@ Do not relocate every package module in this PR. Establish the models and adapte
 **Target:** `0.1.0a3`  
 **Depends on:** Task 2
 
+**Status:** Completed in the lifecycle-state-machine iteration.
+
 ### Objective
 
 Move lifecycle authorization from scattered method checks into an explicit transition model used
@@ -224,11 +226,19 @@ separate from candidate-scoped transitions.
 - historical state remains append-only rather than being edited in place; and
 - property-based or table-driven tests cover all valid and invalid transitions.
 
+### Implementation evidence
+
+Task 3 added a typed append-only-history projection, active epoch and same-epoch candidate lineage,
+policy-declared evidence readiness, one terminal disposition, current-selection freeze and
+evaluator gates, verifier action terminality, stable transition errors, per-stage inspection, and
+shared Forge/CLI/MCP state output. Historical Task 2 fixtures remain readable and are projected
+without rewriting or prospective-rule rejection. Transactional writes and recovery remain Task 4.
+
 ### Validation
 
 ```bash
 ./scripts/check.sh
-pytest -q tests/test_state_machine.py tests/test_evaluator.py tests/test_candidates.py
+pytest -q tests/test_state_machine.py tests/test_engine.py tests/test_cli_mcp_edgestream.py
 ```
 
 ---

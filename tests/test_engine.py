@@ -282,10 +282,11 @@ def test_selection_requires_complete_pass(config: ForgeConfig) -> None:
     forge = Forge(config)
     begin(forge)
     candidate = register(forge)
-    with pytest.raises(ForgeError, match="aggregate"):
+    with pytest.raises(ForgeError) as issue:
         forge.candidate_disposition(
             str(candidate["candidate_id"]), disposition="selected", reason="premature"
         )
+    assert issue.value.code == "EVIDENCE_INCOMPLETE"
     forge.development_checks_run(["pass-check"])
     selected = forge.candidate_disposition(
         str(candidate["candidate_id"]), disposition="selected", reason="declared rule"

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add one typed append-only-history state machine for epoch/candidate lineage, required-evidence
+  readiness, terminal disposition, freeze/evaluator coherence, bundle state, and verifier action
+  terminality.
+- Add deterministic lifecycle inspection through the Forge facade, `mncs-forge state`, the
+  `mncs_forge_state_inspect` MCP tool, and the `mncs-forge://state/lifecycle` resource, with stable
+  blocker codes and CLI/MCP parity.
+- Prevent conflicting candidate dispositions, arbitrary epoch/candidate ancestry, historical-only
+  freeze selection, incomplete/project-scoped selection evidence, incoherent evaluator entry, and
+  a second terminal verifier result for one action.
 - Add frozen, typed version-1 models for current Forge records and ledger entries while retaining
   JSON-compatible filesystem, ledger, Provider Protocol, CLI, and MCP boundaries.
 - Add deterministic trusted-context migration for immutable unversioned `0.1` state, verifying raw

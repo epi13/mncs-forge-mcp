@@ -67,6 +67,7 @@ async def _provider_mcp_calls(executable: Path, config: Path) -> None:
         assert "mncs_forge_verifier_run" in names
         assert "mncs_forge_verifier_batch" in names
         assert "mncs_forge_verifier_explain" in names
+        assert "mncs_forge_state_inspect" in names
         assert "mncs_forge_final_evaluation_run" not in names
         listing = await session.call_tool("mncs_forge_providers_list", {})
         assert not listing.isError
@@ -133,6 +134,11 @@ async def _provider_mcp_calls(executable: Path, config: Path) -> None:
         assert str(verified.structuredContent["output_identity"]).startswith(
             "forge-json-sha256-v1:"
         )
+        lifecycle = await session.call_tool("mncs_forge_state_inspect", {})
+        assert not lifecycle.isError
+        code, cli_lifecycle = run(["--config", str(config), "state"])
+        assert code == 0
+        assert lifecycle.structuredContent == cli_lifecycle
 
 
 def test_mcp_provider_list_probe_and_blockers(project: Path) -> None:
