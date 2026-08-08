@@ -72,10 +72,11 @@ minimal controlled workflow.
 The next release should stabilize the internal architecture before adding more verifier types,
 distributed execution, or sandbox backends. The verifier lifecycle now has one explicit service,
 and persistent evidence now crosses a frozen typed, versioned boundary with deterministic legacy
-migration. Explicit state transitions derive from append-only typed history, and authorized
-record-plus-ledger changes now commit through one recoverable local transaction boundary. The
-immediate priority is splitting the control plane behind stable interfaces. Forge Cell schemas and
-fail-closed assurance
+migration. Explicit state transitions derive from append-only typed history, authorized
+record-plus-ledger changes commit through one recoverable local transaction boundary, and the
+compatibility facade delegates to explicit services through typed storage, execution, and identity
+ports. The immediate priority is Task 6's shared typed CLI/MCP operation registry. Forge Cell
+schemas and fail-closed assurance
 assessment are available as a specification foundation; the actual Linux isolation and attestation
 backends remain ordered follow-up work. Query-driven micro-debugging now also has an architecture,
 versioned reference vocabulary, and a separate implementation queue; runtime sessions and reusable

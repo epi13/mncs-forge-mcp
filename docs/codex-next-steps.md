@@ -294,6 +294,8 @@ Run repeated concurrency and interruption tests on Linux and Windows.
 **Target:** `0.1.0b1`  
 **Depends on:** Tasks 1 through 4
 
+**Status:** Completed in the modular-control-plane iteration.
+
 ### Objective
 
 Retain `Forge` as a small compatibility facade while moving responsibilities into explicit domain
@@ -343,6 +345,17 @@ mncs-forge --config examples/minimal/mncs-forge.toml inspect
 
 Add an import-boundary test or static dependency check that prevents domain modules from importing
 interface and adapter modules.
+
+### Implementation evidence
+
+Task 5 retained `Forge` as the compatibility/composition root and extracted cohesive project,
+provider, candidate/selection, development-workflow, evaluation, evidence/bundle, and recovery
+services. The singular `MicroVerifierService` now receives narrow collaborators rather than a
+Forge-shaped host. Typed ports cover verified record reads, transactional commits, bounded command
+execution, project/filesystem observations, and verifier catalog presentation. Static architecture
+tests prohibit upward imports, service-to-Forge dependencies, concrete execution/storage bypasses,
+and cycles among the new application modules. Task 6's operation registry and Task 7's runner
+receipts, sandbox semantics, and alternate backends were intentionally not implemented.
 
 ---
 

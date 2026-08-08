@@ -35,9 +35,8 @@ Required work:
 4. completed: add transactional record-plus-ledger writes and interrupted-write recovery; and
 5. completed: retain compatibility with existing `0.1` configurations and state fixtures.
 
-The core `0.1.0a3` P0 internal-consolidation requirements are complete. The next architectural
-priority is the `0.1.0b1` control-plane decomposition; the package version remains unchanged until
-the repository's release process advances it.
+The core `0.1.0a3` P0 internal-consolidation requirements are complete. The package version remains
+unchanged until the repository's release process advances it.
 
 ## `0.1.0b1` — modular control plane
 
@@ -45,11 +44,16 @@ Goal: split the central control-plane implementation behind stable interfaces.
 
 Required work:
 
-1. separate domain rules, application services, execution, storage, configuration, and interfaces;
-2. retain a small public `Forge` facade for compatibility;
+1. completed: separate domain rules, application services, execution, storage, configuration, and
+   interfaces;
+2. completed: retain a small public `Forge` facade for compatibility;
 3. create one typed operation registry shared by CLI and MCP dispatch;
 4. add schema compatibility snapshots and migration tests; and
 5. document extension boundaries for providers, verifiers, storage, and runners.
+
+Task 5 completed the service and dependency decomposition without changing public CLI/MCP
+dispatch. Task 6's shared typed operation registry is the current `0.1.0b1` priority. Full runner
+receipts, sandbox-capable adapters, and execution assurance remain Task 7.
 
 ## `0.2.0` — stable local Forge
 

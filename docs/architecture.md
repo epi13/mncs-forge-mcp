@@ -14,6 +14,38 @@ limitations, executable identity, and the last explicit probe. A recognized capa
 response can satisfy discovery policy; it is not structural-analysis or conformance PASS.
 Missing capability remains UNKNOWN.
 
+## Control-plane composition
+
+`Forge` is the stable compatibility and composition facade used by both existing interfaces. It
+constructs one shared ledger, transactional store, lifecycle context, project observer, and bounded
+command executor, then delegates public behavior to cohesive application services:
+
+```text
+CLI / MCP
+    -> Forge compatibility facade
+    -> project | provider | candidate | workflow | evaluation | evidence | recovery services
+    -> typed records and ForgeStateMachine
+    -> RecordReader | RecordCommitter | CommandExecutor | ProjectObserver ports
+    -> local ledger/store/process/filesystem adapters
+```
+
+The incremental package layout keeps stable domain and storage modules such as `records.py`,
+`state_machine.py`, `ledger.py`, and `record_store.py` in their established locations. Application
+services live under `application/`; inward-facing protocols live in `ports.py`; local execution and
+filesystem observation implementations live in `adapters.py`. This avoids compatibility churn
+while making dependency direction enforceable.
+
+Application services never receive the `Forge` facade and do not import CLI, MCP, argparse,
+`LocalRecordStore`, or the local subprocess function. `MicroVerifierService` remains the one
+authoritative verifier lifecycle and receives the same shared ports as other services. CLI and MCP
+continue to call `Forge`; their independent dispatch declarations are intentionally unchanged until
+Task 6 introduces a shared typed operation registry.
+
+`CommandExecutor` is dependency inversion over the existing bounded local process behavior only.
+It does not add runner receipts, sandbox assurance, containers, SSH, mount/network policy, or
+attestation; those remain Task 7. Likewise, project observation centralizes existing filesystem
+identity and workspace behavior without changing identity algorithms or authority semantics.
+
 Development mode can see declared contracts, references, and development evidence, register
 candidates, run declared development workflows, compare candidates under the configured policy,
 and write only candidate/generated/output/Forge-state paths. Evaluator mode requires frozen
@@ -46,8 +78,8 @@ Candidate-scoped evidence keeps its candidate and epoch binding. Final evaluatio
 registered only by a separate evaluator-mode MCP process.
 
 Micro-verifiers are capability declarations over the same Provider Protocol workflows, bounded
-runner, temporary workspace, freeze checks, immutable record store, and ledger. They do not form a
-parallel execution or evidence system. Forge controls matching and invocation; the provider owns
+command executor, temporary workspace, freeze checks, immutable record store, and ledger. They do
+not form a parallel execution or evidence system. Forge controls matching and invocation; the provider owns
 the narrow verification method; offline MNCS/MNCDS validators retain normative result authority.
 
 See [Machine-native micro-verifiers](micro-verifiers.md) for the bounded query flow and freshness
