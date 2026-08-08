@@ -28,7 +28,7 @@ surfaces.
 
 Required work:
 
-1. replace import-time verifier service substitution with one explicit implementation;
+1. completed: replace import-time verifier service substitution with one explicit implementation;
 2. introduce versioned internal and persistent record models;
 3. define and test explicit state-transition rules;
 4. add transactional record-plus-ledger writes and interrupted-write recovery; and

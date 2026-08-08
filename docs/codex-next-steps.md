@@ -52,9 +52,13 @@ must not be described as conformance, independence, or certification.
 
 ## Task 1 — Consolidate the verifier implementation
 
-**Priority:** P0  
-**Target:** `0.1.0a3`  
+**Priority:** P0
+
+**Target:** `0.1.0a3`
+
 **Depends on:** nothing
+
+**Status:** Completed in the verifier-consolidation iteration.
 
 ### Objective
 

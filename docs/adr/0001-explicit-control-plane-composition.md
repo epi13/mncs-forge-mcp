@@ -1,14 +1,16 @@
 # ADR 0001: Explicit control-plane composition
 
-- **Status:** Proposed
+- **Status:** Accepted; verifier consolidation implemented, broader service composition pending
 - **Target:** `0.1.0a3` and `0.1.0b1`
 
 ## Context
 
-Forge currently exposes a useful public facade, but control-plane responsibilities are
-concentrated in the `Forge` class and the verifier lifecycle is hardened through import-time class
-replacement. Import order therefore participates in implementation selection, and the base and
-hardened verifier services duplicate important control flow.
+Before the first `0.1.0a3` consolidation task, Forge exposed a useful public facade, but
+control-plane responsibilities were concentrated in the `Forge` class and the verifier lifecycle
+was hardened through import-time class replacement. Import order therefore participated in
+implementation selection, and the base and hardened verifier services duplicated important
+control flow. The verifier portion of this decision is now implemented; the broader control-plane
+composition remains staged work.
 
 Hidden implementation substitution is difficult to reason about, test, extend, and preserve across
 packaging and future plugin boundaries.

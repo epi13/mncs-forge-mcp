@@ -11,11 +11,18 @@ from typing import Any, Protocol
 from .config import ForgeConfig, Provider, Verifier, Workflow
 from .errors import ForgeError
 from .execution import ExecutionResult, parse_provider_response, run_bounded
-from .identity import content_identity, file_identity
+from .identity import content_identity
 from .ledger import Ledger
 from .paths import is_within, resolve_contained, validate_relative_path
 from .serialization import canonical_bytes, local_json_identity
 from .verifier_disclosure import redact_status_only_result
+from .verifier_support import (
+    changed_path_identity,
+    parameters_for_verifier,
+    resolve_batch_parameters,
+    terminal_unknown_result,
+    unrecorded_batch_unknown,
+)
 
 COST_ORDER = {"low": 0, "medium": 1, "high": 2}
 STATUS_ORDER = {"PASS": 0, "UNKNOWN": 1, "FAIL": 2}
@@ -290,7 +297,7 @@ class MicroVerifierService:
                 )
             candidate = self.forge._record_by_id("candidate", frozen_candidate, "candidate_id")
         selected_scope = self._scope(verifier, scope)
-        selected_paths = self._validate_changed_paths(changed_paths or [], require_files=True)
+        selected_paths = self._validate_changed_paths(changed_paths or [], require_files=False)
         region = self._validate_source_region(verifier, source_region)
         dependencies = self._validate_dependency_identities(dependency_slice_identities or {})
         parameters = self._validate_parameters(verifier, question_parameters or {})
@@ -303,17 +310,14 @@ class MicroVerifierService:
             prior_artifact_identity=prior_artifact_identity,
             question_parameters=parameters,
         )
-        current_contract_identity = content_identity(
-            self.config.root, self.config.paths("contracts")
-        )
+        current_contract_identity = self._contract_identity()
         if contract_identity is not None and contract_identity != current_contract_identity:
             raise ForgeError(
                 "CONTRACT_IDENTITY",
                 "declared contract identity does not match current configured contracts",
             )
         path_identities = {
-            value: file_identity(resolve_contained(self.config.root, value, must_exist=True))
-            for value in selected_paths
+            value: changed_path_identity(self.config.root, value) for value in selected_paths
         }
         input_identities: dict[str, object] = {
             "candidate_identity": candidate["candidate_id"],
@@ -325,25 +329,11 @@ class MicroVerifierService:
         }
         environment = self.config.environment(workflow)
         identities = self._material_identities(verifier, provider, workflow, environment)
-        supersedes_output_identity: str | None = None
-        lineage_candidates = {
+        supersedes_output_identity = self._superseded_result(
+            verifier.verifier_id,
             str(candidate["candidate_id"]),
-            *(
-                [str(candidate["parent_candidate"])]
-                if candidate.get("parent_candidate") is not None
-                else []
-            ),
-        }
-        for entry in reversed(self.forge._records("verifier_result")):
-            payload = entry["payload"]
-            if (
-                payload.get("verifier_id") == verifier.verifier_id
-                and payload.get("mode") == self.forge.mode
-                and payload.get("candidate_identity") in lineage_candidates
-            ):
-                supersedes_output_identity = str(payload["output_identity"])
-                break
-        requested_at = self._now()
+            candidate.get("parent_candidate"),
+        )
         action: dict[str, object] = {
             "verifier_id": verifier.verifier_id,
             "verifier_version": verifier.version,
@@ -364,7 +354,7 @@ class MicroVerifierService:
             "configuration_identity": identities["configuration_identity"],
             "policy_identity": identities["policy_identity"],
             "environment_identity": identities["environment_identity"],
-            "requested_at": requested_at,
+            "requested_at": self._now(),
         }
         action["action_id"] = "verifier-action:" + local_json_identity(action).split(":", 1)[1]
         request = self._request(
@@ -386,19 +376,38 @@ class MicroVerifierService:
         action["protocol_request_identity"] = local_json_identity(request)
         self.forge._write_immutable("verifier-actions", str(action["action_id"]), action)
         self.forge.ledger.append("verifier_action", action)
-        result = self._execute(
-            verifier,
-            workflow,
-            provider,
-            candidate,
-            action,
-            request,
-            request_bytes,
-            identities,
-            environment,
-            freeze,
-            timeout_cap,
-        )
+        started = time.monotonic()
+        try:
+            result = self._execute(
+                verifier,
+                workflow,
+                provider,
+                candidate,
+                action,
+                request,
+                request_bytes,
+                identities,
+                environment,
+                freeze,
+                timeout_cap,
+            )
+        except Exception as exc:
+            code = exc.code if isinstance(exc, ForgeError) else "VERIFIER_INTERNAL"
+            message = (
+                exc.message
+                if isinstance(exc, ForgeError)
+                else "unexpected verifier execution failure"
+            )
+            result = terminal_unknown_result(
+                action=action,
+                verifier=verifier,
+                provider=provider,
+                identities=identities,
+                code=code,
+                message=message,
+                recorded_at=self._now(),
+                duration_seconds=time.monotonic() - started,
+            )
         self.forge._write_immutable("verifier-results", str(result["output_identity"]), result)
         self.forge.ledger.append("verifier_result", result)
         return self._disclose_result(result)
@@ -434,6 +443,10 @@ class MicroVerifierService:
                 "VERIFIER_BATCH_LIMIT",
                 "sum of verifier timeouts exceeds the configured batch duration",
             )
+        try:
+            shared, per_verifier = resolve_batch_parameters(verifier_ids, question_parameters)
+        except ValueError as exc:
+            raise ForgeError("VERIFIER_BATCH_PARAMETERS", str(exc)) from exc
         batch_request: dict[str, object] = {
             "verifier_ids": verifier_ids,
             "candidate_identity": candidate_identity,
@@ -453,8 +466,22 @@ class MicroVerifierService:
         results: list[dict[str, object]] = []
         for verifier in verifiers:
             remaining = total_limit - (time.monotonic() - started)
-            results.append(
-                self.run(
+            if remaining <= 0:
+                results.append(
+                    unrecorded_batch_unknown(
+                        verifier.verifier_id,
+                        "VERIFIER_BATCH_LIMIT",
+                        "batch duration exhausted before action recording",
+                    )
+                )
+                continue
+            parameters = parameters_for_verifier(
+                verifier.verifier_id,
+                shared,
+                per_verifier,
+            )
+            try:
+                result = self.run(
                     verifier.verifier_id,
                     candidate_identity=candidate_identity,
                     changed_paths=changed_paths,
@@ -463,17 +490,50 @@ class MicroVerifierService:
                     contract_identity=contract_identity,
                     dependency_slice_identities=dependency_slice_identities,
                     prior_artifact_identity=prior_artifact_identity,
-                    question_parameters=question_parameters,
+                    question_parameters=parameters,
                     timeout_cap=remaining,
                 )
-            )
+            except ForgeError as exc:
+                result = unrecorded_batch_unknown(
+                    verifier.verifier_id,
+                    exc.code,
+                    exc.message,
+                )
+            results.append(result)
+        statuses = [str(result.get("status", "UNKNOWN")) for result in results]
+        recorded_count = sum(bool(result.get("output_identity")) for result in results)
         return {
             "results": results,
-            "aggregate_status": _aggregate_status([str(result["status"]) for result in results]),
+            "aggregate_status": _aggregate_status(statuses),
             "individual_results_retained": True,
+            "recorded_result_count": recorded_count,
+            "unrecorded_result_count": len(results) - recorded_count,
+            "partial_execution_explicit": True,
             "dominance": "FAIL > UNKNOWN > PASS",
             "duration_seconds": round(time.monotonic() - started, 6),
         }
+
+    def _contract_identity(self) -> str:
+        return content_identity(self.config.root, self.config.paths("contracts"))
+
+    def _superseded_result(
+        self,
+        verifier_id: str,
+        candidate_identity: str,
+        parent_candidate: object,
+    ) -> str | None:
+        lineage = {candidate_identity}
+        if parent_candidate is not None:
+            lineage.add(str(parent_candidate))
+        for entry in reversed(self.forge._records("verifier_result")):
+            payload = entry["payload"]
+            if (
+                payload.get("verifier_id") == verifier_id
+                and payload.get("mode") == self.forge.mode
+                and payload.get("candidate_identity") in lineage
+            ):
+                return str(payload["output_identity"])
+        return None
 
     def explain(self, output_identity: str) -> dict[str, object]:
         result = self.forge._record_by_id("verifier_result", output_identity, "output_identity")
