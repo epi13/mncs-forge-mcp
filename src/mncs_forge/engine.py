@@ -185,6 +185,20 @@ class Forge:
     def state_inspect(self) -> dict[str, object]:
         return self._project_service.state_inspect()
 
+    def config_validate(self) -> dict[str, object]:
+        """Retain the CLI configuration diagnostic behind the facade boundary."""
+
+        return {
+            "ok": True,
+            "config": str(self.config.config_path),
+            "project_root": str(self.config.root),
+        }
+
+    def ledger_verify(self) -> dict[str, object]:
+        """Retain direct local ledger verification as an intentional CLI utility."""
+
+        return self.ledger.verify()
+
     def provider_list(self) -> dict[str, object]:
         return self._provider_service.inventory()
 

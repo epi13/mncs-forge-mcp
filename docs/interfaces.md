@@ -32,6 +32,12 @@ The development inventory contains the tools above. A separately started evaluat
 server additionally exposes `mncs_forge_final_evaluation_run`; the development registration
 cannot use final evaluation as repair feedback.
 
+Tool registration, names, input models, mode policy, mutation classification, authority metadata,
+and typed facade handlers come from the canonical operation registry. Argparse retains its
+hand-tuned presentation, but command leaves invoke those same definitions. Run
+`mncs-forge operations` or read `mncs-forge://operations` for the deterministic machine-readable
+inventory. See [Canonical Forge operation registry](operation-registry.md).
+
 All structured statuses remain separate. A declared command exit of zero is `UNKNOWN` unless it
 emits a recognized structured status; command completion alone is not evidence `PASS`.
 
@@ -46,6 +52,11 @@ providers and capability blockers.
 `mncs-forge state`, `mncs_forge_state_inspect`, and `mncs-forge://state/lifecycle` expose the same
 derived lifecycle stage, identities, evidence readiness, legal next operations, stable blockers,
 and historical limitations. `project_inspect` embeds that result under `lifecycle`.
+
+MCP resources are explicit read-model projections and prompts are guidance rather than executable
+operations. Resources backed by a canonical operation pass through the registry before projecting
+fields. `project.doctor`, `config.validate`, and `ledger.verify` intentionally remain CLI-only local
+diagnostics; operation inventory is a CLI operation and MCP resource rather than an MCP tool.
 
 Micro-verifier CLI equivalents are:
 

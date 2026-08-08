@@ -8,6 +8,8 @@ development planning. The root README remains a short project entrypoint.
 - [Getting started](getting-started.md) — install Forge, validate a project, inspect authority, and
   register the local MCP server.
 - [CLI and MCP interfaces](interfaces.md) — complete command, tool, resource, and prompt surface.
+- [Canonical operation registry](operation-registry.md) — shared typed dispatch, metadata, and
+  machine-readable interface inventory.
 - [Configuration](configuration.md) — project paths, authority, workflows, providers, verifiers,
   policies, and limits.
 
@@ -49,6 +51,12 @@ development planning. The root README remains a short project entrypoint.
   test results, benchmark comparison, graph-analysis limits, and the deferred storage seam.
 - [Task 4 validation evidence](development-evidence/task-4-validation.md) — transaction fault
   matrix, recovery/concurrency validation, benchmark comparison, and Joern storage-flow review.
+- [Task 5 validation evidence](development-evidence/task-5-validation.md) — application-service
+  boundaries, facade compatibility, dependency enforcement, and structural review.
+- [Task 6 dispatch inventory](development-evidence/task-6-dispatch-inventory.md) — pre-refactor
+  CLI/MCP compatibility mapping and intentional asymmetries.
+- [Task 6 validation evidence](development-evidence/task-6-validation.md) — registry design,
+  compatibility enforcement, benchmark comparison, and Joern dispatch review.
 
 ## Documentation rules
 

@@ -56,6 +56,7 @@ minimal controlled workflow.
 - [Forge Cell execution assurance](docs/forge-cell.md)
 - [Configuration](docs/configuration.md)
 - [CLI and MCP interfaces](docs/interfaces.md)
+- [Canonical operation registry](docs/operation-registry.md)
 - [Provider Protocol integration](docs/provider-protocol.md)
 - [Machine-native micro-verifiers](docs/micro-verifiers.md)
 - [Query-driven micro-debugging](docs/micro-debugging.md)
@@ -75,8 +76,9 @@ and persistent evidence now crosses a frozen typed, versioned boundary with dete
 migration. Explicit state transitions derive from append-only typed history, authorized
 record-plus-ledger changes commit through one recoverable local transaction boundary, and the
 compatibility facade delegates to explicit services through typed storage, execution, and identity
-ports. The immediate priority is Task 6's shared typed CLI/MCP operation registry. Forge Cell
-schemas and fail-closed assurance
+ports. CLI and MCP dispatch now share one typed operation registry and deterministic interface
+inventory. Remaining `0.1.0b1` work reviews schema/migration compatibility and documented extension
+boundaries before Task 7 expands runner semantics. Forge Cell schemas and fail-closed assurance
 assessment are available as a specification foundation; the actual Linux isolation and attestation
 backends remain ordered follow-up work. Query-driven micro-debugging now also has an architecture,
 versioned reference vocabulary, and a separate implementation queue; runtime sessions and reusable
