@@ -115,6 +115,8 @@ Provider Protocol in this PR.
 **Target:** `0.1.0a3`  
 **Depends on:** Task 1
 
+**Status:** Completed in the versioned-record-model iteration.
+
 ### Objective
 
 Replace unstructured internal evidence dictionaries with explicit immutable models at the domain

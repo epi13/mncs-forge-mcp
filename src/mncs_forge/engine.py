@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 import tempfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -26,6 +26,18 @@ from .identity import content_identity, file_identity, identity_map
 from .ledger import Ledger
 from .micro_verifiers import MicroVerifierService
 from .paths import is_within, resolve_contained, validate_relative_path
+from .records import (
+    CURRENT_SCHEMA_VERSION,
+    RECORD_GROUP_TYPES,
+    BundleRecord,
+    FinalEvaluationRecord,
+    ForgeRecord,
+    LedgerEntry,
+    RecordType,
+    WorkflowActionRecord,
+    WorkflowResultRecord,
+    new_record,
+)
 from .serialization import canonical_bytes, local_json_identity, read_json
 
 STATUS_ORDER = {"PASS": 0, "UNKNOWN": 1, "FAIL": 2}
@@ -83,21 +95,35 @@ class Forge:
                 "MODE_FORBIDDEN", f"operation requires {expected} mode; current mode is {self.mode}"
             )
 
-    def _records(self, kind: str) -> list[dict[str, Any]]:
+    def _records(self, kind: str) -> list[LedgerEntry]:
         return self.ledger.records(kind)
 
-    def _latest_payload(self, kind: str) -> dict[str, Any] | None:
+    def _latest_payload(self, kind: str) -> ForgeRecord | None:
         records = self._records(kind)
-        return dict(records[-1]["payload"]) if records else None
+        return records[-1].payload if records else None
 
-    def _record_by_id(self, kind: str, identity: str, key: str) -> dict[str, Any]:
+    def _record_by_id(self, kind: str, identity: str, key: str) -> ForgeRecord:
         for entry in reversed(self._records(kind)):
-            payload = entry["payload"]
+            payload = entry.payload
             if payload.get(key) == identity:
-                return dict(payload)
+                return payload
         raise ForgeError("RECORD_NOT_FOUND", f"no {kind} record for {identity}")
 
-    def _write_immutable(self, group: str, identity: str, value: dict[str, object]) -> Path:
+    def _write_immutable(self, group: str, identity: str, value: ForgeRecord) -> Path:
+        try:
+            expected_type = RECORD_GROUP_TYPES[group]
+        except KeyError as exc:
+            raise ForgeError("RECORD_CONTEXT", f"unknown immutable record group: {group}") from exc
+        if value.record_type is not expected_type:
+            raise ForgeError(
+                "RECORD_TYPE_MISMATCH",
+                f"record group {group} requires {expected_type.value}, "
+                f"got {value.record_type.value}",
+            )
+        if value.schema_version != CURRENT_SCHEMA_VERSION:
+            raise ForgeError(
+                "RECORD_VERSION_WRITE", "new immutable records require schema version 1"
+            )
         directory = self.config.state_dir / "records" / group
         directory.mkdir(parents=True, exist_ok=True)
         safe_identity = re.sub(r"[^A-Za-z0-9._-]", "_", identity)
@@ -109,7 +135,7 @@ class Forge:
                 "RECORD_EXISTS", f"immutable record already exists: {identity}"
             ) from exc
         try:
-            os.write(descriptor, canonical_bytes(value) + b"\n")
+            os.write(descriptor, canonical_bytes(value.to_json()) + b"\n")
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
@@ -222,8 +248,8 @@ class Forge:
                 }
                 for item in self.config.workflows.values()
             ],
-            "current_epoch": epoch,
-            "active_candidate": candidate,
+            "current_epoch": epoch.to_object_dict() if epoch is not None else None,
+            "active_candidate": candidate.to_object_dict() if candidate is not None else None,
             "available_public_commands": list(commands),
             "detected_versions": {
                 name: self._command_version(command) for name, command in commands.items()
@@ -235,11 +261,11 @@ class Forge:
             "limitations": PUBLIC_LIMITATIONS,
         }
 
-    def _latest_provider_probe(self, provider_id: str) -> dict[str, Any] | None:
+    def _latest_provider_probe(self, provider_id: str) -> ForgeRecord | None:
         for entry in reversed(self._records("provider_probe")):
-            payload = entry["payload"]
+            payload = entry.payload
             if payload.get("provider_id") == provider_id:
-                return dict(payload)
+                return payload
         return None
 
     def _provider_executable(self, provider: Provider) -> tuple[Path, str]:
@@ -306,7 +332,7 @@ class Forge:
                 "status": "UNKNOWN",
                 "executable": None,
                 "executable_identity": None,
-                "last_probe_result": latest,
+                "last_probe_result": latest.to_object_dict() if latest is not None else None,
                 "probe_stale": False,
             }
         )
@@ -360,8 +386,8 @@ class Forge:
             "dominance": "FAIL > UNKNOWN > PASS",
         }
 
-    def _record_provider_probe(self, record: dict[str, object]) -> dict[str, object]:
-        record["output_identity"] = local_json_identity(record)
+    def _record_provider_probe(self, fields: Mapping[str, object]) -> ForgeRecord:
+        record = new_record(RecordType.PROVIDER_PROBE, fields)
         self._write_immutable("provider-probes", str(record["output_identity"]), record)
         self.ledger.append("provider_probe", record)
         return record
@@ -467,7 +493,7 @@ class Forge:
                 "returncode": execution.returncode,
                 "recorded_at": _now(),
             }
-            return self._record_provider_probe(record)
+            return self._record_provider_probe(record).to_object_dict()
         except ForgeError as exc:
             record = {
                 **self._provider_declared_model(provider),
@@ -486,7 +512,7 @@ class Forge:
                 "error_code": exc.code,
                 "recorded_at": _now(),
             }
-            return self._record_provider_probe(record)
+            return self._record_provider_probe(record).to_object_dict()
 
     def capability_blockers(
         self, required_capabilities: list[str] | None = None
@@ -679,7 +705,7 @@ class Forge:
             self.config.root,
             [*self._candidate_paths(), *self._authority_paths()],
         )
-        record: dict[str, object] = {
+        fields: dict[str, object] = {
             "baseline_identity": baseline,
             "generator_identity": generator_identity,
             "evaluator_identity": evaluator_identity or evaluator,
@@ -698,10 +724,10 @@ class Forge:
             "parent_epoch": parent_epoch,
             "created_at": _now(),
         }
-        record["epoch_id"] = "epoch:" + local_json_identity(record).split(":", 1)[1]
+        record = new_record(RecordType.EPOCH, fields)
         self._write_immutable("epochs", str(record["epoch_id"]), record)
         self.ledger.append("epoch", record)
-        return record
+        return record.to_object_dict()
 
     def _validate_changed_files(self, changed_files: list[str]) -> dict[str, str]:
         writable = self.config.relative_scopes("candidates", "generated")
@@ -753,7 +779,7 @@ class Forge:
             str(self.config.raw["policies"]["useful_benefit_objective"]),
             must_exist=False,
         )
-        record: dict[str, object] = {
+        fields: dict[str, object] = {
             "candidate_id": current,
             "parent_candidate": parent_candidate,
             "changed_files": sorted(current_files),
@@ -769,11 +795,12 @@ class Forge:
             "objective_identity": content_identity(self.config.root, [objective_path]),
             "supersedes": None,
         }
+        record = new_record(RecordType.CANDIDATE, fields)
         self._write_immutable("candidates", current, record)
         self.ledger.append("candidate", record)
-        return record
+        return record.to_object_dict()
 
-    def _candidate(self, candidate_id: str | None) -> dict[str, Any]:
+    def _candidate(self, candidate_id: str | None) -> ForgeRecord:
         candidate = (
             self._record_by_id("candidate", candidate_id, "candidate_id")
             if candidate_id
@@ -826,8 +853,13 @@ class Forge:
         return temporary
 
     def _run_workflow(
-        self, workflow: Workflow, candidate: dict[str, Any], *, evaluator: bool
-    ) -> dict[str, object]:
+        self,
+        workflow: Workflow,
+        candidate: Mapping[str, object],
+        *,
+        evaluator: bool,
+        record_type: RecordType = RecordType.WORKFLOW_RESULT,
+    ) -> WorkflowResultRecord | FinalEvaluationRecord | BundleRecord:
         request: dict[str, object] | None = None
         stdin = b""
         working_directory = self.config.root
@@ -861,6 +893,18 @@ class Forge:
         elif evaluator:
             temporary = self._provider_workspace(evaluator=True)
             working_directory = Path(temporary.name)
+        workflow_action = new_record(
+            RecordType.WORKFLOW_ACTION,
+            {
+                "workflow": workflow.name,
+                "candidate_identity": candidate["candidate_id"],
+                "mode": self.mode,
+                "protocol_request_identity": local_json_identity(request) if request else None,
+                "requested_at": _now(),
+            },
+        )
+        if not isinstance(workflow_action, WorkflowActionRecord):
+            raise ForgeError("INTERNAL_RECORD", "workflow action produced an invalid model")
         try:
             execution = run_bounded(
                 workflow.command,
@@ -873,17 +917,27 @@ class Forge:
         finally:
             if temporary is not None:
                 temporary.cleanup()
-        return self._execution_record(workflow, execution, candidate, request, evaluator=evaluator)
+        return self._execution_record(
+            workflow,
+            execution,
+            candidate,
+            request,
+            workflow_action,
+            evaluator=evaluator,
+            record_type=record_type,
+        )
 
     def _execution_record(
         self,
         workflow: Workflow,
         execution: ExecutionResult,
-        candidate: dict[str, Any],
+        candidate: Mapping[str, object],
         request: dict[str, object] | None,
+        action: WorkflowActionRecord,
         *,
         evaluator: bool,
-    ) -> dict[str, object]:
+        record_type: RecordType,
+    ) -> WorkflowResultRecord | FinalEvaluationRecord | BundleRecord:
         protocol: dict[str, Any] | None = None
         if workflow.provider_protocol:
             if execution.returncode != 0:
@@ -925,7 +979,7 @@ class Forge:
                     pass
         if evaluator and workflow.disclosure == "status-only":
             witnesses = []
-        record: dict[str, object] = {
+        fields: dict[str, object] = {
             "candidate_identity": candidate["candidate_id"],
             "subject_type": workflow.subject,
             "provider_or_evaluator_identity": provider,
@@ -945,19 +999,22 @@ class Forge:
             "stderr_diagnostic": _redact(execution.stderr.decode("utf-8", errors="replace")),
             "returncode": execution.returncode,
             "recorded_at": _now(),
-            "protocol_request_identity": local_json_identity(request) if request else None,
+            "protocol_request_identity": action["protocol_request_identity"],
         }
-        record["output_identity"] = local_json_identity(record)
+        record = new_record(record_type, fields)
+        if not isinstance(record, (WorkflowResultRecord, FinalEvaluationRecord, BundleRecord)):
+            raise ForgeError("INTERNAL_RECORD", "workflow produced an invalid record model")
         return record
 
     def development_checks_run(
         self, workflow_names: list[str], candidate_id: str | None = None
     ) -> dict[str, object]:
         self._require_mode("development")
-        results: list[dict[str, object]] = []
-        candidate: dict[str, Any] | None = None
+        results: list[WorkflowResultRecord] = []
+        candidate: ForgeRecord | None = None
         for name in workflow_names:
             workflow = self._workflow(name, "development")
+            subject: Mapping[str, object]
             if workflow.subject == "project":
                 if candidate_id is not None:
                     raise ForgeError(
@@ -972,19 +1029,21 @@ class Forge:
                 candidate = candidate or self._candidate(candidate_id)
                 subject = candidate
             result = self._run_workflow(workflow, subject, evaluator=False)
+            if not isinstance(result, WorkflowResultRecord):
+                raise ForgeError("INTERNAL_RECORD", "development check produced invalid model")
             self._write_immutable("results", str(result["output_identity"]), result)
             self.ledger.append("result", result)
             results.append(result)
         return {
             "candidate_identity": candidate["candidate_id"] if candidate else None,
             "subject_identities": sorted({str(item["candidate_identity"]) for item in results}),
-            "results": results,
+            "results": [result.to_object_dict() for result in results],
             "aggregate_status": aggregate_status(str(item["status"]) for item in results),
             "dominance": "FAIL > UNKNOWN > PASS",
         }
 
-    def _result_records(self, candidate_id: str | None = None) -> list[dict[str, Any]]:
-        results = [dict(entry["payload"]) for entry in self._records("result")]
+    def _result_records(self, candidate_id: str | None = None) -> list[ForgeRecord]:
+        results = [entry.payload for entry in self._records("result")]
         if candidate_id is not None:
             return [item for item in results if item.get("candidate_identity") == candidate_id]
         return results
@@ -995,7 +1054,7 @@ class Forge:
             results = [item for item in results if item.get("output_identity") == output_identity]
         if not results:
             raise ForgeError("RESULT_NOT_FOUND", "no matching check result exists")
-        result = results[-1]
+        result = results[-1].to_object_dict()
         status = str(result["status"])
         base: dict[str, object] = {
             "status": status,
@@ -1005,13 +1064,15 @@ class Forge:
             "repair_allowed": self.mode == "development",
         }
         if status == "FAIL":
+            raw_witnesses = result["witnesses_or_counterexamples"]
+            witnesses = raw_witnesses if isinstance(raw_witnesses, list) else []
             base.update(
                 {
                     "violated_invariant_or_gate": result["category"],
-                    "witness_or_counterexample": result["witnesses_or_counterexamples"],
+                    "witness_or_counterexample": witnesses,
                     "relevant_locations": [
                         item.get("location")
-                        for item in result["witnesses_or_counterexamples"]
+                        for item in witnesses
                         if isinstance(item, dict) and item.get("location")
                     ],
                     "permitted_next_actions": (
@@ -1054,7 +1115,7 @@ class Forge:
         candidates: list[dict[str, object]] = []
         for candidate_id in candidate_ids:
             self._record_by_id("candidate", candidate_id, "candidate_id")
-            results = self._result_records(candidate_id)
+            results = [record.to_object_dict() for record in self._result_records(candidate_id)]
             statuses = [str(item["status"]) for item in results]
             candidates.append(
                 {
@@ -1107,7 +1168,7 @@ class Forge:
         policy_path = resolve_contained(
             self.config.root, str(self.config.raw["policies"]["selection"]), must_exist=False
         )
-        record: dict[str, object] = {
+        fields: dict[str, object] = {
             "candidate_identity": candidate_id,
             "disposition": disposition,
             "reason": reason,
@@ -1116,10 +1177,10 @@ class Forge:
             "evidence_status": aggregate,
             "recorded_at": _now(),
         }
-        record["disposition_id"] = "disposition:" + local_json_identity(record).split(":", 1)[1]
+        record = new_record(RecordType.CANDIDATE_DISPOSITION, fields)
         self._write_immutable("dispositions", str(record["disposition_id"]), record)
         self.ledger.append("disposition", record)
-        return record
+        return record.to_object_dict()
 
     def candidate_freeze(
         self, candidate_id: str, *, environment_identity: str, required_evidence_plan: str
@@ -1127,16 +1188,16 @@ class Forge:
         self._require_mode("development")
         candidate = self._candidate(candidate_id)
         selections = [
-            dict(entry["payload"])
+            entry.payload
             for entry in self._records("disposition")
-            if entry["payload"].get("candidate_identity") == candidate_id
-            and entry["payload"].get("disposition") == "selected"
+            if entry.payload.get("candidate_identity") == candidate_id
+            and entry.payload.get("disposition") == "selected"
         ]
         if not selections:
             raise ForgeError("FREEZE_BLOCKED", "candidate must have an immutable selection record")
         plan_path = resolve_contained(self.config.root, required_evidence_plan, must_exist=True)
         paths = self.config.raw["paths"]
-        record: dict[str, object] = {
+        fields: dict[str, object] = {
             "candidate_identity": candidate["candidate_id"],
             "contract_identity": content_identity(self.config.root, self.config.paths("contracts")),
             "reference_identity": content_identity(
@@ -1161,12 +1222,12 @@ class Forge:
             },
             "frozen_at": _now(),
         }
-        record["freeze_id"] = "freeze:" + local_json_identity(record).split(":", 1)[1]
+        record = new_record(RecordType.FREEZE, fields)
         self._write_immutable("freezes", str(record["freeze_id"]), record)
         self.ledger.append("freeze", record)
-        return record
+        return record.to_object_dict()
 
-    def _verify_freeze(self, freeze: dict[str, Any]) -> None:
+    def _verify_freeze(self, freeze: Mapping[str, object]) -> None:
         checks = {
             "candidate_identity": self._current_candidate_identity(),
             "contract_identity": content_identity(self.config.root, self.config.paths("contracts")),
@@ -1198,12 +1259,19 @@ class Forge:
         candidate = self._record_by_id(
             "candidate", str(freeze["candidate_identity"]), "candidate_id"
         )
-        results: list[dict[str, object]] = []
+        results: list[FinalEvaluationRecord] = []
         for name in workflow_names:
             workflow = self._workflow(name, "evaluator")
             before = self._current_authority_identities()
             candidate_before = self._current_candidate_identity()
-            result = self._run_workflow(workflow, candidate, evaluator=True)
+            result = self._run_workflow(
+                workflow,
+                candidate,
+                evaluator=True,
+                record_type=RecordType.FINAL_EVALUATION,
+            )
+            if not isinstance(result, FinalEvaluationRecord):
+                raise ForgeError("INTERNAL_RECORD", "evaluation produced an invalid record model")
             if before != self._current_authority_identities():
                 raise ForgeError("EVALUATION_DRIFT", "authority files changed during evaluation")
             if candidate_before != self._current_candidate_identity():
@@ -1366,8 +1434,8 @@ class Forge:
         }
 
     def evidence_reconcile(self, candidate_id: str | None = None) -> dict[str, object]:
-        results = self._result_records(candidate_id)
-        by_category: dict[str, list[dict[str, Any]]] = {}
+        results = [record.to_object_dict() for record in self._result_records(candidate_id)]
+        by_category: dict[str, list[dict[str, object]]] = {}
         for result in results:
             by_category.setdefault(str(result["category"]), []).append(result)
         categories: dict[str, object] = {}
@@ -1376,18 +1444,25 @@ class Forge:
             values = {str(item["status"]) for item in items}
             if len(values) > 1:
                 conflicts.append(category)
+            unsupported_values = [
+                str(value)
+                for item in items
+                for value in (
+                    item["unsupported_constructs"]
+                    if isinstance(item["unsupported_constructs"], list)
+                    else []
+                )
+            ]
             categories[category] = {
                 "status": aggregate_status(values),
                 "dependencies": [],
                 "records": [item["output_identity"] for item in items],
-                "unsupported": sorted(
-                    {str(value) for item in items for value in item["unsupported_constructs"]}
-                ),
+                "unsupported": sorted(set(unsupported_values)),
             }
         aggregate = aggregate_status(
             str(value["status"]) for value in categories.values() if isinstance(value, dict)
         )
-        return {
+        fields: dict[str, object] = {
             "candidate_identity": candidate_id,
             "required_gate_aggregation": aggregate,
             "categories": categories,
@@ -1404,6 +1479,7 @@ class Forge:
             "dominance": "FAIL > UNKNOWN > PASS",
             "normative_logic_delegated": "MNCS and MNCDS validators remain offline authorities",
         }
+        return new_record(RecordType.RECONCILIATION, fields).to_object_dict()
 
     def bundle_build(
         self, workflow_name: str, candidate_id: str | None = None
@@ -1412,7 +1488,14 @@ class Forge:
         workflow = self._workflow(workflow_name, self.mode)
         if workflow.category not in {"mncs_bundle_validation", "mncds_record_validation"}:
             raise ForgeError("WORKFLOW_CATEGORY", "bundle requires an MNCS or MNCDS workflow")
-        result = self._run_workflow(workflow, candidate, evaluator=self.mode == "evaluator")
+        result = self._run_workflow(
+            workflow,
+            candidate,
+            evaluator=self.mode == "evaluator",
+            record_type=RecordType.BUNDLE,
+        )
+        if not isinstance(result, BundleRecord):
+            raise ForgeError("INTERNAL_RECORD", "bundle produced an invalid record model")
         self._write_immutable("bundles", str(result["output_identity"]), result)
         self.ledger.append("bundle", result)
         integrity = str(result["status"])

@@ -19,3 +19,11 @@ depend on mutable Forge `main`.
 The micro-verifier configuration is optional. Version-1 project files without `[[verifiers]]` or
 `[verifier_limits]` continue to validate. The implementation uses Provider Protocol 0.1 extension
 objects and adds no runtime dependency or generic Joern dependency.
+
+Task 2 adds current persisted-record schema version `"1"` while retaining the historical
+unversioned `0.1` state format as `"0.1-unversioned"` during normalization. The committed
+pre-Task-2 fixture ledger is verified with its historical bytes and hash projection before payload
+migration. Historical files are not rewritten. Unsupported explicit future record versions fail
+with `UNSUPPORTED_RECORD_VERSION`, and trusted-context type mismatches fail with
+`RECORD_TYPE_MISMATCH`. Public persistent record objects may now contain `record_type` and
+`schema_version`; operation and Provider Protocol argument shapes are otherwise unchanged.

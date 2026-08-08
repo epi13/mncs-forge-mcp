@@ -34,6 +34,10 @@ cannot use final evaluation as repair feedback.
 All structured statuses remain separate. A declared command exit of zero is `UNKNOWN` unless it
 emits a recognized structured status; command completion alone is not evidence `PASS`.
 
+Persistent record objects exposed through CLI or MCP include Forge-assigned `record_type` and
+`schema_version` metadata. Operation names, arguments, authority requirements, and status meanings
+are unchanged. Derived summary objects need not pretend to be persisted records.
+
 CLI equivalents are `mncs-forge providers list`, `mncs-forge providers probe PROVIDER_ID`, and
 `mncs-forge providers blockers [CAPABILITY ...]`. Read-only resources include configured
 providers and capability blockers.

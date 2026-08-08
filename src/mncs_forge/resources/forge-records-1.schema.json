@@ -1,0 +1,1277 @@
+{
+  "$defs": {
+    "bundle": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_identity": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "duration_seconds": {},
+        "environment": {
+          "type": "object"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "limitations": {},
+        "method": {
+          "type": "string"
+        },
+        "output_identity": {
+          "type": "string"
+        },
+        "protocol_request_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_or_evaluator_identity": {},
+        "record_type": {
+          "const": "bundle"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "returncode": {},
+        "schema_version": {
+          "const": "1"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "stderr_diagnostic": {},
+        "subject_type": {
+          "type": "string"
+        },
+        "unsupported_constructs": {},
+        "witnesses_or_counterexamples": {},
+        "workflow": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "candidate_identity",
+        "category",
+        "duration_seconds",
+        "environment",
+        "limitations",
+        "method",
+        "output_identity",
+        "protocol_request_identity",
+        "provider_or_evaluator_identity",
+        "recorded_at",
+        "returncode",
+        "scope",
+        "status",
+        "stderr_diagnostic",
+        "subject_type",
+        "unsupported_constructs",
+        "witnesses_or_counterexamples",
+        "workflow"
+      ],
+      "type": "object"
+    },
+    "candidate": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "type": "string"
+        },
+        "changed_files": {},
+        "current_file_identities": {
+          "type": "object"
+        },
+        "declared_hypothesis": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "generator_configuration_identity": {
+          "type": "string"
+        },
+        "generator_identity": {
+          "type": "string"
+        },
+        "objective_identity": {
+          "type": "string"
+        },
+        "parent_candidate": {},
+        "record_type": {
+          "const": "candidate"
+        },
+        "registered_at": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "source_epoch": {
+          "type": "string"
+        },
+        "supersedes": {},
+        "useful_benefit_objective": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "candidate_id",
+        "changed_files",
+        "current_file_identities",
+        "declared_hypothesis",
+        "generator_configuration_identity",
+        "generator_identity",
+        "objective_identity",
+        "parent_candidate",
+        "registered_at",
+        "source_epoch",
+        "supersedes",
+        "useful_benefit_objective"
+      ],
+      "type": "object"
+    },
+    "candidate_disposition": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_identity": {
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "selected",
+            "rejected"
+          ]
+        },
+        "disposition_id": {
+          "type": "string"
+        },
+        "evidence_status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "record_type": {
+          "const": "candidate_disposition"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "selection_policy_identity": {
+          "type": "string"
+        },
+        "selection_rule": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "candidate_identity",
+        "disposition",
+        "disposition_id",
+        "evidence_status",
+        "reason",
+        "recorded_at",
+        "selection_policy_identity",
+        "selection_rule"
+      ],
+      "type": "object"
+    },
+    "epoch": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_identities": {
+          "type": "object"
+        },
+        "baseline_identity": {
+          "type": "string"
+        },
+        "contract_identity": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "declared_authority_overlap": {},
+        "epoch_id": {
+          "type": "string"
+        },
+        "evaluator_identity": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "generator_identity": {
+          "type": "string"
+        },
+        "objective_identity": {
+          "type": "string"
+        },
+        "parent_epoch": {},
+        "record_type": {
+          "const": "epoch"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "visible_partition_identities": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "authority_identities",
+        "baseline_identity",
+        "contract_identity",
+        "created_at",
+        "declared_authority_overlap",
+        "epoch_id",
+        "evaluator_identity",
+        "generator_identity",
+        "objective_identity",
+        "parent_epoch",
+        "visible_partition_identities"
+      ],
+      "type": "object"
+    },
+    "final_evaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_identity": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "duration_seconds": {},
+        "environment": {
+          "type": "object"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "limitations": {},
+        "method": {
+          "type": "string"
+        },
+        "output_identity": {
+          "type": "string"
+        },
+        "protocol_request_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_or_evaluator_identity": {},
+        "record_type": {
+          "const": "final_evaluation"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "returncode": {},
+        "schema_version": {
+          "const": "1"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "stderr_diagnostic": {},
+        "subject_type": {
+          "type": "string"
+        },
+        "unsupported_constructs": {},
+        "witnesses_or_counterexamples": {},
+        "workflow": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "candidate_identity",
+        "category",
+        "duration_seconds",
+        "environment",
+        "limitations",
+        "method",
+        "output_identity",
+        "protocol_request_identity",
+        "provider_or_evaluator_identity",
+        "recorded_at",
+        "returncode",
+        "scope",
+        "status",
+        "stderr_diagnostic",
+        "subject_type",
+        "unsupported_constructs",
+        "witnesses_or_counterexamples",
+        "workflow"
+      ],
+      "type": "object"
+    },
+    "freeze": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptance_policy_identity": {
+          "type": "string"
+        },
+        "candidate_identity": {
+          "type": "string"
+        },
+        "contract_identity": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "evaluator_identity": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "freeze_id": {
+          "type": "string"
+        },
+        "frozen_at": {
+          "type": "string"
+        },
+        "frozen_path_sets": {
+          "type": "object"
+        },
+        "protected_identity": {
+          "type": "string"
+        },
+        "record_type": {
+          "const": "freeze"
+        },
+        "reference_identity": {
+          "type": "string"
+        },
+        "required_evidence_plan": {
+          "type": "string"
+        },
+        "required_evidence_plan_identity": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "selection_record": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "acceptance_policy_identity",
+        "candidate_identity",
+        "contract_identity",
+        "environment",
+        "evaluator_identity",
+        "freeze_id",
+        "frozen_at",
+        "frozen_path_sets",
+        "protected_identity",
+        "reference_identity",
+        "required_evidence_plan",
+        "required_evidence_plan_identity",
+        "selection_record"
+      ],
+      "type": "object"
+    },
+    "ledger_entry": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "bundle"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/bundle"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "candidate"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/candidate"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "disposition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/candidate_disposition"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "epoch"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/epoch"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "evaluation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/final_evaluation"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "freeze"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/freeze"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "provider_probe"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/provider_probe"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "result"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/workflow_result"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "verifier_action"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/verifier_action"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "verifier_result"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/verifier_result"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "entry_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "bundle",
+            "candidate",
+            "disposition",
+            "epoch",
+            "evaluation",
+            "freeze",
+            "provider_probe",
+            "result",
+            "verifier_action",
+            "verifier_result"
+          ]
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/bundle"
+            },
+            {
+              "$ref": "#/$defs/candidate"
+            },
+            {
+              "$ref": "#/$defs/candidate_disposition"
+            },
+            {
+              "$ref": "#/$defs/epoch"
+            },
+            {
+              "$ref": "#/$defs/final_evaluation"
+            },
+            {
+              "$ref": "#/$defs/freeze"
+            },
+            {
+              "$ref": "#/$defs/provider_probe"
+            },
+            {
+              "$ref": "#/$defs/verifier_action"
+            },
+            {
+              "$ref": "#/$defs/verifier_result"
+            },
+            {
+              "$ref": "#/$defs/workflow_result"
+            }
+          ]
+        },
+        "previous_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "ledger_entry"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "sequence": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "entry_hash",
+        "kind",
+        "payload",
+        "previous_hash",
+        "sequence",
+        "timestamp"
+      ],
+      "type": "object"
+    },
+    "provider_probe": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "type": "string"
+        },
+        "cancellation": {},
+        "command": {},
+        "declared_capabilities": {},
+        "declared_identity": {},
+        "declared_version": {},
+        "descriptor": {},
+        "duration_seconds": {},
+        "error_code": {},
+        "executable": {},
+        "executable_identity": {},
+        "expected_executable_identity": {},
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "health_checks": {},
+        "limitations": {},
+        "name": {
+          "type": "string"
+        },
+        "output_identity": {
+          "type": "string"
+        },
+        "probe_kind": {
+          "type": "string"
+        },
+        "probed_capabilities": {},
+        "protocol_statuses": {},
+        "provider_id": {
+          "type": "string"
+        },
+        "provider_identity": {},
+        "record_type": {
+          "const": "provider_probe"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "required": {},
+        "returncode": {},
+        "schema_version": {
+          "const": "1"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "stderr_diagnostic": {},
+        "supported_constructs": {},
+        "transport": {
+          "type": "string"
+        },
+        "unsupported_constructs": {}
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "availability",
+        "command",
+        "declared_capabilities",
+        "declared_identity",
+        "declared_version",
+        "descriptor",
+        "executable",
+        "executable_identity",
+        "expected_executable_identity",
+        "limitations",
+        "name",
+        "output_identity",
+        "probe_kind",
+        "probed_capabilities",
+        "provider_id",
+        "provider_identity",
+        "recorded_at",
+        "required",
+        "status",
+        "supported_constructs",
+        "transport",
+        "unsupported_constructs"
+      ],
+      "type": "object"
+    },
+    "reconciliation": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_identity": {
+          "type": "string"
+        },
+        "categories": {
+          "type": "object"
+        },
+        "claim_limitations": {},
+        "conflicting_evidence": {},
+        "dominance": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "normative_logic_delegated": {
+          "type": "string"
+        },
+        "record_type": {
+          "const": "reconciliation"
+        },
+        "required_gate_aggregation": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "stale_identities": {},
+        "unresolved_blockers": {}
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "candidate_identity",
+        "categories",
+        "claim_limitations",
+        "conflicting_evidence",
+        "dominance",
+        "normative_logic_delegated",
+        "required_gate_aggregation",
+        "stale_identities",
+        "unresolved_blockers"
+      ],
+      "type": "object"
+    },
+    "verifier_action": {
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "type": "string"
+        },
+        "candidate_identity": {
+          "type": "string"
+        },
+        "candidate_parent_identity": {},
+        "changed_paths": {},
+        "configuration_identity": {
+          "type": "string"
+        },
+        "environment_identity": {
+          "type": "string"
+        },
+        "epoch_identity": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "freeze_identity": {},
+        "input_identities": {
+          "type": "object"
+        },
+        "method": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "development",
+            "evaluator"
+          ]
+        },
+        "policy_identity": {
+          "type": "string"
+        },
+        "protocol_request_identity": {
+          "type": "string"
+        },
+        "provider_configuration_identity": {
+          "type": "string"
+        },
+        "provider_id": {
+          "type": "string"
+        },
+        "record_type": {
+          "const": "verifier_action"
+        },
+        "requested_at": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "source_region": {},
+        "supersedes_output_identity": {},
+        "verifier_id": {
+          "type": "string"
+        },
+        "verifier_identity": {
+          "type": "string"
+        },
+        "verifier_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "action_id",
+        "candidate_identity",
+        "candidate_parent_identity",
+        "changed_paths",
+        "configuration_identity",
+        "environment_identity",
+        "epoch_identity",
+        "freeze_identity",
+        "input_identities",
+        "method",
+        "mode",
+        "policy_identity",
+        "protocol_request_identity",
+        "provider_configuration_identity",
+        "provider_id",
+        "requested_at",
+        "scope",
+        "source_region",
+        "supersedes_output_identity",
+        "verifier_id",
+        "verifier_identity",
+        "verifier_version"
+      ],
+      "type": "object"
+    },
+    "verifier_result": {
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "type": "string"
+        },
+        "assumptions": {},
+        "candidate_identity": {
+          "type": "string"
+        },
+        "candidate_parent_identity": {},
+        "category": {
+          "type": "string"
+        },
+        "claim": {
+          "type": "string"
+        },
+        "configuration_identity": {
+          "type": "string"
+        },
+        "dependency_envelope": {
+          "type": "object"
+        },
+        "disclosure": {
+          "type": "string"
+        },
+        "duration_seconds": {},
+        "environment_identity": {
+          "type": "string"
+        },
+        "epoch_identity": {
+          "type": "string"
+        },
+        "evidence_class": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "freeze_identity": {},
+        "independent_evaluation": {
+          "const": false
+        },
+        "input_identities": {
+          "type": "object"
+        },
+        "iterative_development_overlap": {},
+        "limitations": {},
+        "method": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "development",
+            "evaluator"
+          ]
+        },
+        "operational_error": {},
+        "output_identity": {
+          "type": "string"
+        },
+        "policy_identity": {
+          "type": "string"
+        },
+        "provider_configuration_identity": {
+          "type": "string"
+        },
+        "provider_executable_identity": {},
+        "provider_id": {
+          "type": "string"
+        },
+        "provider_identity": {},
+        "provider_response_identity": {},
+        "record_type": {
+          "const": "verifier_result"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "returncode": {},
+        "schema_version": {
+          "const": "1"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "stderr_diagnostic": {},
+        "summary": {
+          "type": "string"
+        },
+        "supersedes_output_identity": {},
+        "unsupported_constructs": {},
+        "verifier_id": {
+          "type": "string"
+        },
+        "verifier_identity": {
+          "type": "string"
+        },
+        "verifier_version": {
+          "type": "string"
+        },
+        "witnesses": {}
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "action_id",
+        "assumptions",
+        "candidate_identity",
+        "candidate_parent_identity",
+        "category",
+        "claim",
+        "configuration_identity",
+        "dependency_envelope",
+        "disclosure",
+        "duration_seconds",
+        "environment_identity",
+        "epoch_identity",
+        "evidence_class",
+        "freeze_identity",
+        "independent_evaluation",
+        "input_identities",
+        "iterative_development_overlap",
+        "limitations",
+        "method",
+        "mode",
+        "operational_error",
+        "output_identity",
+        "policy_identity",
+        "provider_configuration_identity",
+        "provider_executable_identity",
+        "provider_id",
+        "provider_identity",
+        "provider_response_identity",
+        "recorded_at",
+        "returncode",
+        "status",
+        "stderr_diagnostic",
+        "summary",
+        "supersedes_output_identity",
+        "unsupported_constructs",
+        "verifier_id",
+        "verifier_identity",
+        "verifier_version",
+        "witnesses"
+      ],
+      "type": "object"
+    },
+    "workflow_action": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_identity": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "mode": {
+          "enum": [
+            "development",
+            "evaluator"
+          ]
+        },
+        "protocol_request_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "record_type": {
+          "const": "workflow_action"
+        },
+        "requested_at": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "workflow": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "candidate_identity",
+        "mode",
+        "protocol_request_identity",
+        "requested_at",
+        "workflow"
+      ],
+      "type": "object"
+    },
+    "workflow_result": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_identity": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "duration_seconds": {},
+        "environment": {
+          "type": "object"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "limitations": {},
+        "method": {
+          "type": "string"
+        },
+        "output_identity": {
+          "type": "string"
+        },
+        "protocol_request_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_or_evaluator_identity": {},
+        "record_type": {
+          "const": "workflow_result"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "returncode": {},
+        "schema_version": {
+          "const": "1"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "stderr_diagnostic": {},
+        "subject_type": {
+          "type": "string"
+        },
+        "unsupported_constructs": {},
+        "witnesses_or_counterexamples": {},
+        "workflow": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "candidate_identity",
+        "category",
+        "duration_seconds",
+        "environment",
+        "limitations",
+        "method",
+        "output_identity",
+        "protocol_request_identity",
+        "provider_or_evaluator_identity",
+        "recorded_at",
+        "returncode",
+        "scope",
+        "status",
+        "stderr_diagnostic",
+        "subject_type",
+        "unsupported_constructs",
+        "witnesses_or_counterexamples",
+        "workflow"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:mncs-forge:schema:forge-records-1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Public snapshots for current Forge persistent and typed interface records. The Python parser remains authoritative at runtime.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/epoch"
+    },
+    {
+      "$ref": "#/$defs/candidate"
+    },
+    {
+      "$ref": "#/$defs/provider_probe"
+    },
+    {
+      "$ref": "#/$defs/workflow_action"
+    },
+    {
+      "$ref": "#/$defs/workflow_result"
+    },
+    {
+      "$ref": "#/$defs/verifier_action"
+    },
+    {
+      "$ref": "#/$defs/verifier_result"
+    },
+    {
+      "$ref": "#/$defs/candidate_disposition"
+    },
+    {
+      "$ref": "#/$defs/freeze"
+    },
+    {
+      "$ref": "#/$defs/final_evaluation"
+    },
+    {
+      "$ref": "#/$defs/reconciliation"
+    },
+    {
+      "$ref": "#/$defs/bundle"
+    },
+    {
+      "$ref": "#/$defs/ledger_entry"
+    }
+  ],
+  "title": "MNCS Forge record schema set version 1"
+}

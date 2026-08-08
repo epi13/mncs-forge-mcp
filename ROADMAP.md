@@ -29,7 +29,8 @@ surfaces.
 Required work:
 
 1. completed: replace import-time verifier service substitution with one explicit implementation;
-2. introduce versioned internal and persistent record models;
+2. completed: introduce versioned internal and persistent record models and deterministic legacy
+   migrations;
 3. define and test explicit state-transition rules;
 4. add transactional record-plus-ledger writes and interrupted-write recovery; and
 5. retain compatibility with existing `0.1` configurations and state fixtures.

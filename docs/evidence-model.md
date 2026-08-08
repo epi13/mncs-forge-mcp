@@ -10,6 +10,13 @@ names (never values), duration, `PASS`/`FAIL`/`UNKNOWN`, compact witnesses, limi
 unsupported constructs, and an output identity. Ledger entries bind sequence, time, kind,
 previous hash, payload, and current hash under a file lock.
 
+New persistent records use schema version `"1"` and include their stable record type. Current
+record-derived identities include that metadata through an explicit type-specific projection.
+Candidate identity remains a project-content identity rather than a record hash. Legacy
+unversioned identities retain their historical projections. Raw legacy ledger linkage is verified
+before normalization; migration never redefines the old chain. See
+[Versioned Forge records](record-schemas.md).
+
 Reconciliation is workflow aggregation, not copied certification logic. It reports required-gate
 effects, conflicts, stale identities, limitations, and blockers using
 `FAIL > UNKNOWN > PASS`. MNCS implementation and MNCDS development-process results remain separate
