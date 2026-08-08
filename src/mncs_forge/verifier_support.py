@@ -1,4 +1,4 @@
-"""Focused helpers for hardened micro-verifier execution.
+"""Focused policy helpers for micro-verifier execution.
 
 These helpers keep deletion identities, batch parameter envelopes, and terminal
 UNKNOWN result construction separate from the core matching and provider runner.

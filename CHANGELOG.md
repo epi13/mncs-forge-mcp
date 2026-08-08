@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Consolidate the hardened micro-verifier lifecycle into the authoritative
+  `MicroVerifierService` and remove package-import service replacement.
+- Preserve deletion-aware changed-path identities, terminal `UNKNOWN` results, evaluator
+  redaction-before-identity, and heterogeneous partial batch behavior under both package import
+  orders.
+- Fail closed with a recorded, non-sensitive terminal `UNKNOWN` when an unexpected execution
+  exception occurs after a verifier action has been recorded.
 - Streamline the repository entrypoint and add a documentation map and consolidated getting-started
   guide.
 - Add a release-level development roadmap and an ordered Codex implementation queue with task
