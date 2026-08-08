@@ -200,7 +200,7 @@ class Ledger:
                 "payload": payload.to_json(),
             }
             entry = {**body, "entry_hash": self._entry_hash(body)}
-            flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+            flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY | getattr(os, "O_BINARY", 0)
             descriptor = os.open(self.path, flags, 0o600)
             try:
                 os.write(descriptor, canonical_bytes(entry) + b"\n")

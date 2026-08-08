@@ -95,7 +95,7 @@ def _durable_mkdir(path: Path) -> None:
 
 def _durable_write(path: Path, value: bytes, *, exclusive: bool = False) -> None:
     _durable_mkdir(path.parent)
-    flags = os.O_CREAT | os.O_WRONLY | os.O_TRUNC
+    flags = os.O_CREAT | os.O_WRONLY | os.O_TRUNC | getattr(os, "O_BINARY", 0)
     if exclusive:
         flags |= os.O_EXCL
     descriptor = os.open(path, flags, 0o600)
