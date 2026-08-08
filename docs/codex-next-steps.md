@@ -365,6 +365,8 @@ receipts, sandbox semantics, and alternate backends were intentionally not imple
 **Target:** `0.1.0b1`  
 **Depends on:** Task 5
 
+**Status:** Completed in the canonical-operation-registry iteration.
+
 ### Objective
 
 Eliminate independent manual dispatch definitions that can drift between the CLI and MCP server.
@@ -402,6 +404,17 @@ operation handler and permission checks.
 ./scripts/check.sh
 pytest -q tests/test_cli.py tests/test_mcp.py tests/test_operation_registry.py
 ```
+
+### Implementation evidence
+
+Task 6 added frozen operation definitions and explicit input models, one fail-closed invocation
+gate, registry-bound argparse leaves, generated FastMCP wrappers with preserved names and schemas,
+evaluator-only final-evaluation visibility, explicit CLI/MCP/resource asymmetries, and a
+deterministic version-1 machine inventory. Operation-backed resources use the same gate while
+prompts and static guidance remain presentation. Architecture tests reject direct CLI/server
+business calls and concrete storage, execution, filesystem-identity, or lifecycle behavior in the
+registry. `ForgeStateMachine`, `RecordStore`, Task 5 services, and authority/evidence semantics are
+unchanged. Task 7 runners remain deferred.
 
 ---
 

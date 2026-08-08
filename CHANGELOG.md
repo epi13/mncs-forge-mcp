@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add one typed operation registry for canonical IDs, frozen input models, output contracts,
+  mode/mutation policy, authority/lifecycle requirements, disclosure, CLI mappings, MCP tool
+  visibility, resources, and explicit interface exclusions.
+- Route every argparse command leaf and generated FastMCP tool through one fail-closed invocation
+  gate while preserving existing public command names, arguments, tool names, schemas, results,
+  errors, and evaluator-only final-evaluation visibility.
+- Add `mncs-forge operations` and `mncs-forge://operations` deterministic machine inventory,
+  semantic compatibility snapshots, mode/asymmetry tests, and architecture checks preventing
+  independent interface dispatch or concrete storage/execution/lifecycle behavior in the registry.
 - Split the monolithic control plane into explicit project, provider, candidate, development,
   evaluation, evidence, recovery, and singular micro-verifier application services while retaining
   `Forge` as the stable CLI/MCP compatibility and composition facade.

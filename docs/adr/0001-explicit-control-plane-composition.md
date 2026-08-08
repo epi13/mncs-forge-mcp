@@ -68,6 +68,7 @@ longer receives a Forge-shaped host. Repository-owned architecture tests reject 
 service constructors accepting `Forge`, direct service calls to `run_bounded`, concrete local-store
 construction in services, storage bypasses, and cycles among the new application modules.
 
-CLI and MCP still use the same facade and retain their existing hand-written dispatch. A unified
-operation registry remains the separate Task 6 decision; full replaceable runner semantics remain
-Task 7.
+Task 6 added the typed registry and common pre-handler invocation gate documented in ADR 0010.
+Argparse and FastMCP now derive dispatch identity, typed inputs, mode/mutation policy, authority and
+disclosure metadata, and tool visibility from one definition. Full replaceable runner semantics
+remain Task 7.

@@ -22,6 +22,7 @@ command executor, then delegates public behavior to cohesive application service
 
 ```text
 CLI / MCP
+    -> typed operation registry and common invocation gate
     -> Forge compatibility facade
     -> project | provider | candidate | workflow | evaluation | evidence | recovery services
     -> typed records and ForgeStateMachine
@@ -38,8 +39,12 @@ while making dependency direction enforceable.
 Application services never receive the `Forge` facade and do not import CLI, MCP, argparse,
 `LocalRecordStore`, or the local subprocess function. `MicroVerifierService` remains the one
 authoritative verifier lifecycle and receives the same shared ports as other services. CLI and MCP
-continue to call `Forge`; their independent dispatch declarations are intentionally unchanged until
-Task 6 introduces a shared typed operation registry.
+normalize their existing presentation into frozen operation input models and invoke one validated
+registry definition. The registry enforces interface exposure and allowed Forge mode before its
+typed facade handler runs; it describes lifecycle and authority requirements without implementing
+transition policy. FastMCP tools are generated from registry metadata, while argparse layout stays
+hand tuned and registry-bound. Operation-backed MCP resources use the same gate; static resources
+and prompts remain presentation. See [Canonical Forge operation registry](operation-registry.md).
 
 `CommandExecutor` is dependency inversion over the existing bounded local process behavior only.
 It does not add runner receipts, sandbox assurance, containers, SSH, mount/network policy, or
