@@ -19,7 +19,7 @@
   `run_bounded`, construct `LocalRecordStore`, or calculate filesystem identities directly.
 - Add facade characterization, direct service, import-boundary, cycle, storage-bypass, and
   execution-boundary tests; CLI/MCP command, tool, resource, argument, result, and error behavior
-  remains unchanged and Task 6's operation registry remains deferred.
+  remains unchanged.
 - Add a typed `RecordStore` boundary that commits each immutable record and ledger entry through
   one exclusive, journaled local transaction with deterministic, idempotent startup recovery.
 - Add durable staging, atomic publication, supported file/directory synchronization, expected-head
@@ -55,8 +55,8 @@
   guide.
 - Add a release-level development roadmap and an ordered Codex implementation queue with task
   dependencies, invariants, acceptance criteria, validation commands, and explicit exclusions.
-- Add proposed architecture decision records for control-plane composition, versioned persistent
-  records, replaceable execution runners, ledger checkpoint anchoring, and Forge Cell assurance.
+- Add architecture decision records for control-plane composition, versioned persistent records,
+  replaceable execution runners, ledger checkpoint anchoring, and Forge Cell assurance.
 - Expand contributor guidance and add evidence-aware pull request and roadmap-task templates.
 - Add versioned Forge Cell policy, test-bundle, and execution-record schemas as packaged resources.
 - Add offline Forge Cell document validation and fail-closed assurance assessment that keeps test

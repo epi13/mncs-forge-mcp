@@ -7,8 +7,9 @@ MNCDS validator public commands.
 Provider-neutral discovery was tested at Forge implementation commit
 `7e0599a080a36d3415780ba9e9ff617a7d012fbd` against MNCS tooling commit
 `202c13fad2ca613a3d4ad9340d384b2a079beadf` with Codex CLI `0.144.6`. The development stdio
-inventory now includes the prior development operations, provider list/probe/blockers, and six
-micro-verifier tools, with final evaluation available in evaluator mode only.
+server currently exposes 23 MCP tools; an evaluator-mode server exposes those tools plus
+`mncs_forge_final_evaluation`. The CLI retains its existing 27 command leaves and also exposes
+the registry inventory through `mncs-forge operations`. Final evaluation remains evaluator-only.
 
 Historical Joern records remain frozen; Joern is optional and disabled by default. The inspected
 host registration named `joern` resolved to a separately installed pipx
@@ -33,3 +34,25 @@ resource, and an embedded `project_inspect.lifecycle` summary. Existing records 
 legacy corpus are not rewritten. Prospective transitions are stricter: successor epochs and
 candidates require current parents, dispositions are terminal, selection requires the policy's
 declared candidate evidence, and freeze/evaluator entry requires coherent current selection.
+
+Task 4 makes each ledger-backed typed-record write a single recoverable `RecordStore` transaction.
+The store stages the immutable record and replacement ledger under one exclusive lock, binds the
+commit to the expected sequence and predecessor hash, persists PREPARED/COMMITTED recovery
+metadata, and rebuilds a local derived index. Startup recovery is deterministic and idempotent;
+the ledger and immutable records remain authoritative. Historical unversioned `0.1` bytes are
+verified before migration and are not rewritten. A stranded durable verifier action receives one
+bound terminal `UNKNOWN` rather than an invented provider result.
+
+Task 5 decomposes the control plane behind typed application services and ports while retaining
+the public `Forge` facade and existing interface behavior. One composition root shares the ledger,
+transactional store, lifecycle context, local observer, and bounded command executor; services do
+not receive the facade or depend on CLI/MCP adapters. The current `CommandExecutor` is dependency
+inversion over bounded local process execution, not the future runner/assurance architecture.
+
+Task 6 makes `mncs_forge.operations` the canonical typed operation inventory. CLI parser leaves and
+FastMCP tools resolve the same registry definitions and pre-handler mode/exposure gate. The
+deterministic version-1 inventory is available from `mncs-forge operations` and
+`mncs-forge://operations`. Existing CLI command names, MCP tool names, input/output schemas, and
+mode behavior are compatibility-tested. Intentional asymmetries remain: local diagnostics are
+CLI-only, the inventory is a CLI operation and MCP resource, and final evaluation is evaluator-
+only in MCP.

@@ -46,8 +46,31 @@ Persistent record objects exposed through CLI or MCP include Forge-assigned `rec
 are unchanged. Derived summary objects need not pretend to be persisted records.
 
 CLI equivalents are `mncs-forge providers list`, `mncs-forge providers probe PROVIDER_ID`, and
-`mncs-forge providers blockers [CAPABILITY ...]`. Read-only resources include configured
-providers and capability blockers.
+`mncs-forge providers blockers [CAPABILITY ...]`. Operation-backed MCP resources currently
+include:
+
+- `mncs-forge://project/authority-map`
+- `mncs-forge://state/active-epoch`
+- `mncs-forge://state/lifecycle`
+- `mncs-forge://state/active-candidate`
+- `mncs-forge://evidence/latest-summary`
+- `mncs-forge://claims/blockers`
+- `mncs-forge://providers/configured`
+- `mncs-forge://providers/capability-blockers`
+- `mncs-forge://verifiers/declared`
+- `mncs-forge://operations`
+
+They are read-model projections and invoke their registered operation through the same interface
+gate. The static `mncs-forge://guide/usage` resource and five named prompts are presentation and
+guidance, not canonical Forge operations. The prompt names are:
+
+- `start_controlled_machine_native_epoch`
+- `evaluate_and_compare_candidates`
+- `explain_unknown_claim`
+- `prepare_candidate_for_freeze`
+- `review_failed_development_check`
+
+The registry inventory is the authoritative source for operation metadata and interface exposure.
 
 `mncs-forge state`, `mncs_forge_state_inspect`, and `mncs-forge://state/lifecycle` expose the same
 derived lifecycle stage, identities, evidence readiness, legal next operations, stable blockers,
