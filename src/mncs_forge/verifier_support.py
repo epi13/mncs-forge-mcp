@@ -84,7 +84,7 @@ def parameters_for_verifier(
 
 def terminal_unknown_result(
     *,
-    action: dict[str, object],
+    action: Mapping[str, object],
     verifier: Verifier,
     provider: Provider,
     identities: dict[str, str],
@@ -150,7 +150,6 @@ def terminal_unknown_result(
     }
     if action["mode"] == "evaluator" and verifier.disclosure == "status-only":
         redact_status_only_result(result)
-    result["output_identity"] = local_json_identity(result)
     return result
 
 

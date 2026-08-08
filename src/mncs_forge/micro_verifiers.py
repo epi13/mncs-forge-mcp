@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from math import isfinite
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -14,6 +15,15 @@ from .execution import ExecutionResult, parse_provider_response, run_bounded
 from .identity import content_identity
 from .ledger import Ledger
 from .paths import is_within, resolve_contained, validate_relative_path
+from .records import (
+    ForgeRecord,
+    LedgerEntry,
+    RecordType,
+    VerifierActionRecord,
+    VerifierResultRecord,
+    derive_record_identity,
+    new_record,
+)
 from .serialization import canonical_bytes, local_json_identity
 from .verifier_disclosure import redact_status_only_result
 from .verifier_support import (
@@ -42,25 +52,25 @@ class ForgeHost(Protocol):
     mode: str
     ledger: Ledger
 
-    def _candidate(self, candidate_id: str | None) -> dict[str, Any]: ...
+    def _candidate(self, candidate_id: str | None) -> ForgeRecord: ...
 
     def _current_authority_identities(self) -> dict[str, str]: ...
 
     def _current_candidate_identity(self) -> str: ...
 
-    def _latest_payload(self, kind: str) -> dict[str, Any] | None: ...
+    def _latest_payload(self, kind: str) -> ForgeRecord | None: ...
 
     def _provider_executable(self, provider: Provider) -> tuple[Path, str]: ...
 
     def _provider_workspace(self, *, evaluator: bool = False) -> TemporaryDirectory[str]: ...
 
-    def _record_by_id(self, kind: str, identity: str, key: str) -> dict[str, Any]: ...
+    def _record_by_id(self, kind: str, identity: str, key: str) -> ForgeRecord: ...
 
-    def _records(self, kind: str) -> list[dict[str, Any]]: ...
+    def _records(self, kind: str) -> list[LedgerEntry]: ...
 
-    def _verify_freeze(self, freeze: dict[str, Any]) -> None: ...
+    def _verify_freeze(self, freeze: Mapping[str, object]) -> None: ...
 
-    def _write_immutable(self, group: str, identity: str, value: dict[str, object]) -> Path: ...
+    def _write_immutable(self, group: str, identity: str, value: ForgeRecord) -> Path: ...
 
 
 def _aggregate_status(statuses: list[str]) -> str:
@@ -283,7 +293,7 @@ class MicroVerifierService:
                     "development authority does not permit provider execution",
                 )
             candidate = self.forge._candidate(candidate_identity)
-            freeze: dict[str, Any] | None = None
+            freeze: ForgeRecord | None = None
         else:
             freeze = self.forge._latest_payload("freeze")
             if freeze is None:
@@ -334,7 +344,7 @@ class MicroVerifierService:
             str(candidate["candidate_id"]),
             candidate.get("parent_candidate"),
         )
-        action: dict[str, object] = {
+        action_fields: dict[str, object] = {
             "verifier_id": verifier.verifier_id,
             "verifier_version": verifier.version,
             "verifier_identity": identities["verifier_identity"],
@@ -356,10 +366,11 @@ class MicroVerifierService:
             "environment_identity": identities["environment_identity"],
             "requested_at": self._now(),
         }
-        action["action_id"] = "verifier-action:" + local_json_identity(action).split(":", 1)[1]
+        action_id = derive_record_identity(RecordType.VERIFIER_ACTION, action_fields)
+        action_seed = {**action_fields, "action_id": action_id}
         request = self._request(
             verifier,
-            action,
+            action_seed,
             selected_paths=selected_paths,
             region=region,
             dependencies=dependencies,
@@ -373,7 +384,12 @@ class MicroVerifierService:
                 "VERIFIER_REQUEST_LIMIT",
                 "verifier request exceeds the configured byte limit",
             )
-        action["protocol_request_identity"] = local_json_identity(request)
+        action = new_record(
+            RecordType.VERIFIER_ACTION,
+            {**action_seed, "protocol_request_identity": local_json_identity(request)},
+        )
+        if not isinstance(action, VerifierActionRecord):
+            raise ForgeError("INTERNAL_RECORD", "verifier action produced an invalid model")
         self.forge._write_immutable("verifier-actions", str(action["action_id"]), action)
         self.forge.ledger.append("verifier_action", action)
         started = time.monotonic()
@@ -398,7 +414,7 @@ class MicroVerifierService:
                 if isinstance(exc, ForgeError)
                 else "unexpected verifier execution failure"
             )
-            result = terminal_unknown_result(
+            terminal_fields = terminal_unknown_result(
                 action=action,
                 verifier=verifier,
                 provider=provider,
@@ -408,6 +424,12 @@ class MicroVerifierService:
                 recorded_at=self._now(),
                 duration_seconds=time.monotonic() - started,
             )
+            terminal_record = new_record(RecordType.VERIFIER_RESULT, terminal_fields)
+            if not isinstance(terminal_record, VerifierResultRecord):
+                raise ForgeError(
+                    "INTERNAL_RECORD", "terminal verifier result model is invalid"
+                ) from exc
+            result = terminal_record
         self.forge._write_immutable("verifier-results", str(result["output_identity"]), result)
         self.forge.ledger.append("verifier_result", result)
         return self._disclose_result(result)
@@ -526,7 +548,7 @@ class MicroVerifierService:
         if parent_candidate is not None:
             lineage.add(str(parent_candidate))
         for entry in reversed(self.forge._records("verifier_result")):
-            payload = entry["payload"]
+            payload = entry.payload
             if (
                 payload.get("verifier_id") == verifier_id
                 and payload.get("mode") == self.forge.mode
@@ -538,12 +560,13 @@ class MicroVerifierService:
     def explain(self, output_identity: str) -> dict[str, object]:
         result = self.forge._record_by_id("verifier_result", output_identity, "output_identity")
         status_only = result.get("disclosure") == "status-only"
+        exposed = result.to_object_dict()
         base: dict[str, object] = {
             "output_identity": output_identity,
-            "verifier_id": result["verifier_id"],
-            "claim": result["claim"],
-            "status": result["status"],
-            "mode": result["mode"],
+            "verifier_id": exposed["verifier_id"],
+            "claim": exposed["claim"],
+            "status": exposed["status"],
+            "mode": exposed["mode"],
             "repair_allowed": result["mode"] == "development" and self.forge.mode == "development",
             "independent_evaluation": False,
             "freshness": self._freshness(result, allow_protected=not status_only),
@@ -562,13 +585,13 @@ class MicroVerifierService:
             return base
         base.update(
             {
-                "summary": result["summary"],
-                "witnesses": result["witnesses"],
-                "assumptions": result["assumptions"],
-                "limitations": result["limitations"],
-                "unsupported_constructs": result["unsupported_constructs"],
-                "dependency_envelope": result["dependency_envelope"],
-                "operational_error": result["operational_error"],
+                "summary": exposed["summary"],
+                "witnesses": exposed["witnesses"],
+                "assumptions": exposed["assumptions"],
+                "limitations": exposed["limitations"],
+                "unsupported_constructs": exposed["unsupported_constructs"],
+                "dependency_envelope": exposed["dependency_envelope"],
+                "operational_error": exposed["operational_error"],
                 "repair_feedback_withheld": False,
             }
         )
@@ -815,7 +838,7 @@ class MicroVerifierService:
     @staticmethod
     def _request(
         verifier: Verifier,
-        action: dict[str, object],
+        action: Mapping[str, object],
         *,
         selected_paths: list[str],
         region: dict[str, object] | None,
@@ -861,15 +884,15 @@ class MicroVerifierService:
         verifier: Verifier,
         workflow: Workflow,
         provider: Provider,
-        candidate: dict[str, Any],
-        action: dict[str, object],
+        candidate: ForgeRecord,
+        action: VerifierActionRecord,
         request: dict[str, object],
         request_bytes: bytes,
         identities: dict[str, str],
         environment: dict[str, str],
-        freeze: dict[str, Any] | None,
+        freeze: ForgeRecord | None,
         timeout_cap: float | None,
-    ) -> dict[str, object]:
+    ) -> VerifierResultRecord:
         started = time.monotonic()
         execution: ExecutionResult | None = None
         response: dict[str, Any] | None = None
@@ -990,13 +1013,13 @@ class MicroVerifierService:
         if freeze is not None:
             self.forge._verify_freeze(freeze)
         iterative_overlap = any(
-            entry["payload"].get("mode") == "development"
-            and entry["payload"].get("candidate_identity") == candidate["candidate_id"]
-            and entry["payload"].get("verifier_id") == verifier.verifier_id
+            entry.payload.get("mode") == "development"
+            and entry.payload.get("candidate_identity") == candidate["candidate_id"]
+            and entry.payload.get("verifier_id") == verifier.verifier_id
             for entry in self.forge._records("verifier_result")
         )
         disclosure = verifier.disclosure
-        result: dict[str, object] = {
+        fields: dict[str, object] = {
             "action_id": action["action_id"],
             "verifier_id": verifier.verifier_id,
             "verifier_version": verifier.version,
@@ -1052,23 +1075,29 @@ class MicroVerifierService:
             "recorded_at": self._now(),
         }
         if self.forge.mode == "evaluator" and disclosure == "status-only":
-            redact_status_only_result(result)
-        result["output_identity"] = local_json_identity(result)
-        if len(canonical_bytes(result)) > int(self.config.verifier_limits["result_bytes"]):
-            result["witnesses"] = []
-            result["stderr_diagnostic"] = ""
-            current_limitations = result["limitations"]
+            redact_status_only_result(fields)
+        result = new_record(RecordType.VERIFIER_RESULT, fields)
+        if not isinstance(result, VerifierResultRecord):
+            raise ForgeError("INTERNAL_RECORD", "verifier result produced an invalid model")
+        if len(canonical_bytes(result.to_json())) > int(
+            self.config.verifier_limits["result_bytes"]
+        ):
+            fields["witnesses"] = []
+            fields["stderr_diagnostic"] = ""
+            current_limitations = fields["limitations"]
             bounded_limitations = (
                 current_limitations[:19] if isinstance(current_limitations, list) else []
             )
-            result["limitations"] = [
+            fields["limitations"] = [
                 *bounded_limitations,
                 "result details were reduced to fit the configured result limit",
             ]
-            result["output_identity"] = local_json_identity(
-                {key: value for key, value in result.items() if key != "output_identity"}
-            )
-        if len(canonical_bytes(result)) > int(self.config.verifier_limits["result_bytes"]):
+            result = new_record(RecordType.VERIFIER_RESULT, fields)
+            if not isinstance(result, VerifierResultRecord):
+                raise ForgeError("INTERNAL_RECORD", "bounded verifier result model is invalid")
+        if len(canonical_bytes(result.to_json())) > int(
+            self.config.verifier_limits["result_bytes"]
+        ):
             raise ForgeError(
                 "VERIFIER_RESULT_LIMIT",
                 "verifier result cannot fit the configured result byte limit",
@@ -1162,7 +1191,9 @@ class MicroVerifierService:
             "identity": local_json_identity(envelope_without_identity),
         }
 
-    def _freshness(self, result: dict[str, Any], *, allow_protected: bool) -> dict[str, object]:
+    def _freshness(
+        self, result: Mapping[str, object], *, allow_protected: bool
+    ) -> dict[str, object]:
         verifier = self.config.verifiers.get(str(result["verifier_id"]))
         if verifier is None:
             return {
@@ -1198,14 +1229,18 @@ class MicroVerifierService:
                 "changed_identities": sorted(changed_material),
             }
         envelope = result.get("dependency_envelope")
-        if not isinstance(envelope, dict):
+        if not isinstance(envelope, Mapping):
             return {
                 "state": "UNKNOWN",
                 "reason": "result has no valid dependency envelope",
             }
         paths = envelope.get("paths", [])
         recorded = envelope.get("path_identities", {})
-        if not allow_protected or not isinstance(paths, list) or not isinstance(recorded, dict):
+        if (
+            not allow_protected
+            or not isinstance(paths, (list, tuple))
+            or not isinstance(recorded, Mapping)
+        ):
             return {
                 "state": "UNKNOWN",
                 "reason": "dependency freshness details are not disclosable",
@@ -1252,15 +1287,18 @@ class MicroVerifierService:
         }
 
     @staticmethod
-    def _disclose_result(result: dict[str, object]) -> dict[str, object]:
+    def _disclose_result(result: VerifierResultRecord) -> dict[str, object]:
+        exposed = result.to_object_dict()
         if result["mode"] == "evaluator" and result["disclosure"] == "status-only":
             return {
-                "output_identity": result["output_identity"],
-                "verifier_id": result["verifier_id"],
-                "status": result["status"],
-                "mode": result["mode"],
-                "limitations": result["limitations"],
+                "record_type": exposed["record_type"],
+                "schema_version": exposed["schema_version"],
+                "output_identity": exposed["output_identity"],
+                "verifier_id": exposed["verifier_id"],
+                "status": exposed["status"],
+                "mode": exposed["mode"],
+                "limitations": exposed["limitations"],
                 "repair_feedback_withheld": True,
                 "independent_evaluation": False,
             }
-        return result
+        return exposed

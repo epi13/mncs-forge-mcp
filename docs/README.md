@@ -15,6 +15,7 @@ development planning. The root README remains a short project entrypoint.
 
 - [Architecture and trust boundaries](architecture.md)
 - [Evidence and identity model](evidence-model.md)
+- [Versioned record schemas and migration](record-schemas.md)
 - [Security model and residual risks](security.md)
 - [Intent-aware security verification](intent-aware-security-verification.md)
 - [Forge Cell execution assurance](forge-cell.md)

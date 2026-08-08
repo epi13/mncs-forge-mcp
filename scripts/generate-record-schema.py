@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Regenerate the committed Draft 2020-12 Forge record schema snapshot."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from mncs_forge.records import (
+    CURRENT_SCHEMA_VERSION,
+    LEDGER_KIND_TYPES,
+    LEDGER_REQUIRED,
+    RECORD_SPECS,
+    REQUIRED_OBJECT_FIELDS,
+    REQUIRED_STRING_FIELDS,
+    RecordType,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+OUTPUT = ROOT / "src/mncs_forge/resources/forge-records-1.schema.json"
+
+STRING_FIELDS = {
+    "action_id",
+    "bundle_id",
+    "candidate_id",
+    "candidate_identity",
+    "category",
+    "created_at",
+    "disposition_id",
+    "evidence_status",
+    "freeze_id",
+    "frozen_at",
+    "method",
+    "mode",
+    "output_identity",
+    "probe_kind",
+    "recorded_at",
+    "requested_at",
+    "schema_version",
+    "status",
+    "verifier_id",
+    "workflow",
+}
+for required_fields in REQUIRED_STRING_FIELDS.values():
+    STRING_FIELDS.update(required_fields)
+
+
+def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
+    spec = RECORD_SPECS[record_type]
+    if field == "protocol_request_identity" and record_type in {
+        RecordType.WORKFLOW_ACTION,
+        RecordType.WORKFLOW_RESULT,
+        RecordType.FINAL_EVALUATION,
+        RecordType.BUNDLE,
+    }:
+        return {"type": ["string", "null"]}
+    if field == "extensions":
+        return {
+            "type": "object",
+            "description": (
+                "Non-normative extension data. It round-trips and participates in current "
+                "record-derived identities, but cannot affect authority or status semantics."
+            ),
+        }
+    if field == spec.status_field:
+        return {"enum": ["PASS", "FAIL", "UNKNOWN"]}
+    if field == "disposition":
+        return {"enum": ["selected", "rejected"]}
+    if field == "mode":
+        return {"enum": ["development", "evaluator"]}
+    if field == "independent_evaluation":
+        return {"const": False}
+    if field in REQUIRED_OBJECT_FIELDS.get(record_type, frozenset()):
+        return {"type": "object"}
+    if field in STRING_FIELDS or field.endswith("_at"):
+        return {"type": "string"}
+    return {}
+
+
+def record_schema(record_type: RecordType) -> dict[str, object]:
+    spec = RECORD_SPECS[record_type]
+    fields = sorted(spec.allowed)
+    properties: dict[str, object] = {
+        "record_type": {"const": record_type.value},
+        "schema_version": {"const": CURRENT_SCHEMA_VERSION},
+    }
+    properties.update({field: property_schema(record_type, field) for field in fields})
+    return {
+        "type": "object",
+        "required": ["record_type", "schema_version", *sorted(spec.required)],
+        "properties": properties,
+        "additionalProperties": False,
+    }
+
+
+def ledger_schema() -> dict[str, object]:
+    persisted = sorted(set(LEDGER_KIND_TYPES.values()), key=lambda value: value.value)
+    conditions = [
+        {
+            "if": {"properties": {"kind": {"const": kind}}, "required": ["kind"]},
+            "then": {"properties": {"payload": {"$ref": f"#/$defs/{record_type.value}"}}},
+        }
+        for kind, record_type in sorted(LEDGER_KIND_TYPES.items())
+    ]
+    return {
+        "type": "object",
+        "required": ["record_type", "schema_version", *sorted(LEDGER_REQUIRED)],
+        "properties": {
+            "record_type": {"const": RecordType.LEDGER_ENTRY.value},
+            "schema_version": {"const": CURRENT_SCHEMA_VERSION},
+            "sequence": {"type": "integer", "minimum": 1},
+            "timestamp": {"type": "string"},
+            "kind": {"enum": sorted(LEDGER_KIND_TYPES)},
+            "previous_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "payload": {
+                "oneOf": [{"$ref": f"#/$defs/{record_type.value}"} for record_type in persisted]
+            },
+            "entry_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        },
+        "allOf": conditions,
+        "additionalProperties": False,
+    }
+
+
+def main() -> None:
+    definitions = {record_type.value: record_schema(record_type) for record_type in RECORD_SPECS}
+    definitions[RecordType.LEDGER_ENTRY.value] = ledger_schema()
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:mncs-forge:schema:forge-records-1",
+        "title": "MNCS Forge record schema set version 1",
+        "description": (
+            "Public snapshots for current Forge persistent and typed interface records. "
+            "The Python parser remains authoritative at runtime."
+        ),
+        "oneOf": [
+            {"$ref": f"#/$defs/{record_type.value}"}
+            for record_type in [*RECORD_SPECS, RecordType.LEDGER_ENTRY]
+        ],
+        "$defs": definitions,
+    }
+    OUTPUT.write_text(
+        json.dumps(schema, ensure_ascii=False, allow_nan=False, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,6 +1,6 @@
 # ADR 0002: Versioned persistent record schemas
 
-- **Status:** Proposed
+- **Status:** Accepted; implemented in Task 2
 - **Target:** `0.1.0a3`
 
 ## Context
@@ -52,3 +52,11 @@ Costs and risks:
 - serialize/parse/serialize round trips preserve canonical identities;
 - public schema snapshots cover each record type; and
 - migrations never silently convert missing or unknown evidence into `PASS`.
+
+## Implementation evidence
+
+Task 2 added frozen slotted models, explicit codecs and identity projections, a deterministic
+trusted-context migration registry, versioned ledger entries, a Draft 2020-12 schema snapshot, and
+an immutable pre-versioning fixture corpus. Tests verify the raw legacy chain before migration,
+historical identity and status preservation, byte-stable current round trips, unsupported-version
+and type-mismatch failures, unknown-field policy, and consolidated-verifier terminal lineage.

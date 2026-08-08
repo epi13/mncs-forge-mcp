@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add frozen, typed version-1 models for current Forge records and ledger entries while retaining
+  JSON-compatible filesystem, ledger, Provider Protocol, CLI, and MCP boundaries.
+- Add deterministic trusted-context migration for immutable unversioned `0.1` state, verifying raw
+  historical ledger linkage before normalization and preserving historical identities/statuses.
+- Add explicit metadata-bound current identity projections, fail-closed future-version and
+  record-context mismatch errors, documented extension policy, immutable legacy fixtures, and a
+  Draft 2020-12 public record-schema snapshot.
 - Consolidate the hardened micro-verifier lifecycle into the authoritative
   `MicroVerifierService` and remove package-import service replacement.
 - Preserve deletion-aware changed-path identities, terminal `UNKNOWN` results, evaluator

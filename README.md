@@ -68,9 +68,10 @@ minimal controlled workflow.
 ## Current development priority
 
 The next release should stabilize the internal architecture before adding more verifier types,
-distributed execution, or sandbox backends. The verifier lifecycle now has one explicit service;
-the immediate priority is to introduce versioned persistent records and explicit state transitions,
-then split the control plane behind stable interfaces. Forge Cell schemas and fail-closed assurance
+distributed execution, or sandbox backends. The verifier lifecycle now has one explicit service,
+and persistent evidence now crosses a frozen typed, versioned boundary with deterministic legacy
+migration. The immediate priority is explicit state transitions and transactional storage, then
+splitting the control plane behind stable interfaces. Forge Cell schemas and fail-closed assurance
 assessment are available as a specification foundation; the actual Linux isolation and attestation
 backends remain ordered follow-up work. Query-driven micro-debugging now also has an architecture,
 versioned reference vocabulary, and a separate implementation queue; runtime sessions and reusable

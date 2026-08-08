@@ -23,7 +23,10 @@ status-only disclosure.
 
 The Forge state directory is `.mncs-forge/`. Epoch, candidate, action, result, selection,
 rejection, freeze, evaluation, and bundle records are immutable files plus a locked hash-linked
-JSONL ledger. Supersession and lineage are explicit.
+JSONL ledger. Versioned frozen models form the internal domain boundary; filesystem, ledger, CLI,
+MCP, and Provider Protocol boundaries remain JSON-compatible. Supersession and lineage are
+explicit. See [Versioned Forge records](record-schemas.md) for schema, identity, and legacy
+migration rules.
 
 Project-scoped development workflows may run without candidate ledger state. Their subject
 is the declared project identity, and their PASS is limited to the development workflow.
