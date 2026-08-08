@@ -33,6 +33,7 @@ def _common_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("doctor")
     commands.add_parser("inspect")
+    commands.add_parser("state")
     commands.add_parser("status")
     blockers = commands.add_parser("blockers")
     blockers.add_argument("claim", nargs="?", default="promotion")
@@ -160,6 +161,7 @@ def _dispatch(forge: Forge, args: argparse.Namespace) -> object:
     simple: dict[str, Callable[[], object]] = {
         "doctor": forge.doctor,
         "inspect": forge.project_inspect,
+        "state": forge.state_inspect,
         "status": forge.claim_status,
     }
     if command in simple:

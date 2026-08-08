@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Collection
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -142,3 +143,16 @@ class Ledger:
                 else [entry for entry in raw_records if entry.get("kind") == kind]
             )
             return [normalize_ledger_entry(entry) for entry in selected]
+
+    def records_for(self, kinds: Collection[str]) -> list[LedgerEntry]:
+        """Read one verified snapshot and normalize only the requested record kinds."""
+
+        selected_kinds = frozenset(kinds)
+        with self.lock:
+            raw_records = self._read_unlocked_raw()
+            self._verify_raw_records(raw_records)
+            return [
+                normalize_ledger_entry(entry)
+                for entry in raw_records
+                if entry.get("kind") in selected_kinds
+            ]

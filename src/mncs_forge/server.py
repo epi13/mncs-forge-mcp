@@ -27,6 +27,12 @@ def build_server(forge: Forge) -> FastMCP:
 
         return forge.project_inspect()
 
+    @server.tool(name="mncs_forge_state_inspect")
+    def state_inspect() -> dict[str, object]:
+        """Explain the lifecycle stage, legal next operations, and stable blockers."""
+
+        return forge.state_inspect()
+
     @server.tool(name="mncs_forge_claim_status")
     def claim_status() -> dict[str, object]:
         """Report separate MNCS, MNCDS, assurance, evidence, and promotion statuses."""
@@ -268,6 +274,10 @@ def build_server(forge: Forge) -> FastMCP:
     @server.resource("mncs-forge://state/active-epoch")
     def active_epoch() -> str:
         return json.dumps(forge.project_inspect()["current_epoch"], sort_keys=True)
+
+    @server.resource("mncs-forge://state/lifecycle")
+    def lifecycle_state() -> str:
+        return json.dumps(forge.state_inspect(), sort_keys=True)
 
     @server.resource("mncs-forge://state/active-candidate")
     def active_candidate() -> str:

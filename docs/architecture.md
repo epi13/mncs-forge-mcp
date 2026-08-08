@@ -28,6 +28,11 @@ MCP, and Provider Protocol boundaries remain JSON-compatible. Supersession and l
 explicit. See [Versioned Forge records](record-schemas.md) for schema, identity, and legacy
 migration rules.
 
+`ForgeStateMachine` derives active epoch, candidate lineage/freshness, required-evidence readiness,
+terminal disposition, freeze/evaluation/bundle state, and verifier action terminality from one
+typed ledger snapshot. It authorizes transitions but does not execute providers or write records.
+There is no mutable current-state file. See [Forge lifecycle state machine](lifecycle.md).
+
 Project-scoped development workflows may run without candidate ledger state. Their subject
 is the declared project identity, and their PASS is limited to the development workflow.
 Candidate-scoped evidence keeps its candidate and epoch binding. Final evaluation is

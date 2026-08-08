@@ -27,3 +27,9 @@ migration. Historical files are not rewritten. Unsupported explicit future recor
 with `UNSUPPORTED_RECORD_VERSION`, and trusted-context type mismatches fail with
 `RECORD_TYPE_MISMATCH`. Public persistent record objects may now contain `record_type` and
 `schema_version`; operation and Provider Protocol argument shapes are otherwise unchanged.
+
+Task 3 adds the read-only `state` CLI command, `mncs_forge_state_inspect` MCP tool, lifecycle MCP
+resource, and an embedded `project_inspect.lifecycle` summary. Existing records and the immutable
+legacy corpus are not rewritten. Prospective transitions are stricter: successor epochs and
+candidates require current parents, dispositions are terminal, selection requires the policy's
+declared candidate evidence, and freeze/evaluator entry requires coherent current selection.

@@ -25,6 +25,7 @@ from .records import (
     new_record,
 )
 from .serialization import canonical_bytes, local_json_identity
+from .state_machine import ForgeStateMachine
 from .verifier_disclosure import redact_status_only_result
 from .verifier_support import (
     changed_path_identity,
@@ -52,13 +53,18 @@ class ForgeHost(Protocol):
     mode: str
     ledger: Ledger
 
-    def _candidate(self, candidate_id: str | None) -> ForgeRecord: ...
+    def _state_machine(
+        self,
+        *,
+        observe_epoch_authority: bool = True,
+        observe_freeze_bindings: bool = True,
+        observe_policy: bool = True,
+        history_kinds: frozenset[str] | None = None,
+    ) -> ForgeStateMachine: ...
 
     def _current_authority_identities(self) -> dict[str, str]: ...
 
     def _current_candidate_identity(self) -> str: ...
-
-    def _latest_payload(self, kind: str) -> ForgeRecord | None: ...
 
     def _provider_executable(self, provider: Provider) -> tuple[Path, str]: ...
 
@@ -286,26 +292,26 @@ class MicroVerifierService:
             )
         workflow = self.config.workflows[verifier.workflow]
         provider = self.config.providers[verifier.provider_id]
+        state_machine = self.forge._state_machine(
+            observe_epoch_authority=False,
+            observe_freeze_bindings=self.forge.mode == "evaluator",
+            observe_policy=False,
+            history_kinds=frozenset({"epoch", "candidate", "disposition", "freeze"}),
+        )
         if self.forge.mode == "development":
             if not bool(self.config.raw["authority"]["development"]["may_run_providers"]):
                 raise ForgeError(
                     "VERIFIER_AUTHORITY",
                     "development authority does not permit provider execution",
                 )
-            candidate = self.forge._candidate(candidate_identity)
+            candidate = state_machine.authorize_development_work(
+                candidate_identity, project_scoped=False
+            )
+            if candidate is None:
+                raise ForgeError("NO_CANDIDATE", "verifier requires a candidate")
             freeze: ForgeRecord | None = None
         else:
-            freeze = self.forge._latest_payload("freeze")
-            if freeze is None:
-                raise ForgeError("NO_FREEZE", "evaluator-mode verifier requires a frozen candidate")
-            self.forge._verify_freeze(freeze)
-            frozen_candidate = str(freeze["candidate_identity"])
-            if candidate_identity is not None and candidate_identity != frozen_candidate:
-                raise ForgeError(
-                    "STALE_CANDIDATE",
-                    "verifier candidate differs from the frozen candidate identity",
-                )
-            candidate = self.forge._record_by_id("candidate", frozen_candidate, "candidate_id")
+            freeze, candidate = state_machine.authorize_evaluator_entry(candidate_identity)
         selected_scope = self._scope(verifier, scope)
         selected_paths = self._validate_changed_paths(changed_paths or [], require_files=False)
         region = self._validate_source_region(verifier, source_region)
@@ -339,10 +345,12 @@ class MicroVerifierService:
         }
         environment = self.config.environment(workflow)
         identities = self._material_identities(verifier, provider, workflow, environment)
+        prior_verifier_results = self.forge._records("verifier_result")
         supersedes_output_identity = self._superseded_result(
             verifier.verifier_id,
             str(candidate["candidate_id"]),
             candidate.get("parent_candidate"),
+            prior_verifier_results,
         )
         action_fields: dict[str, object] = {
             "verifier_id": verifier.verifier_id,
@@ -406,6 +414,7 @@ class MicroVerifierService:
                 environment,
                 freeze,
                 timeout_cap,
+                prior_verifier_results,
             )
         except Exception as exc:
             code = exc.code if isinstance(exc, ForgeError) else "VERIFIER_INTERNAL"
@@ -430,6 +439,14 @@ class MicroVerifierService:
                     "INTERNAL_RECORD", "terminal verifier result model is invalid"
                 ) from exc
             result = terminal_record
+        ForgeStateMachine.authorize_terminal_result_for_recorded_action(
+            action,
+            prior_verifier_results,
+            action_id=str(action["action_id"]),
+            candidate_id=str(result["candidate_identity"]),
+            freeze_id=(str(result["freeze_identity"]) if result["freeze_identity"] else None),
+            mode=str(result["mode"]),
+        )
         self.forge._write_immutable("verifier-results", str(result["output_identity"]), result)
         self.forge.ledger.append("verifier_result", result)
         return self._disclose_result(result)
@@ -543,11 +560,12 @@ class MicroVerifierService:
         verifier_id: str,
         candidate_identity: str,
         parent_candidate: object,
+        results: list[LedgerEntry],
     ) -> str | None:
         lineage = {candidate_identity}
         if parent_candidate is not None:
             lineage.add(str(parent_candidate))
-        for entry in reversed(self.forge._records("verifier_result")):
+        for entry in reversed(results):
             payload = entry.payload
             if (
                 payload.get("verifier_id") == verifier_id
@@ -892,6 +910,7 @@ class MicroVerifierService:
         environment: dict[str, str],
         freeze: ForgeRecord | None,
         timeout_cap: float | None,
+        prior_verifier_results: list[LedgerEntry],
     ) -> VerifierResultRecord:
         started = time.monotonic()
         execution: ExecutionResult | None = None
@@ -1016,7 +1035,7 @@ class MicroVerifierService:
             entry.payload.get("mode") == "development"
             and entry.payload.get("candidate_identity") == candidate["candidate_id"]
             and entry.payload.get("verifier_id") == verifier.verifier_id
-            for entry in self.forge._records("verifier_result")
+            for entry in prior_verifier_results
         )
         disclosure = verifier.disclosure
         fields: dict[str, object] = {

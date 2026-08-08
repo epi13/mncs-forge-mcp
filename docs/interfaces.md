@@ -5,6 +5,7 @@ Run `mncs-forge --help` and `mncs-forge-mcp --help` for the installed interface.
 MCP tools:
 
 - `mncs_forge_project_inspect`
+- `mncs_forge_state_inspect`
 - `mncs_forge_claim_status`
 - `mncs_forge_claim_blockers`
 - `mncs_forge_providers_list`
@@ -41,6 +42,10 @@ are unchanged. Derived summary objects need not pretend to be persisted records.
 CLI equivalents are `mncs-forge providers list`, `mncs-forge providers probe PROVIDER_ID`, and
 `mncs-forge providers blockers [CAPABILITY ...]`. Read-only resources include configured
 providers and capability blockers.
+
+`mncs-forge state`, `mncs_forge_state_inspect`, and `mncs-forge://state/lifecycle` expose the same
+derived lifecycle stage, identities, evidence readiness, legal next operations, stable blockers,
+and historical limitations. `project_inspect` embeds that result under `lifecycle`.
 
 Micro-verifier CLI equivalents are:
 

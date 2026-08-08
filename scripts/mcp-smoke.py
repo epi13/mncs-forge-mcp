@@ -13,6 +13,7 @@ from mcp.client.stdio import stdio_client
 
 EXPECTED = {
     "mncs_forge_project_inspect",
+    "mncs_forge_state_inspect",
     "mncs_forge_claim_status",
     "mncs_forge_claim_blockers",
     "mncs_forge_providers_list",
