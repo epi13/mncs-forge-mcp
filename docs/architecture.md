@@ -46,6 +46,27 @@ transition policy. FastMCP tools are generated from registry metadata, while arg
 hand tuned and registry-bound. Operation-backed MCP resources use the same gate; static resources
 and prompts remain presentation. See [Canonical Forge operation registry](operation-registry.md).
 
+## Extension boundaries
+
+Forge extensions attach at explicit inward-facing boundaries:
+
+| Extension | Current boundary | What it does not establish |
+| --- | --- | --- |
+| Provider | declared Provider Protocol workflow and capability probe | analyzer authority, conformance, or independence |
+| Micro-verifier | typed verifier declaration over a declared provider method | a whole-program proof, result cache, or normative validator |
+| Application service | focused service with typed ports and shared composition-root dependencies | a replacement lifecycle policy or interface adapter |
+| Storage | `RecordReader`/`RecordCommitter` ports implemented by `LocalRecordStore` | external anchoring, custody, witnessing, or remote storage |
+| Execution | current `CommandExecutor` port and local adapter | runner receipts, sandbox assurance, containers, SSH, or attestation |
+| Public operation | frozen definition in `operations.py` with CLI/MCP/resource metadata | lifecycle authorization, which remains in `ForgeStateMachine` |
+
+The operation registry is the public dispatch extension point; application services are the
+behavior extension point; ports are the adapter substitution points. New providers or verifiers
+must remain declared and capability-bound. A future Task 7 runner may replace the local execution
+adapter only after it records the properties needed for any stronger assurance claim. See
+[Provider Protocol integration](provider-protocol.md), [Machine-native micro-verifiers](micro-verifiers.md),
+[Transactional local storage](storage.md), and [Canonical Forge operation registry](operation-registry.md)
+for the detailed contracts.
+
 `CommandExecutor` is dependency inversion over the existing bounded local process behavior only.
 It does not add runner receipts, sandbox assurance, containers, SSH, mount/network policy, or
 attestation; those remain Task 7. Likewise, project observation centralizes existing filesystem

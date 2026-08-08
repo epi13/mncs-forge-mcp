@@ -77,8 +77,8 @@ migration. Explicit state transitions derive from append-only typed history, aut
 record-plus-ledger changes commit through one recoverable local transaction boundary, and the
 compatibility facade delegates to explicit services through typed storage, execution, and identity
 ports. CLI and MCP dispatch now share one typed operation registry and deterministic interface
-inventory. Remaining `0.1.0b1` work reviews schema/migration compatibility and documented extension
-boundaries before Task 7 expands runner semantics. Forge Cell schemas and fail-closed assurance
+inventory. Remaining `0.1.0b1` work reviews schema/migration compatibility; extension boundaries
+are documented before Task 7 expands runner semantics. Forge Cell schemas and fail-closed assurance
 assessment are available as a specification foundation; the actual Linux isolation and attestation
 backends remain ordered follow-up work. Query-driven micro-debugging now also has an architecture,
 versioned reference vocabulary, and a separate implementation queue; runtime sessions and reusable

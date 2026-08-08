@@ -354,8 +354,9 @@ services. The singular `MicroVerifierService` now receives narrow collaborators 
 Forge-shaped host. Typed ports cover verified record reads, transactional commits, bounded command
 execution, project/filesystem observations, and verifier catalog presentation. Static architecture
 tests prohibit upward imports, service-to-Forge dependencies, concrete execution/storage bypasses,
-and cycles among the new application modules. Task 6's operation registry and Task 7's runner
-receipts, sandbox semantics, and alternate backends were intentionally not implemented.
+and cycles among the new application modules. At the Task 5 boundary, Task 6's operation registry
+and Task 7's runner receipts, sandbox semantics, and alternate backends were intentionally not
+implemented; Task 6 is now complete below and Task 7 remains future work.
 
 ---
 
@@ -375,11 +376,11 @@ Eliminate independent manual dispatch definitions that can drift between the CLI
 
 Each operation should declare:
 
-- stable operation name;
+- stable canonical operation identifier;
 - allowed mode or modes;
 - whether it mutates state;
 - input model;
-- output model;
+- output contract;
 - authority or transition requirement;
 - disclosure class;
 - CLI mapping where applicable; and

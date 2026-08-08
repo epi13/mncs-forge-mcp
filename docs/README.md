@@ -45,8 +45,8 @@ development planning. The root README remains a short project entrypoint.
 - [Micro-debugging Codex queue](codex-micro-debugging-next-steps.md) — ordered implementation
   tasks for diagnostic records, snapshots, provider queries, a Clang/LLVM pilot, benchmarks, and
   adversarial validation.
-- [Architecture decision records](adr/README.md) — proposed decisions that should be resolved
-  before the corresponding implementation work lands.
+- [Architecture decision records](adr/README.md) — accepted decisions for implemented boundaries
+  and proposed decisions for future work.
 - [Task 3 validation evidence](development-evidence/task-3-validation.md) — baseline, focused/full
   test results, benchmark comparison, graph-analysis limits, and the deferred storage seam.
 - [Task 4 validation evidence](development-evidence/task-4-validation.md) — transaction fault
