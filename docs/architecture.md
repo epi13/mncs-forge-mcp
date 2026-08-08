@@ -28,6 +28,13 @@ MCP, and Provider Protocol boundaries remain JSON-compatible. Supersession and l
 explicit. See [Versioned Forge records](record-schemas.md) for schema, identity, and legacy
 migration rules.
 
+Authorized persistent transitions pass to `RecordStore` only after state-machine approval and
+typed record construction. The local store stages the immutable record and replacement ledger,
+binds them to the expected ledger predecessor, and publishes them under one exclusive state lock.
+Startup recovery resolves prepared transactions before lifecycle projection. A local derived index
+is rebuildable acceleration data; the ledger and immutable records remain authoritative. See
+[Transactional local storage](storage.md).
+
 `ForgeStateMachine` derives active epoch, candidate lineage/freshness, required-evidence readiness,
 terminal disposition, freeze/evaluation/bundle state, and verifier action terminality from one
 typed ledger snapshot. It authorizes transitions but does not execute providers or write records.

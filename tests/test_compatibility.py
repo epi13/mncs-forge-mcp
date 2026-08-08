@@ -59,11 +59,22 @@ def test_legacy_fixture_sha256_contract_is_unchanged() -> None:
 def test_legacy_ledger_raw_integrity_is_verified_before_migration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def migration_must_not_run(*args: object, **kwargs: object) -> object:
-        del args, kwargs
-        raise AssertionError("migration ran before raw ledger verification")
+    raw_verified = False
+    original_verify = Ledger._verify_raw_records
+    original_normalize = MIGRATIONS.normalize
 
-    monkeypatch.setattr(MIGRATIONS, "normalize", migration_must_not_run)
+    def observe_raw_verify(self: Ledger, records: list[dict[str, object]]) -> str:
+        nonlocal raw_verified
+        result = original_verify(self, records)  # type: ignore[arg-type]
+        raw_verified = True
+        return result
+
+    def migration_after_raw(*args: object, **kwargs: object) -> object:
+        assert raw_verified, "migration ran before raw ledger verification"
+        return original_normalize(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Ledger, "_verify_raw_records", observe_raw_verify)
+    monkeypatch.setattr(MIGRATIONS, "normalize", migration_after_raw)
     assert Ledger(STATE).verify() == {
         "ok": True,
         "entries": 14,
@@ -218,9 +229,9 @@ def test_raw_valid_type_mismatched_current_ledger_fails_after_integrity(
         + "\n",
         encoding="utf-8",
     )
-    assert ledger.verify()["ok"] is True
+    assert ledger.verify_chain()["ok"] is True
     with pytest.raises(ForgeError) as issue:
-        ledger.records()
+        ledger.verify()
     assert issue.value.code == "RECORD_TYPE_MISMATCH"
 
 

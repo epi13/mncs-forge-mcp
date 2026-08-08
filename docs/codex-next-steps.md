@@ -249,6 +249,8 @@ pytest -q tests/test_state_machine.py tests/test_engine.py tests/test_cli_mcp_ed
 **Target:** `0.1.0a3`  
 **Depends on:** Tasks 2 and 3
 
+**Status:** Completed in Task 4
+
 ### Objective
 
 Prevent interrupted processes from leaving an immutable record without its ledger entry, a ledger
