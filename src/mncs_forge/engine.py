@@ -26,20 +26,22 @@ from .identity import content_identity, file_identity, identity_map
 from .ledger import Ledger
 from .micro_verifiers import MicroVerifierService
 from .paths import is_within, resolve_contained, validate_relative_path
+from .record_store import LocalRecordStore, RecordStore
 from .records import (
-    CURRENT_SCHEMA_VERSION,
-    RECORD_GROUP_TYPES,
     BundleRecord,
     FinalEvaluationRecord,
     ForgeRecord,
     LedgerEntry,
     RecordType,
+    VerifierActionRecord,
+    VerifierResultRecord,
     WorkflowActionRecord,
     WorkflowResultRecord,
     new_record,
 )
 from .serialization import canonical_bytes, local_json_identity, read_json
 from .state_machine import ForgeStateMachine
+from .verifier_support import recovered_terminal_unknown_result
 
 STATUS_ORDER = {"PASS": 0, "UNKNOWN": 1, "FAIL": 2}
 CLAIM_CLASSES = (
@@ -83,12 +85,67 @@ def _now() -> str:
 
 
 class Forge:
-    def __init__(self, config: ForgeConfig, mode: str = "development") -> None:
+    def __init__(
+        self,
+        config: ForgeConfig,
+        mode: str = "development",
+        *,
+        record_store: RecordStore | None = None,
+    ) -> None:
         if mode not in {"development", "evaluator"}:
             raise ForgeError("INVALID_MODE", "mode must be development or evaluator")
         self.config = config
         self.mode = mode
         self.ledger = Ledger(config.state_dir)
+        self.record_store = record_store or LocalRecordStore(config.state_dir, self.ledger)
+        if record_store is not None:
+            self.record_store.recover()
+        self._recover_stranded_verifier_actions()
+
+    def _recover_stranded_verifier_actions(self) -> None:
+        """Close durable verifier actions whose executing process no longer holds its lock."""
+
+        actions = self.ledger.records("verifier_action")
+        terminal_action_ids = {
+            str(entry.payload["action_id"]) for entry in self.ledger.records("verifier_result")
+        }
+        for entry in actions:
+            action = entry.payload
+            if not isinstance(action, VerifierActionRecord):
+                raise ForgeError("RECOVERY_ACTION_MALFORMED", "verifier action has wrong type")
+            action_id = str(action["action_id"])
+            if action_id in terminal_action_ids:
+                continue
+            try:
+                execution = self.record_store.action_execution(action_id, timeout=0)
+                with execution:
+                    current_results = self.ledger.records("verifier_result")
+                    ForgeStateMachine.authorize_terminal_result_for_recorded_action(
+                        action,
+                        current_results,
+                        action_id=action_id,
+                        candidate_id=str(action["candidate_identity"]),
+                        freeze_id=(
+                            str(action["freeze_identity"])
+                            if action["freeze_identity"] is not None
+                            else None
+                        ),
+                        mode=str(action["mode"]),
+                    )
+                    result = new_record(
+                        RecordType.VERIFIER_RESULT,
+                        recovered_terminal_unknown_result(action=action, recorded_at=_now()),
+                    )
+                    if not isinstance(result, VerifierResultRecord):
+                        raise ForgeError(
+                            "RECOVERY_ACTION_MALFORMED", "recovered verifier result has wrong type"
+                        )
+                    self.record_store.commit("verifier-results", "verifier_result", result)
+                    terminal_action_ids.add(action_id)
+            except ForgeError as exc:
+                if exc.code == "ACTION_EXECUTION_BUSY":
+                    continue
+                raise
 
     def _require_mode(self, expected: str) -> None:
         if self.mode != expected:
@@ -105,38 +162,6 @@ class Forge:
             if payload.get(key) == identity:
                 return payload
         raise ForgeError("RECORD_NOT_FOUND", f"no {kind} record for {identity}")
-
-    def _write_immutable(self, group: str, identity: str, value: ForgeRecord) -> Path:
-        try:
-            expected_type = RECORD_GROUP_TYPES[group]
-        except KeyError as exc:
-            raise ForgeError("RECORD_CONTEXT", f"unknown immutable record group: {group}") from exc
-        if value.record_type is not expected_type:
-            raise ForgeError(
-                "RECORD_TYPE_MISMATCH",
-                f"record group {group} requires {expected_type.value}, "
-                f"got {value.record_type.value}",
-            )
-        if value.schema_version != CURRENT_SCHEMA_VERSION:
-            raise ForgeError(
-                "RECORD_VERSION_WRITE", "new immutable records require schema version 1"
-            )
-        directory = self.config.state_dir / "records" / group
-        directory.mkdir(parents=True, exist_ok=True)
-        safe_identity = re.sub(r"[^A-Za-z0-9._-]", "_", identity)
-        path = directory / f"{safe_identity}.json"
-        try:
-            descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        except FileExistsError as exc:
-            raise ForgeError(
-                "RECORD_EXISTS", f"immutable record already exists: {identity}"
-            ) from exc
-        try:
-            os.write(descriptor, canonical_bytes(value.to_json()) + b"\n")
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
-        return path
 
     def _authority_paths(self) -> list[Path]:
         return [
@@ -524,8 +549,7 @@ class Forge:
 
     def _record_provider_probe(self, fields: Mapping[str, object]) -> ForgeRecord:
         record = new_record(RecordType.PROVIDER_PROBE, fields)
-        self._write_immutable("provider-probes", str(record["output_identity"]), record)
-        self.ledger.append("provider_probe", record)
+        self.record_store.commit("provider-probes", "provider_probe", record)
         return record
 
     def provider_probe(self, provider_id: str) -> dict[str, object]:
@@ -859,8 +883,7 @@ class Forge:
             "created_at": _now(),
         }
         record = new_record(RecordType.EPOCH, fields)
-        self._write_immutable("epochs", str(record["epoch_id"]), record)
-        self.ledger.append("epoch", record)
+        self.record_store.commit("epochs", "epoch", record)
         return record.to_object_dict()
 
     def _validate_changed_files(self, changed_files: list[str]) -> dict[str, str]:
@@ -926,8 +949,7 @@ class Forge:
             "supersedes": None,
         }
         record = new_record(RecordType.CANDIDATE, fields)
-        self._write_immutable("candidates", current, record)
-        self.ledger.append("candidate", record)
+        self.record_store.commit("candidates", "candidate", record)
         return record.to_object_dict()
 
     def _workflow(self, name: str, expected_mode: str) -> Workflow:
@@ -1147,8 +1169,7 @@ class Forge:
             result = self._run_workflow(workflow, subject, evaluator=False)
             if not isinstance(result, WorkflowResultRecord):
                 raise ForgeError("INTERNAL_RECORD", "development check produced invalid model")
-            self._write_immutable("results", str(result["output_identity"]), result)
-            self.ledger.append("result", result)
+            self.record_store.commit("results", "result", result)
             results.append(result)
         return {
             "candidate_identity": candidate["candidate_id"] if candidate else None,
@@ -1282,8 +1303,7 @@ class Forge:
             "recorded_at": _now(),
         }
         record = new_record(RecordType.CANDIDATE_DISPOSITION, fields)
-        self._write_immutable("dispositions", str(record["disposition_id"]), record)
-        self.ledger.append("disposition", record)
+        self.record_store.commit("dispositions", "disposition", record)
         return record.to_object_dict()
 
     def candidate_freeze(
@@ -1334,8 +1354,7 @@ class Forge:
             "frozen_at": _now(),
         }
         record = new_record(RecordType.FREEZE, fields)
-        self._write_immutable("freezes", str(record["freeze_id"]), record)
-        self.ledger.append("freeze", record)
+        self.record_store.commit("freezes", "freeze", record)
         return record.to_object_dict()
 
     def _verify_freeze(self, freeze: Mapping[str, object]) -> None:
@@ -1365,8 +1384,7 @@ class Forge:
             if candidate_before != self._current_candidate_identity():
                 raise ForgeError("EVALUATION_DRIFT", "candidate changed during evaluation")
             self._verify_freeze(freeze)
-            self._write_immutable("evaluations", str(result["output_identity"]), result)
-            self.ledger.append("evaluation", result)
+            self.record_store.commit("evaluations", "evaluation", result)
             results.append(result)
         return {
             "freeze_id": freeze["freeze_id"],
@@ -1590,8 +1608,7 @@ class Forge:
         )
         if not isinstance(result, BundleRecord):
             raise ForgeError("INTERNAL_RECORD", "bundle produced an invalid record model")
-        self._write_immutable("bundles", str(result["output_identity"]), result)
-        self.ledger.append("bundle", result)
+        self.record_store.commit("bundles", "bundle", result)
         integrity = str(result["status"])
         return {
             "package_creation": "COMPLETED" if result["returncode"] == 0 else "FAILED",

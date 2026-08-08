@@ -21,6 +21,7 @@ requirements.
 - [ADR 0006: Query-driven micro-debugging over the verifier evidence system](0006-query-driven-micro-debugging.md)
 - [ADR 0007: Intent-aware security verification for non-orthodox code](0007-intent-aware-security-verification.md)
 - [ADR 0008: Derive lifecycle state from append-only history](0008-derived-lifecycle-state-machine.md)
+- [ADR 0009: Recoverable local record and ledger commits](0009-recoverable-record-store.md)
 
 A coding agent should update the relevant ADR from **Proposed** to **Accepted** only when the PR
 actually implements and tests the decision or when maintainers approve it independently.

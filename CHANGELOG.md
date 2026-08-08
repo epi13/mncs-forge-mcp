@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add a typed `RecordStore` boundary that commits each immutable record and ledger entry through
+  one exclusive, journaled local transaction with deterministic, idempotent startup recovery.
+- Add durable staging, atomic publication, supported file/directory synchronization, expected-head
+  binding, serialized thread/process writers, and rebuildable local ledger indexing.
+- Extend ledger verification to detect missing, replaced, malformed, or payload-mismatched
+  immutable companions while preserving raw legacy hash verification before migration.
+- Recover durable verifier actions without terminal output as exactly one bound, non-sensitive
+  `UNKNOWN` result; recovery never invents provider PASS or FAIL evidence.
 - Add one typed append-only-history state machine for epoch/candidate lineage, required-evidence
   readiness, terminal disposition, freeze/evaluator coherence, bundle state, and verifier action
   terminality.

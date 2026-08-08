@@ -273,8 +273,8 @@ def test_action_result_records_and_identities_are_immutable(config: ForgeConfig)
     ].startswith("sha256:")
     assert payload["provider_response_identity"].startswith("forge-json-sha256-v1:")
     assert result["output_identity"] == payload["output_identity"]
-    with pytest.raises(ForgeError, match="already exists"):
-        forge._write_immutable("verifier-results", str(result["output_identity"]), payload)
+    duplicate = forge.record_store.commit("verifier-results", "verifier_result", payload)
+    assert duplicate.payload.to_json() == payload.to_json()
     assert forge.ledger.verify()["ok"] is True
 
 

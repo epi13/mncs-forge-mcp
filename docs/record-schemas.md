@@ -27,7 +27,8 @@ current hash projection includes ledger metadata and the versioned payload.
 The public typed vocabulary also includes `workflow_action` and `reconciliation`. In historical
 `0.1` Forge, workflow actions were transient requests and reconciliation was a derived interface
 object. Task 2 versions those internal/interface boundaries without inventing new persistence
-events. Transactional storage and new events remain later work.
+events. Task 4 makes only the listed persisted contexts transactional; it does not invent
+persistence for workflow actions or reconciliation.
 
 ## Legacy migration
 

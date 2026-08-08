@@ -17,6 +17,7 @@ development planning. The root README remains a short project entrypoint.
 - [Evidence and identity model](evidence-model.md)
 - [Versioned record schemas and migration](record-schemas.md)
 - [Lifecycle state machine and transition errors](lifecycle.md)
+- [Transactional local storage and recovery](storage.md)
 - [Security model and residual risks](security.md)
 - [Intent-aware security verification](intent-aware-security-verification.md)
 - [Forge Cell execution assurance](forge-cell.md)
@@ -46,6 +47,8 @@ development planning. The root README remains a short project entrypoint.
   before the corresponding implementation work lands.
 - [Task 3 validation evidence](development-evidence/task-3-validation.md) — baseline, focused/full
   test results, benchmark comparison, graph-analysis limits, and the deferred storage seam.
+- [Task 4 validation evidence](development-evidence/task-4-validation.md) — transaction fault
+  matrix, recovery/concurrency validation, benchmark comparison, and Joern storage-flow review.
 
 ## Documentation rules
 

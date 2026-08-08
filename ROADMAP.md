@@ -32,11 +32,12 @@ Required work:
 2. completed: introduce versioned internal and persistent record models and deterministic legacy
    migrations;
 3. completed: define and test explicit state-transition rules;
-4. add transactional record-plus-ledger writes and interrupted-write recovery; and
-5. retain compatibility with existing `0.1` configurations and state fixtures.
+4. completed: add transactional record-plus-ledger writes and interrupted-write recovery; and
+5. completed: retain compatibility with existing `0.1` configurations and state fixtures.
 
-The current P0 priority is Task 4 transactional record-plus-ledger writes and interrupted-write
-recovery. The state machine deliberately exposes this storage seam without implementing it.
+The core `0.1.0a3` P0 internal-consolidation requirements are complete. The next architectural
+priority is the `0.1.0b1` control-plane decomposition; the package version remains unchanged until
+the repository's release process advances it.
 
 ## `0.1.0b1` — modular control plane
 

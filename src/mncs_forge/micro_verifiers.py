@@ -15,6 +15,7 @@ from .execution import ExecutionResult, parse_provider_response, run_bounded
 from .identity import content_identity
 from .ledger import Ledger
 from .paths import is_within, resolve_contained, validate_relative_path
+from .record_store import RecordStore
 from .records import (
     ForgeRecord,
     LedgerEntry,
@@ -52,6 +53,7 @@ class ForgeHost(Protocol):
     config: ForgeConfig
     mode: str
     ledger: Ledger
+    record_store: RecordStore
 
     def _state_machine(
         self,
@@ -75,8 +77,6 @@ class ForgeHost(Protocol):
     def _records(self, kind: str) -> list[LedgerEntry]: ...
 
     def _verify_freeze(self, freeze: Mapping[str, object]) -> None: ...
-
-    def _write_immutable(self, group: str, identity: str, value: ForgeRecord) -> Path: ...
 
 
 def _aggregate_status(statuses: list[str]) -> str:
@@ -398,58 +398,57 @@ class MicroVerifierService:
         )
         if not isinstance(action, VerifierActionRecord):
             raise ForgeError("INTERNAL_RECORD", "verifier action produced an invalid model")
-        self.forge._write_immutable("verifier-actions", str(action["action_id"]), action)
-        self.forge.ledger.append("verifier_action", action)
-        started = time.monotonic()
-        try:
-            result = self._execute(
-                verifier,
-                workflow,
-                provider,
-                candidate,
+        with self.forge.record_store.action_execution(str(action["action_id"])):
+            self.forge.record_store.commit("verifier-actions", "verifier_action", action)
+            started = time.monotonic()
+            try:
+                result = self._execute(
+                    verifier,
+                    workflow,
+                    provider,
+                    candidate,
+                    action,
+                    request,
+                    request_bytes,
+                    identities,
+                    environment,
+                    freeze,
+                    timeout_cap,
+                    prior_verifier_results,
+                )
+            except Exception as exc:
+                code = exc.code if isinstance(exc, ForgeError) else "VERIFIER_INTERNAL"
+                message = (
+                    exc.message
+                    if isinstance(exc, ForgeError)
+                    else "unexpected verifier execution failure"
+                )
+                terminal_fields = terminal_unknown_result(
+                    action=action,
+                    verifier=verifier,
+                    provider=provider,
+                    identities=identities,
+                    code=code,
+                    message=message,
+                    recorded_at=self._now(),
+                    duration_seconds=time.monotonic() - started,
+                )
+                terminal_record = new_record(RecordType.VERIFIER_RESULT, terminal_fields)
+                if not isinstance(terminal_record, VerifierResultRecord):
+                    raise ForgeError(
+                        "INTERNAL_RECORD", "terminal verifier result model is invalid"
+                    ) from exc
+                result = terminal_record
+            ForgeStateMachine.authorize_terminal_result_for_recorded_action(
                 action,
-                request,
-                request_bytes,
-                identities,
-                environment,
-                freeze,
-                timeout_cap,
                 prior_verifier_results,
+                action_id=str(action["action_id"]),
+                candidate_id=str(result["candidate_identity"]),
+                freeze_id=(str(result["freeze_identity"]) if result["freeze_identity"] else None),
+                mode=str(result["mode"]),
             )
-        except Exception as exc:
-            code = exc.code if isinstance(exc, ForgeError) else "VERIFIER_INTERNAL"
-            message = (
-                exc.message
-                if isinstance(exc, ForgeError)
-                else "unexpected verifier execution failure"
-            )
-            terminal_fields = terminal_unknown_result(
-                action=action,
-                verifier=verifier,
-                provider=provider,
-                identities=identities,
-                code=code,
-                message=message,
-                recorded_at=self._now(),
-                duration_seconds=time.monotonic() - started,
-            )
-            terminal_record = new_record(RecordType.VERIFIER_RESULT, terminal_fields)
-            if not isinstance(terminal_record, VerifierResultRecord):
-                raise ForgeError(
-                    "INTERNAL_RECORD", "terminal verifier result model is invalid"
-                ) from exc
-            result = terminal_record
-        ForgeStateMachine.authorize_terminal_result_for_recorded_action(
-            action,
-            prior_verifier_results,
-            action_id=str(action["action_id"]),
-            candidate_id=str(result["candidate_identity"]),
-            freeze_id=(str(result["freeze_identity"]) if result["freeze_identity"] else None),
-            mode=str(result["mode"]),
-        )
-        self.forge._write_immutable("verifier-results", str(result["output_identity"]), result)
-        self.forge.ledger.append("verifier_result", result)
-        return self._disclose_result(result)
+            self.forge.record_store.commit("verifier-results", "verifier_result", result)
+            return self._disclose_result(result)
 
     def batch(
         self,

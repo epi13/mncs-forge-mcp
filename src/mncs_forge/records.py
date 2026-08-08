@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -351,6 +352,81 @@ RECORD_GROUP_TYPES: dict[str, RecordType] = {
     "evaluations": RecordType.FINAL_EVALUATION,
     "bundles": RecordType.BUNDLE,
 }
+
+
+@dataclass(frozen=True, slots=True)
+class PersistedRecordContext:
+    """Trusted storage context for a ledger-backed immutable record."""
+
+    group: str
+    ledger_kind: str
+    record_type: RecordType
+    identity_field: str
+
+
+PERSISTED_RECORD_CONTEXTS: dict[str, PersistedRecordContext] = {
+    "epoch": PersistedRecordContext("epochs", "epoch", RecordType.EPOCH, "epoch_id"),
+    "candidate": PersistedRecordContext(
+        "candidates", "candidate", RecordType.CANDIDATE, "candidate_id"
+    ),
+    "provider_probe": PersistedRecordContext(
+        "provider-probes", "provider_probe", RecordType.PROVIDER_PROBE, "output_identity"
+    ),
+    "result": PersistedRecordContext(
+        "results", "result", RecordType.WORKFLOW_RESULT, "output_identity"
+    ),
+    "verifier_action": PersistedRecordContext(
+        "verifier-actions", "verifier_action", RecordType.VERIFIER_ACTION, "action_id"
+    ),
+    "verifier_result": PersistedRecordContext(
+        "verifier-results", "verifier_result", RecordType.VERIFIER_RESULT, "output_identity"
+    ),
+    "disposition": PersistedRecordContext(
+        "dispositions",
+        "disposition",
+        RecordType.CANDIDATE_DISPOSITION,
+        "disposition_id",
+    ),
+    "freeze": PersistedRecordContext("freezes", "freeze", RecordType.FREEZE, "freeze_id"),
+    "evaluation": PersistedRecordContext(
+        "evaluations", "evaluation", RecordType.FINAL_EVALUATION, "output_identity"
+    ),
+    "bundle": PersistedRecordContext("bundles", "bundle", RecordType.BUNDLE, "output_identity"),
+}
+
+
+def persisted_record_context(*, group: str, ledger_kind: str) -> PersistedRecordContext:
+    """Resolve and cross-check the complete immutable/ledger storage context."""
+
+    try:
+        context = PERSISTED_RECORD_CONTEXTS[ledger_kind]
+    except KeyError as exc:
+        raise ForgeError("RECORD_CONTEXT", f"unsupported ledger kind: {ledger_kind}") from exc
+    if context.group != group:
+        raise ForgeError(
+            "RECORD_CONTEXT",
+            f"ledger kind {ledger_kind} requires immutable group {context.group}, got {group}",
+        )
+    return context
+
+
+def immutable_record_path(state_dir: Path, group: str, identity: str) -> Path:
+    """Return the canonical contained path for an immutable record identity."""
+
+    safe_identity = safe_record_identity(identity)
+    return state_dir / "records" / group / f"{safe_identity}.json"
+
+
+def safe_record_identity(identity: str) -> str:
+    """Encode an evidence identity as one portable local filename component."""
+
+    if not identity or identity in {".", ".."}:
+        raise ForgeError("RECORD_IDENTITY", "immutable record identity is empty or invalid")
+    safe_identity = re.sub(r"[^A-Za-z0-9._-]", "_", identity)
+    if not safe_identity:
+        raise ForgeError("RECORD_IDENTITY", "immutable record identity has no safe path form")
+    return safe_identity
+
 
 REQUIRED_STRING_FIELDS: dict[RecordType, frozenset[str]] = {
     RecordType.EPOCH: frozenset(

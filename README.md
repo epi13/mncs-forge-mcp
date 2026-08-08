@@ -61,6 +61,7 @@ minimal controlled workflow.
 - [Query-driven micro-debugging](docs/micro-debugging.md)
 - [Evidence and identity model](docs/evidence-model.md)
 - [Lifecycle state machine](docs/lifecycle.md)
+- [Transactional local storage](docs/storage.md)
 - [Development roadmap](ROADMAP.md)
 - [Codex implementation queue](docs/codex-next-steps.md)
 - [Forge Cell Codex queue](docs/codex-forge-cell-next-steps.md)
@@ -71,9 +72,10 @@ minimal controlled workflow.
 The next release should stabilize the internal architecture before adding more verifier types,
 distributed execution, or sandbox backends. The verifier lifecycle now has one explicit service,
 and persistent evidence now crosses a frozen typed, versioned boundary with deterministic legacy
-migration. Explicit state transitions now derive from append-only typed history and are shared by
-the facade, CLI, and MCP. The immediate priority is transactional storage, then splitting the
-control plane behind stable interfaces. Forge Cell schemas and fail-closed assurance
+migration. Explicit state transitions derive from append-only typed history, and authorized
+record-plus-ledger changes now commit through one recoverable local transaction boundary. The
+immediate priority is splitting the control plane behind stable interfaces. Forge Cell schemas and
+fail-closed assurance
 assessment are available as a specification foundation; the actual Linux isolation and attestation
 backends remain ordered follow-up work. Query-driven micro-debugging now also has an architecture,
 versioned reference vocabulary, and a separate implementation queue; runtime sessions and reusable
