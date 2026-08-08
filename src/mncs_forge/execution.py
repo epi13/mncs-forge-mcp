@@ -8,23 +8,14 @@ import selectors
 import signal
 import subprocess
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from .errors import ForgeError
 from .execution_windows import collect_windows_pipes
+from .ports import ExecutionResult
 
 STATUSES = {"PASS", "FAIL", "UNKNOWN"}
-
-
-@dataclass(frozen=True)
-class ExecutionResult:
-    argv: list[str]
-    returncode: int
-    stdout: bytes
-    stderr: bytes
-    duration_seconds: float
 
 
 def validate_argv(command: object) -> list[str]:

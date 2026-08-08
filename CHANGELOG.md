@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Split the monolithic control plane into explicit project, provider, candidate, development,
+  evaluation, evidence, recovery, and singular micro-verifier application services while retaining
+  `Forge` as the stable CLI/MCP compatibility and composition facade.
+- Add typed record-read, record-commit, command-execution, project-observation, and verifier-catalog
+  ports with one local adapter composition; application services no longer receive `Forge`, invoke
+  `run_bounded`, construct `LocalRecordStore`, or calculate filesystem identities directly.
+- Add facade characterization, direct service, import-boundary, cycle, storage-bypass, and
+  execution-boundary tests; CLI/MCP command, tool, resource, argument, result, and error behavior
+  remains unchanged and Task 6's operation registry remains deferred.
 - Add a typed `RecordStore` boundary that commits each immutable record and ledger entry through
   one exclusive, journaled local transaction with deterministic, idempotent startup recovery.
 - Add durable staging, atomic publication, supported file/directory synchronization, expected-head
