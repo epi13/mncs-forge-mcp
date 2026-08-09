@@ -206,8 +206,14 @@ def test_timeout_terminates_a_simple_spawned_child_process(
     except ProcessLookupError:
         return
     if sys.platform.startswith("linux"):
-        state = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").split()[2]
+        try:
+            state = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").split()[2]
+        except FileNotFoundError:
+            return
         if state == "Z":
             return
-    os.kill(pid, 9)
+    try:
+        os.kill(pid, 9)
+    except ProcessLookupError:
+        return
     pytest.fail("timeout left the spawned child process running")
