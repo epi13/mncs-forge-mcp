@@ -65,6 +65,14 @@ def test_0_1_0b1_semantic_compatibility_snapshot_is_current() -> None:
     )
 
 
+def test_cli_variadic_positional_requiredness_is_semantic() -> None:
+    snapshot_path = Path("tests/compatibility/0.1.0b1.json")
+    snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    command = snapshot["cli"]["commands"]["providers blockers"]
+    assert command["arguments"][0]["nargs"] == "*"
+    assert command["arguments"][0]["required"] is False
+
+
 def test_legacy_ledger_raw_integrity_is_verified_before_migration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
