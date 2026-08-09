@@ -83,6 +83,48 @@ def test_services_never_depend_on_forge_or_local_execution_function() -> None:
     assert failures == []
 
 
+def test_application_services_use_runner_port_without_subprocess_bypass() -> None:
+    failures: list[str] = []
+    for path in sorted(APPLICATION.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import) and any(
+                alias.name == "subprocess" for alias in node.names
+            ):
+                failures.append(f"{path.name}: imports subprocess")
+            if isinstance(node, ast.ImportFrom) and node.module == "subprocess":
+                failures.append(f"{path.name}: imports subprocess")
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "run_bounded"
+            ):
+                failures.append(f"{path.name}:{node.lineno}: calls run_bounded")
+        source = path.read_text(encoding="utf-8")
+        if "CommandExecutor" in source or "LocalProcessRunner" in source:
+            failures.append(f"{path.name}: depends on concrete/legacy executor name")
+    assert failures == []
+
+
+def test_subprocess_implementation_is_confined_to_execution_modules() -> None:
+    direct_subprocess = sorted(
+        path.relative_to(PACKAGE).as_posix()
+        for path in PACKAGE.rglob("*.py")
+        if any(
+            isinstance(node, (ast.Import, ast.ImportFrom))
+            and (
+                (
+                    isinstance(node, ast.Import)
+                    and any(alias.name == "subprocess" for alias in node.names)
+                )
+                or (isinstance(node, ast.ImportFrom) and node.module == "subprocess")
+            )
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
+        )
+    )
+    assert direct_subprocess == ["execution.py", "execution_windows.py"]
+
+
 def test_facade_composes_services_and_services_do_not_import_facade() -> None:
     engine_imports = imports(PACKAGE / "engine.py")
     application_imports = {

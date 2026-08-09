@@ -7,7 +7,7 @@ from pathlib import Path
 from ..config import ForgeConfig, Provider
 from ..errors import ForgeError
 from ..execution import parse_provider_capabilities
-from ..ports import CommandExecutor, ProjectObserver, RecordCommitter, RecordReader
+from ..ports import ProjectObserver, RecordCommitter, RecordReader, Runner
 from ..records import ForgeRecord, RecordType, new_record
 from ..serialization import canonical_bytes, local_json_identity
 from .support import aggregate_status, now, redact
@@ -21,7 +21,7 @@ class ProviderService:
         mode: str,
         records: RecordReader,
         record_store: RecordCommitter,
-        executor: CommandExecutor,
+        executor: Runner,
         observer: ProjectObserver,
     ) -> None:
         self.config = config

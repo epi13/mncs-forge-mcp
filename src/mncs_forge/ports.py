@@ -6,7 +6,7 @@ from collections.abc import Iterator, Mapping
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from .records import ForgeRecord, LedgerEntry
 
@@ -23,8 +23,33 @@ class ExecutionResult:
     duration_seconds: float
 
 
-class CommandExecutor(Protocol):
-    """Execute one already-declared bounded command without interpreting domain meaning."""
+RunnerCapability = Literal["enforced", "not-provided", "unknown"]
+RunnerKind = str
+RunnerExecutionScope = Literal["local", "remote", "unknown"]
+RunnerShellExecution = Literal["disabled", "enabled", "unknown"]
+
+
+@dataclass(frozen=True)
+class RunnerCapabilities:
+    """Facts a runner can establish without making an assurance claim."""
+
+    runner_kind: RunnerKind
+    runner_version: str
+    os_family: str
+    architecture: str
+    execution_scope: RunnerExecutionScope
+    shell_execution: RunnerShellExecution
+    timeout_enforcement: RunnerCapability
+    stdout_limit: RunnerCapability
+    stderr_limit: RunnerCapability
+    process_group_termination: RunnerCapability
+    sandbox_isolation: RunnerCapability
+    network_isolation: RunnerCapability
+    filesystem_isolation: RunnerCapability
+
+
+class Runner(Protocol):
+    """Execute one already-declared bounded command and inspect runner guarantees."""
 
     def execute(
         self,
@@ -37,6 +62,12 @@ class CommandExecutor(Protocol):
         environment: dict[str, str],
         stdin: bytes = b"",
     ) -> ExecutionResult: ...
+
+    def inspect_capabilities(self) -> RunnerCapabilities: ...
+
+
+# Retain the Task 5 port name for callers that imported the inward-facing protocol directly.
+CommandExecutor = Runner
 
 
 class RecordReader(Protocol):

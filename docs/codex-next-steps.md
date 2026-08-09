@@ -435,6 +435,19 @@ is Task 7; none of its runner or isolation work is part of the compatibility clo
 **Target:** `0.2.x`  
 **Depends on:** Tasks 4 through 6
 
+**Status:** Task 7A is complete in the focused local-runner extraction iteration. The broader
+Task 7 remains incomplete: Podman and other alternate adapters, execution receipts, and stronger
+execution-assurance semantics are still outstanding.
+
+### Task 7A — Extract and harden the local runner
+
+The first bounded increment evolves the existing `CommandExecutor` port into the typed `Runner`
+boundary, exposes `LocalProcessRunner`, and preserves the current bounded subprocess behavior.
+Its capability description reports only established local-process facts; it does not claim
+sandbox, network, filesystem, custody, witnessing, independence, or attestation. Adversarial
+execution tests and application-boundary checks are part of this increment. Persistent execution
+receipts are deliberately deferred.
+
 ### Objective
 
 Separate bounded execution policy from the current local subprocess implementation and make

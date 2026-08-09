@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from .adapters import LocalCommandExecutor, LocalProjectObserver
+from .adapters import LocalProcessRunner, LocalProjectObserver
 from .application.candidates import CandidateService
 from .application.evaluation import EvaluationService
 from .application.evidence import EvidenceService
@@ -53,7 +53,7 @@ class Forge:
         self.ledger = Ledger(config.state_dir)
         self.record_store = record_store or LocalRecordStore(config.state_dir, self.ledger)
 
-        self._executor = LocalCommandExecutor()
+        self._executor = LocalProcessRunner()
         self._observer = LocalProjectObserver(config)
         self._lifecycle = LifecycleContext(
             mode=mode,
