@@ -13,6 +13,7 @@ import time
 from typing import BinaryIO, NoReturn
 
 from .errors import ForgeError
+from .ports import ExecutionObservationSink
 
 
 def _raise_after_termination(
@@ -33,6 +34,7 @@ def collect_windows_pipes(
     timeout: float,
     stdout_cap: int,
     stderr_cap: int,
+    observation: ExecutionObservationSink | None = None,
 ) -> tuple[int, bytes, bytes]:
     """Collect two Windows pipes while enforcing independent byte caps."""
 
@@ -58,10 +60,14 @@ def collect_windows_pipes(
         target = outputs[name]
         while chunk := stream.read(65536):
             target.extend(chunk)
+            if observation is not None:
+                observation.feed(name, chunk)
             if len(target) > cap:
                 with overflow_lock:
                     if not overflow_name:
                         overflow_name.append(name)
+                if observation is not None:
+                    observation.mark_limit(name, cap)
                 overflow.set()
                 return
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add Task 7B-1 raw `LocalProcessRunner` observations and an adapter-ready seam for the
+  experimental MNCS `mncs-execution-receipt` `0.1-experimental` contract. The adapter uses pinned
+  RFC 8785 identities, bounded stream facts, explicit termination/enforcement mapping, and fixed
+  non-claim fields without persisting receipts or asserting assurance. Persistent receipt authority,
+  Podman, and sandbox work remain deferred.
 - Repair the Task 9B Windows test-harness portability regressions without changing raw local-runner
   output semantics or shrinking the oversized Provider Protocol corpus. Add the Task 9C
   implementation-mapped stable-local threat model, executable evidence mapping, and explicit

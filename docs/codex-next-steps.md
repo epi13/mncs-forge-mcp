@@ -435,8 +435,9 @@ is Task 7; none of its runner or isolation work is part of the compatibility clo
 **Target:** `0.2.x`  
 **Depends on:** Tasks 4 through 6
 
-**Status:** Task 7A is complete in the focused local-runner extraction iteration. The broader
-Task 7 remains incomplete: Podman and other alternate adapters, execution receipts, and stronger
+**Status:** Task 7A is complete, and Task 7B-1 is complete as a focused raw-observation and MNCS
+experimental receipt-adapter-readiness increment. Task 7 remains incomplete: persistent
+identity-bound Forge receipt integration, Podman and other alternate adapters, and stronger
 execution-assurance semantics are still outstanding.
 
 ### Task 7A — Extract and harden the local runner
@@ -447,6 +448,23 @@ Its capability description reports only established local-process facts; it does
 sandbox, network, filesystem, custody, witnessing, independence, or attestation. Adversarial
 execution tests and application-boundary checks are part of this increment. Persistent execution
 receipts are deliberately deferred.
+
+### Task 7B-1 — Forge observations and MNCS receipt-adapter readiness
+
+This increment uses the experimental MNCS `mncs-execution-receipt` / `0.1-experimental` contract
+as the only receipt envelope. `LocalProcessRunner.observe()` collects bounded raw lifecycle,
+termination, identity, stream, aggregate-output, wall-duration, and capability facts through the
+same subprocess path used by `execute()`. Complete stream totals and hashes are emitted only when
+the runner drained the stream; interrupted or output-limited observations retain explicit unknown
+totals rather than inventing them.
+
+`mncs_forge.mncs_execution_receipt` accepts an observation and caller-supplied subject, bundle,
+policy, challenge, harness, and optional placement context. It uses RFC 8785 identities, validates
+required context, preserves `FAIL > UNKNOWN > PASS` and the fixed MNCS claim boundary, and returns
+an unpersisted JSON envelope. It does not execute commands, write Forge records, create assurance,
+or claim sandboxing. The pinned upstream schema commit and digest are recorded in the focused
+development evidence note. Task 7B-2 must decide persistent identity-bound Forge integration;
+Task 7C remains the sandbox-capable rootless Podman runner.
 
 ### Objective
 

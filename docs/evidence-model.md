@@ -27,3 +27,19 @@ verifier/configuration/policy/environment identities, exact bounded input identi
 response identity, and a provider-declared dependency envelope. Freshness is `CURRENT`, `STALE`,
 or `UNKNOWN` lineage metadata and is not a conformance status. No verifier result cache is enabled
 in the initial implementation.
+
+## Execution observations and MNCS adapter readiness
+
+`LocalProcessRunner.observe()` exposes raw, bounded observations without adding a Forge receipt
+record. Complete runs report command/environment identities, lifecycle and termination facts,
+bounded stream counts and SHA-256 values, aggregate output, wall duration, and the runner's actual
+capabilities. Timeout, start-failure, and output-limit observations retain only what was observed;
+unknown totals or complete hashes remain unknown rather than being inferred.
+
+`mncs_forge.mncs_execution_receipt` adapts a complete observation plus caller-supplied subject,
+bundle, policy, challenge, and optional placement identities to MNCS's experimental
+`mncs-execution-receipt` / `0.1-experimental` envelope. It uses the pinned MNCS schema at commit
+`6d6380016e174feaaa774c1cf0931095d24b5280` (schema SHA-256
+`f2e1860405052a40b100bead7c27dbe0cc3ac11d03dccca3fcb643b350ecab6e`). The adapter fails closed
+when required context or complete stream totals are absent. It does not persist, authorize,
+interpret, or promote the receipt; all MNCS claim-boundary fields remain `not-asserted`.

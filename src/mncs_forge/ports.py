@@ -23,6 +23,64 @@ class ExecutionResult:
     duration_seconds: float
 
 
+ExecutionTermination = Literal[
+    "completed",
+    "nonzero-exit",
+    "timeout",
+    "signal",
+    "crash",
+    "resource-limit",
+    "output-limit",
+    "policy-rejected",
+    "cancelled",
+    "internal-runner-error",
+]
+
+
+@dataclass(frozen=True)
+class StreamObservation:
+    """Bounded stream facts; unknown totals are represented explicitly."""
+
+    total_bytes: int | None
+    observed_bytes: int
+    retained_bytes: int
+    retained_sha256: str | None
+    complete_sha256: str | None
+    truncated: bool | None
+    limit_hit: bool
+    limit_bytes: int | None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "total_bytes": self.total_bytes,
+            "observed_bytes": self.observed_bytes,
+            "retained_bytes": self.retained_bytes,
+            "retained_sha256": self.retained_sha256,
+            "complete_sha256": self.complete_sha256,
+            "truncated": self.truncated,
+            "limit_hit": self.limit_hit,
+            "limit_bytes": self.limit_bytes,
+        }
+
+
+@dataclass(frozen=True)
+class AggregateOutputObservation:
+    total_bytes: int | None
+    observed_bytes: int
+    retained_bytes: int
+    limit_hit: bool
+    limit_bytes: int | None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "total_bytes": self.total_bytes,
+            "observed_bytes": self.observed_bytes,
+            "retained_bytes": self.retained_bytes,
+            "limit_hit": self.limit_hit,
+            "limit_bytes": self.limit_bytes,
+        }
+
+
 RunnerCapability = Literal["enforced", "not-provided", "unknown"]
 RunnerKind = str
 RunnerExecutionScope = Literal["local", "remote", "unknown"]
@@ -47,6 +105,89 @@ class RunnerCapabilities:
     network_isolation: RunnerCapability
     filesystem_isolation: RunnerCapability
 
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "runner_kind": self.runner_kind,
+            "runner_version": self.runner_version,
+            "os_family": self.os_family,
+            "architecture": self.architecture,
+            "execution_scope": self.execution_scope,
+            "shell_execution": self.shell_execution,
+            "timeout_enforcement": self.timeout_enforcement,
+            "stdout_limit": self.stdout_limit,
+            "stderr_limit": self.stderr_limit,
+            "process_group_termination": self.process_group_termination,
+            "sandbox_isolation": self.sandbox_isolation,
+            "network_isolation": self.network_isolation,
+            "filesystem_isolation": self.filesystem_isolation,
+        }
+
+
+@dataclass(frozen=True)
+class ExecutionObservation:
+    """Raw runner facts, intentionally separate from semantic harness status."""
+
+    argv: tuple[str, ...]
+    command_identity: str
+    cwd_identity: str
+    environment_identity: str
+    stdin_identity: str
+    timeout_seconds: float
+    stdout_limit: int
+    stderr_limit: int
+    started_at: str | None
+    ended_at: str | None
+    duration_seconds: float | None
+    returncode: int | None
+    signal: int | None
+    termination_category: ExecutionTermination
+    stdout: StreamObservation
+    stderr: StreamObservation
+    aggregate_output: AggregateOutputObservation
+    capabilities: RunnerCapabilities
+    runner_identity: str
+    runner_version: str
+    executable_identity: str | None
+    runtime_identity: str | None
+    error_code: str | None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "argv": list(self.argv),
+            "command_identity": self.command_identity,
+            "cwd_identity": self.cwd_identity,
+            "environment_identity": self.environment_identity,
+            "stdin_identity": self.stdin_identity,
+            "timeout_seconds": self.timeout_seconds,
+            "stdout_limit": self.stdout_limit,
+            "stderr_limit": self.stderr_limit,
+            "started_at": self.started_at,
+            "ended_at": self.ended_at,
+            "duration_seconds": self.duration_seconds,
+            "returncode": self.returncode,
+            "signal": self.signal,
+            "termination_category": self.termination_category,
+            "stdout": self.stdout.to_dict(),
+            "stderr": self.stderr.to_dict(),
+            "aggregate_output": self.aggregate_output.to_dict(),
+            "capabilities": self.capabilities.to_dict(),
+            "runner_identity": self.runner_identity,
+            "runner_version": self.runner_version,
+            "executable_identity": self.executable_identity,
+            "runtime_identity": self.runtime_identity,
+            "error_code": self.error_code,
+        }
+
+
+class ExecutionObservationSink(Protocol):
+    """Low-level callback used by bounded collectors without a second execution path."""
+
+    def process_started(self) -> None: ...
+
+    def feed(self, stream: str, data: bytes) -> None: ...
+
+    def mark_limit(self, stream: str, limit_bytes: int) -> None: ...
+
 
 class Runner(Protocol):
     """Execute one already-declared bounded command and inspect runner guarantees."""
@@ -62,6 +203,18 @@ class Runner(Protocol):
         environment: dict[str, str],
         stdin: bytes = b"",
     ) -> ExecutionResult: ...
+
+    def observe(
+        self,
+        command: object,
+        *,
+        cwd: Path,
+        timeout: float,
+        output_cap: int,
+        stderr_cap: int | None = None,
+        environment: dict[str, str],
+        stdin: bytes = b"",
+    ) -> ExecutionObservation: ...
 
     def inspect_capabilities(self) -> RunnerCapabilities: ...
 

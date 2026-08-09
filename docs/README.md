@@ -61,6 +61,8 @@ development planning. The root README remains a short project entrypoint.
   compatibility enforcement, benchmark comparison, and Joern dispatch review.
 - [`0.1.0b1` compatibility validation](development-evidence/0.1.0b1-compatibility-validation.md) —
   semantic boundary, migration/wheel matrix, benchmark, and comparative Joern findings.
+- [Task 7B-1 MNCS receipt-adapter evidence](development-evidence/task-7b1-mncs-receipt-adapter.md) —
+  pinned contract, dogfood scope, raw observations, adapter boundary, and validation classification.
 
 ## Documentation rules
 
