@@ -70,6 +70,12 @@ The final normal suite reported 351 passing tests. Branch coverage remained 85% 
 tests cover benchmark comparison rather than applying a global threshold. The compatibility
 snapshot check passed unchanged. `git diff --check` passed.
 
+The first remote matrix run exposed an existing POSIX child-cleanup test race: the child could be
+terminated between its liveness probe and `/proc` inspection, and macOS could leave it observable
+briefly after group termination. The test now polls for one bounded second and still fails if a live
+child remains after that bound. Five repeated local runs and the subsequent full suite passed; no
+runner semantics were changed.
+
 The first manual snapshot invocation used the host `python` and failed because that interpreter did
 not have the repository's MCP dependency. Re-running through `.venv` passed; this was an environment
 invocation error, not a repository compatibility failure.
