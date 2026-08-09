@@ -180,7 +180,9 @@ def parse_provider_response(stdout: bytes) -> dict[str, Any]:
         raise ForgeError("PROVIDER_MALFORMED", "provider identity must be an object")
     if not isinstance(value.get("extensions"), dict):
         raise ForgeError("PROVIDER_MALFORMED", "provider extensions must be an object")
-    if value.get("type") == "analysis_response" and value.get("status") not in STATUSES:
+    if value.get("type") == "analysis_response" and (
+        not isinstance(value.get("status"), str) or value.get("status") not in STATUSES
+    ):
         raise ForgeError("PROVIDER_MALFORMED", "analysis result status must be PASS/FAIL/UNKNOWN")
     return value
 

@@ -544,6 +544,23 @@ The resulting status model must distinguish at least:
 **Target:** `0.2.0`  
 **Depends on:** Tasks 1 through 7
 
+**Status:** Task 9A is in progress. The first bounded stability harness adds reusable Hypothesis
+properties for status precedence and randomized lifecycle ordering, an adversarial Provider
+Protocol 0.1 corpus, a compact raw-ledger corruption corpus, and a reproducible branch-coverage
+command. Existing runner, RecordStore/recovery, compatibility, and architecture suites were
+audited and retained where already strong. Task 9 and the full `0.2.0` gate remain incomplete.
+
+Run local branch coverage with:
+
+```bash
+bash scripts/coverage-local-stability.sh
+```
+
+This is development evidence for policy-branch discovery, not an assurance claim or a CI release
+threshold. Hypothesis settings are bounded and deterministic for this harness while preserving
+shrinking. Podman, execution receipts, external witnessing, and stronger execution authority stay
+deferred to later iterations.
+
 ### Objective
 
 Create a release gate for dependable local operation rather than adding another feature wave.
