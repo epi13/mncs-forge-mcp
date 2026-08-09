@@ -2,12 +2,6 @@
 
 ## Unreleased
 
-- Begin Task 9A local-stability hardening with development-only Hypothesis and branch-coverage
-  tooling, randomized lifecycle invariants, adversarial Provider Protocol 0.1 parsing/probe
-  coverage, and a compact hash-linked ledger corruption corpus. This does not complete the
-  `0.2.0` gate or Task 7.
-- Harden Provider Protocol status parsing so object/array statuses fail with stable
-  `PROVIDER_MALFORMED` errors instead of leaking a Python `TypeError`.
 - Begin Task 7 with a typed `Runner` boundary and explicitly named `LocalProcessRunner`, while
   preserving the existing bounded no-shell subprocess semantics and compatibility aliases.
 - Add deterministic local-runner capability inspection that distinguishes enforced execution
