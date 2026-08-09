@@ -57,8 +57,10 @@ registry, deterministic inventory, generated FastMCP tools, registry-bound argpa
 explicit asymmetries, and compatibility enforcement. The final compatibility review added one
 semantic cross-surface snapshot, early-`0.1` migration coverage, stable configuration read/parse
 errors, Provider Protocol request characterization, and installed-wheel upgrade verification. The
-[`0.1.0b1` compatibility boundary](docs/compatibility-boundary-0.1.0b1.md) is complete. Full runner
-receipts, sandbox-capable adapters, and execution assurance remain Task 7.
+[`0.1.0b1` compatibility boundary](docs/compatibility-boundary-0.1.0b1.md) is complete. Task 7
+has begun with the bounded Task 7A local-runner extraction: the typed runner boundary and
+hardened local-process tests are complete as a focused increment. Full runner receipts,
+sandbox-capable adapters, and execution assurance remain outstanding Task 7 work.
 
 ## `0.2.0` — stable local Forge
 

@@ -26,7 +26,7 @@ CLI / MCP
     -> Forge compatibility facade
     -> project | provider | candidate | workflow | evaluation | evidence | recovery services
     -> typed records and ForgeStateMachine
-    -> RecordReader | RecordCommitter | CommandExecutor | ProjectObserver ports
+    -> RecordReader | RecordCommitter | Runner | ProjectObserver ports
     -> local ledger/store/process/filesystem adapters
 ```
 
@@ -56,21 +56,26 @@ Forge extensions attach at explicit inward-facing boundaries:
 | Micro-verifier | typed verifier declaration over a declared provider method | a whole-program proof, result cache, or normative validator |
 | Application service | focused service with typed ports and shared composition-root dependencies | a replacement lifecycle policy or interface adapter |
 | Storage | `RecordReader`/`RecordCommitter` ports implemented by `LocalRecordStore` | external anchoring, custody, witnessing, or remote storage |
-| Execution | current `CommandExecutor` port and local adapter | runner receipts, sandbox assurance, containers, SSH, or attestation |
+| Execution | typed `Runner` port and `LocalProcessRunner` adapter | runner receipts, sandbox assurance, containers, SSH, or attestation |
 | Public operation | frozen definition in `operations.py` with CLI/MCP/resource metadata | lifecycle authorization, which remains in `ForgeStateMachine` |
 
 The operation registry is the public dispatch extension point; application services are the
 behavior extension point; ports are the adapter substitution points. New providers or verifiers
-must remain declared and capability-bound. A future Task 7 runner may replace the local execution
-adapter only after it records the properties needed for any stronger assurance claim. See
+must remain declared and capability-bound. Future Task 7 adapters may join the runner boundary
+only after they record the properties needed for any stronger assurance claim. See
 [Provider Protocol integration](provider-protocol.md), [Machine-native micro-verifiers](micro-verifiers.md),
 [Transactional local storage](storage.md), and [Canonical Forge operation registry](operation-registry.md)
 for the detailed contracts.
 
-`CommandExecutor` is dependency inversion over the existing bounded local process behavior only.
-It does not add runner receipts, sandbox assurance, containers, SSH, mount/network policy, or
-attestation; those remain Task 7. Likewise, project observation centralizes existing filesystem
-identity and workspace behavior without changing identity algorithms or authority semantics.
+`Runner` is dependency inversion over the existing bounded local process behavior only. The
+`LocalProcessRunner` adapter preserves argument-array, no-shell, explicit cwd/environment, stdin,
+output, timeout, return-code, and platform-specific termination behavior. Its typed capability
+inspection reports local process facts and enforced bounds while marking sandbox, network, and
+filesystem isolation as `not-provided`. `CommandExecutor` and `LocalCommandExecutor` remain
+compatibility aliases during the Task 7A transition. This boundary does not add runner receipts,
+containers, SSH, mount/network policy, or attestation; those remain future Task 7 work. Likewise,
+project observation centralizes existing filesystem identity and workspace behavior without
+changing identity algorithms or authority semantics.
 
 Development mode can see declared contracts, references, and development evidence, register
 candidates, run declared development workflows, compare candidates under the configured policy,

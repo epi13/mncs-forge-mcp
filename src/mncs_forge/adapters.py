@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import shutil
 import tempfile
 from collections.abc import Mapping
@@ -14,12 +15,12 @@ from .errors import ForgeError
 from .execution import run_bounded
 from .identity import content_identity, file_identity, identity_map
 from .paths import is_within, resolve_contained, validate_relative_path
-from .ports import ExecutionResult
+from .ports import ExecutionResult, RunnerCapabilities
 from .serialization import local_json_identity, read_json
 
 
-class LocalCommandExecutor:
-    """Preserve the existing bounded local-process semantics behind `CommandExecutor`."""
+class LocalProcessRunner:
+    """Run declared commands locally while preserving the bounded subprocess contract."""
 
     def execute(
         self,
@@ -41,6 +42,27 @@ class LocalCommandExecutor:
             environment=environment,
             stdin=stdin,
         )
+
+    def inspect_capabilities(self) -> RunnerCapabilities:
+        return RunnerCapabilities(
+            runner_kind="local-process",
+            runner_version="1",
+            os_family=platform.system().lower() or "unknown",
+            architecture=platform.machine().lower() or "unknown",
+            execution_scope="local",
+            shell_execution="disabled",
+            timeout_enforcement="enforced",
+            stdout_limit="enforced",
+            stderr_limit="enforced",
+            process_group_termination=("enforced" if os.name == "posix" else "not-provided"),
+            sandbox_isolation="not-provided",
+            network_isolation="not-provided",
+            filesystem_isolation="not-provided",
+        )
+
+
+# Preserve the existing concrete adapter name while callers migrate to the runner vocabulary.
+LocalCommandExecutor = LocalProcessRunner
 
 
 class LocalProjectObserver:

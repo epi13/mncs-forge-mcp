@@ -15,11 +15,11 @@ from .errors import ForgeError
 from .execution import parse_provider_response
 from .paths import is_within, resolve_contained, validate_relative_path
 from .ports import (
-    CommandExecutor,
     ExecutionResult,
     ProjectObserver,
     RecordCommitter,
     RecordReader,
+    Runner,
     record_by_id,
 )
 from .records import (
@@ -82,7 +82,7 @@ class MicroVerifierService:
         record_store: RecordCommitter,
         lifecycle: LifecycleContext,
         observer: ProjectObserver,
-        executor: CommandExecutor,
+        executor: Runner,
     ) -> None:
         self.config = config
         self.mode = mode

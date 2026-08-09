@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Begin Task 7 with a typed `Runner` boundary and explicitly named `LocalProcessRunner`, while
+  preserving the existing bounded no-shell subprocess semantics and compatibility aliases.
+- Add deterministic local-runner capability inspection that distinguishes enforced execution
+  bounds from unavailable sandbox, network, and filesystem isolation, plus adversarial execution
+  and architecture-boundary coverage. Podman adapters and persistent execution receipts remain
+  deferred.
 - Close the `0.1.0b1` compatibility boundary with a regenerable semantic snapshot spanning record
   and configuration schemas, CLI arguments/defaults/bindings, MCP mode inventories/schemas/
   resources, canonical operations, the public `Forge` facade, and packaging entry points.

@@ -11,7 +11,7 @@ from typing import Any
 from ..config import ForgeConfig, Workflow
 from ..errors import ForgeError
 from ..execution import STATUSES, parse_provider_response
-from ..ports import CommandExecutor, ProjectObserver, RecordCommitter, RecordReader
+from ..ports import ProjectObserver, RecordCommitter, RecordReader, Runner
 from ..records import (
     BundleRecord,
     FinalEvaluationRecord,
@@ -34,7 +34,7 @@ class WorkflowExecutor:
         *,
         config: ForgeConfig,
         mode: str,
-        executor: CommandExecutor,
+        executor: Runner,
         observer: ProjectObserver,
     ) -> None:
         self.config = config
