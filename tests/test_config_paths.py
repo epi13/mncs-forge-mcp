@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from mncs_forge.config import load_config
+from mncs_forge.config import ForgeConfig, load_config
 from mncs_forge.errors import ForgeError
 from mncs_forge.execution import validate_argv
 from mncs_forge.paths import resolve_contained, validate_relative_path
@@ -15,11 +15,70 @@ def test_configuration_validates(config: object) -> None:
     assert config is not None
 
 
+def test_configuration_defaults_remain_compatible(config: ForgeConfig) -> None:
+    assert config.verifier_limits == {
+        "max_batch": 8,
+        "request_bytes": 65536,
+        "batch_timeout_seconds": 2.0,
+        "witness_bytes": 32768,
+        "stderr_bytes": 4096,
+        "result_bytes": 131072,
+        "max_changed_paths": 64,
+        "max_dependency_identities": 64,
+        "max_question_parameters": 32,
+    }
+    project_workflow = config.workflows["project-check"]
+    assert project_workflow.disclosure == "compact"
+    assert project_workflow.subject == "project"
+    candidate_workflow = config.workflows["pass-check"]
+    assert candidate_workflow.disclosure == "compact"
+    assert candidate_workflow.subject == "candidate"
+    provider = config.providers["provider-pass"]
+    assert provider.transport == "stdio-jsonl"
+    assert provider.required is False
+
+
+def test_provider_defaults_are_applied_when_optional_fields_are_absent(project: Path) -> None:
+    path = project / "mncs-forge.toml"
+    text = path.read_text(encoding="utf-8")
+    text = text.replace('transport = "stdio-jsonl"\n', "", 1)
+    text = text.replace("required = false\n", "", 1)
+    config = load_config(path)
+
+    provider = config.providers["provider-pass"]
+    assert provider.transport == "stdio-jsonl"
+    assert provider.required is False
+
+
 def test_schema_copies_are_identical() -> None:
     root = Path(__file__).parents[1]
     assert json.loads((root / "schemas/mncs-forge-config.schema.json").read_text()) == json.loads(
         (root / "src/mncs_forge/resources/mncs-forge-config.schema.json").read_text()
     )
+
+
+@pytest.mark.parametrize(
+    ("content", "code"),
+    [
+        ("version = [", "CONFIG_INVALID"),
+        ("version = 999\n", "CONFIG_INVALID"),
+        ("version = 1\n[unknown]\nvalue = true\n", "CONFIG_INVALID"),
+    ],
+)
+def test_malformed_or_unsupported_configuration_has_stable_error(
+    tmp_path: Path, content: str, code: str
+) -> None:
+    path = tmp_path / "mncs-forge.toml"
+    path.write_text(content, encoding="utf-8")
+    with pytest.raises(ForgeError) as issue:
+        load_config(path)
+    assert issue.value.code == code
+
+
+def test_unreadable_configuration_has_stable_error(tmp_path: Path) -> None:
+    with pytest.raises(ForgeError) as issue:
+        load_config(tmp_path / "missing.toml")
+    assert issue.value.code == "CONFIG_READ"
 
 
 @pytest.mark.parametrize("value", ["../secret", "candidate/../../secret", "/tmp/secret"])

@@ -56,3 +56,12 @@ deterministic version-1 inventory is available from `mncs-forge operations` and
 mode behavior are compatibility-tested. Intentional asymmetries remain: local diagnostics are
 CLI-only, the inventory is a CLI operation and MCP resource, and final evaluation is evaluator-
 only in MCP.
+
+The final `0.1.0b1` compatibility review freezes the semantic configuration/record, CLI, MCP,
+operation, facade, and packaging boundary in a deterministic aggregate snapshot without freezing
+presentation prose or internal layout. It also supports early unversioned `0.1` workflow-like
+records that predate `subject_type`: they receive the historically accurate candidate-only default
+in memory while retaining their original identity and status. Missing subject metadata never
+infers project-scoped authority. Malformed TOML fails with `CONFIG_INVALID`; unreadable
+configuration fails with `CONFIG_READ`. See the
+[`0.1.0b1` compatibility boundary](compatibility-boundary-0.1.0b1.md).

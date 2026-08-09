@@ -28,3 +28,9 @@ method must appear in the referenced provider's configured capabilities and beco
 Providers may return assumptions and a dependency envelope there. Operational protocol failure is
 recorded as `UNKNOWN`; process completion is never converted to `PASS`. See
 [Machine-native micro-verifiers](micro-verifiers.md).
+
+The `0.1.0b1` boundary freezes the existing capabilities, workflow-analysis, and verifier-analysis
+request envelopes with executable semantic assertions. It does not add a protocol version or make
+response prose contractual. Protocol `"0.1"`, request types/IDs, analyses, component/limit fields,
+and the bounded `mncs_forge` extension shapes are compatibility-sensitive; timestamps and generated
+request-ID values are not.

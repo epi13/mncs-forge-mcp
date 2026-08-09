@@ -417,6 +417,16 @@ business calls and concrete storage, execution, filesystem-identity, or lifecycl
 registry. `ForgeStateMachine`, `RecordStore`, Task 5 services, and authority/evidence semantics are
 unchanged. Task 7 runners remain deferred.
 
+### `0.1.0b1` compatibility closure
+
+The release-boundary iteration after Task 6 audited records/migrations, configuration, Provider
+Protocol 0.1, CLI, MCP, the operation registry, the Python facade, packaging, and installed-wheel
+upgrade behavior. It added only the gaps needed to close the gate: early unversioned result
+migration, stable configuration read/parse codes, a regenerable semantic snapshot, bounded
+protocol-envelope tests, and cross-version wheel verification. See
+[`0.1.0b1` compatibility boundary](compatibility-boundary-0.1.0b1.md). The next implementation task
+is Task 7; none of its runner or isolation work is part of the compatibility closure.
+
 ---
 
 ## Task 7 — Introduce a runner abstraction and sandbox-capable adapters

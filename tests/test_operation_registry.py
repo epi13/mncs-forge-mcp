@@ -139,8 +139,22 @@ def test_inventory_is_canonical_json_and_omits_unstable_handler_details() -> Non
     assert len(inventory["operations"]) == 28
     assert "0x" not in first
     assert "handler" not in first
-    assert hashlib.sha256(first.encode()).hexdigest() == (
-        "86a9d2916ad3c3045b1935de983b19cd2780aa465b870889fc20d9bf9a03517d"
+    semantic = json.dumps(
+        {
+            **inventory,
+            "operations": [
+                {
+                    **item,
+                    "mcp": {key: value for key, value in item["mcp"].items() if key != "reason"},
+                }
+                for item in inventory["operations"]
+            ],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    assert hashlib.sha256(semantic.encode()).hexdigest() == (
+        "db9f10f925d35c20997ea8b9ff6675ef68bab0ec1407817aadb35ba529e72d31"
     )
 
 
