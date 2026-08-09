@@ -80,10 +80,17 @@ def _canonical_digest(value: object) -> str:
 
 
 def _parser_action(action: argparse.Action) -> dict[str, object]:
+    # `argparse.Action.required` is interpreter-dependent for positional `nargs="*"`
+    # actions (Python 3.11 reports true while newer versions report false). Capture
+    # the public CLI grammar instead of that implementation detail.
+    if action.option_strings:
+        required = bool(action.required)
+    else:
+        required = action.nargs not in ("?", "*", argparse.REMAINDER)
     result: dict[str, object] = {
         "destination": action.dest,
         "options": list(action.option_strings),
-        "required": bool(action.required),
+        "required": required,
         "nargs": _json_value(action.nargs),
         "default": _json_value(action.default),
     }
