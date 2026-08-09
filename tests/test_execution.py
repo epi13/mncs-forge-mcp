@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -201,13 +202,22 @@ def test_timeout_terminates_a_simple_spawned_child_process(
     assert issue.value.code == "TIMEOUT"
 
     pid = int(child_pid.read_text(encoding="utf-8"))
+    deadline = time.monotonic() + 1
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return
+        if sys.platform.startswith("linux"):
+            try:
+                state = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").split()[2]
+            except FileNotFoundError:
+                return
+            if state == "Z":
+                return
+        time.sleep(0.01)
     try:
-        os.kill(pid, 0)
+        os.kill(pid, 9)
     except ProcessLookupError:
         return
-    if sys.platform.startswith("linux"):
-        state = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").split()[2]
-        if state == "Z":
-            return
-    os.kill(pid, 9)
     pytest.fail("timeout left the spawned child process running")
