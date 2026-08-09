@@ -1,5 +1,10 @@
 # Security model and residual risks
 
+The implementation-mapped review for the current stable-local target is in the
+[stable-local Forge threat model](local-threat-model.md). This page remains the concise
+operational summary; the detailed model distinguishes controls, evidence, trust assumptions, and
+residual risks.
+
 Forge tests and enforces path normalization/containment, symlink escape rejection, protected-path
 write rejection, evaluator immutability, argument-array commands, no-shell execution, environment
 allowlisting, timeout, stdout/stderr caps, process-group termination on POSIX, file locking, stale

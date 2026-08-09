@@ -80,12 +80,14 @@ Release criteria:
 
 Task 9A is complete in the current `main` baseline: reusable Hypothesis lifecycle and Provider
 Protocol properties, a compact ledger-corruption corpus, strengthened local-runner coverage, and
-reproducible branch-coverage measurement are present. Task 9B has begun as a bounded
-release-engineering increment adding built-wheel/sdist verification, clean-environment import
+reproducible branch-coverage measurement are present. Task 9B package/release engineering is
+complete in the current `main` baseline, subject to the supported matrix remaining green after the
+Windows test-harness portability repair: built-wheel/sdist verification, clean-environment import
 checks, supported historical-state checks through the installed wheel, package/dependency audits,
-and non-normative benchmark capture/comparison. Task 9 and the full `0.2.0` gate remain incomplete;
-the reviewed local threat model and deferred Task 7 execution-receipt and sandbox work remain
-outstanding.
+and non-normative benchmark capture/comparison are present. Task 9C is complete as this bounded
+implementation-mapped local threat-model and release-gate review increment. Task 9 and
+the full `0.2.0` gate remain incomplete; deferred Task 7 execution receipts and sandbox-capable
+runners remain outstanding.
 
 ## `0.2.x` — execution and evidence adapters
 

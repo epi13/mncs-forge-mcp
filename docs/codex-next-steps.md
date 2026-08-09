@@ -547,10 +547,10 @@ The resulting status model must distinguish at least:
 **Status:** Task 9A is complete in the current `main` baseline. Its reusable Hypothesis properties
 for status precedence and randomized lifecycle ordering, adversarial Provider Protocol 0.1 corpus,
 compact raw-ledger corruption corpus, strengthened runner coverage, and reproducible branch-coverage
-command are retained. Task 9B is in progress as a bounded release-engineering increment covering
-actual built-artifact installation, historical-state reads through the installed wheel,
-package/dependency audits, CI artifact checks, and non-normative benchmark comparison. Task 9 and
-the full `0.2.0` gate remain incomplete.
+command are retained. Task 9B package/release engineering is complete in the current `main`
+baseline, and all supported OS/Python matrix rows passed after the Windows test-harness repair.
+Task 9C is complete as this bounded implementation-mapped local threat-model and release-gate
+review increment. Task 9 and the full `0.2.0` gate remain incomplete.
 
 Run local branch coverage with:
 

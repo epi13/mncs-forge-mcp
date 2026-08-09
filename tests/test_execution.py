@@ -136,7 +136,8 @@ def test_runner_passes_explicit_environment(runner: LocalProcessRunner) -> None:
         output_cap=128,
         environment={"PATH": os.environ["PATH"], "MNCS_FORGE_TASK7A": "present"},
     )
-    assert result.stdout == b"present\n"
+    assert result.stdout.decode().splitlines() == ["present"]
+    assert len(result.stdout) <= 128
 
 
 def test_runner_reports_executable_start_failure(

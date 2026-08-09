@@ -21,6 +21,7 @@ development planning. The root README remains a short project entrypoint.
 - [Lifecycle state machine and transition errors](lifecycle.md)
 - [Transactional local storage and recovery](storage.md)
 - [Security model and residual risks](security.md)
+- [Stable-local Forge threat model](local-threat-model.md)
 - [Intent-aware security verification](intent-aware-security-verification.md)
 - [Forge Cell execution assurance](forge-cell.md)
 - [Compatibility](compatibility.md)
