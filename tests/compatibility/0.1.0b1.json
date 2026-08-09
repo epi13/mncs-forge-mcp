@@ -1,0 +1,2290 @@
+{
+  "boundary": "0.1.0b1",
+  "cli": {
+    "bindings": {
+      "bundles.build": [
+        {
+          "decoder": "value",
+          "input": "workflow_name",
+          "namespace": "workflow"
+        },
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate"
+        }
+      ],
+      "candidates.compare": [
+        {
+          "decoder": "value",
+          "input": "candidate_identities",
+          "namespace": "candidate_ids"
+        }
+      ],
+      "candidates.freeze": [
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate_id"
+        },
+        {
+          "decoder": "value",
+          "input": "environment_identity",
+          "namespace": "environment"
+        },
+        {
+          "decoder": "value",
+          "input": "required_evidence_plan",
+          "namespace": "evidence_plan"
+        }
+      ],
+      "candidates.register": [
+        {
+          "decoder": "value",
+          "input": "changed_files",
+          "namespace": "changed"
+        },
+        {
+          "decoder": "value",
+          "input": "hypothesis",
+          "namespace": "hypothesis"
+        },
+        {
+          "decoder": "value",
+          "input": "generator_identity",
+          "namespace": "generator"
+        },
+        {
+          "decoder": "value",
+          "input": "generator_config_identity",
+          "namespace": "generator_config"
+        },
+        {
+          "decoder": "value",
+          "input": "parent_candidate",
+          "namespace": "parent"
+        },
+        {
+          "decoder": "value",
+          "input": "expected_identity",
+          "namespace": "expected_identity"
+        }
+      ],
+      "candidates.reject": [
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate_id"
+        },
+        {
+          "decoder": "value",
+          "input": "reason",
+          "namespace": "reason"
+        }
+      ],
+      "candidates.select": [
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate_id"
+        },
+        {
+          "decoder": "value",
+          "input": "reason",
+          "namespace": "reason"
+        }
+      ],
+      "claims.blockers": [
+        {
+          "decoder": "value",
+          "input": "requested_claim",
+          "namespace": "claim"
+        }
+      ],
+      "claims.status": [],
+      "config.validate": [],
+      "development.checks.run": [
+        {
+          "decoder": "value",
+          "input": "workflow_names",
+          "namespace": "workflows"
+        },
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate"
+        }
+      ],
+      "development.failure.explain": [
+        {
+          "decoder": "value",
+          "input": "output_identity",
+          "namespace": "result"
+        }
+      ],
+      "epochs.begin": [
+        {
+          "decoder": "value",
+          "input": "generator_identity",
+          "namespace": "generator"
+        },
+        {
+          "decoder": "value",
+          "input": "evaluator_identity",
+          "namespace": "evaluator"
+        },
+        {
+          "decoder": "value",
+          "input": "parent_epoch",
+          "namespace": "parent"
+        },
+        {
+          "decoder": "value",
+          "input": "authority_overlap",
+          "namespace": "authority_overlap"
+        }
+      ],
+      "evaluation.final.run": [
+        {
+          "decoder": "value",
+          "input": "workflow_names",
+          "namespace": "workflows"
+        }
+      ],
+      "evidence.reconcile": [
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate"
+        }
+      ],
+      "ledger.verify": [],
+      "lifecycle.inspect": [],
+      "operations.inventory": [],
+      "project.doctor": [],
+      "project.inspect": [],
+      "providers.capability-blockers": [
+        {
+          "decoder": "value",
+          "input": "required_capabilities",
+          "namespace": "capabilities"
+        }
+      ],
+      "providers.list": [],
+      "providers.probe": [
+        {
+          "decoder": "value",
+          "input": "provider_id",
+          "namespace": "provider_id"
+        }
+      ],
+      "verifiers.batch": [
+        {
+          "decoder": "value",
+          "input": "verifier_ids",
+          "namespace": "verifier_ids"
+        },
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate"
+        },
+        {
+          "decoder": "value",
+          "input": "changed_paths",
+          "namespace": "changed"
+        },
+        {
+          "decoder": "value",
+          "input": "scope",
+          "namespace": "scope"
+        },
+        {
+          "decoder": "json-object",
+          "input": "source_region",
+          "namespace": "source_region"
+        },
+        {
+          "decoder": "value",
+          "input": "contract_identity",
+          "namespace": "contract"
+        },
+        {
+          "decoder": "dependencies",
+          "input": "dependency_slice_identities",
+          "namespace": "dependency"
+        },
+        {
+          "decoder": "value",
+          "input": "prior_artifact_identity",
+          "namespace": "prior_artifact"
+        },
+        {
+          "decoder": "json-object",
+          "input": "question_parameters",
+          "namespace": "parameters"
+        }
+      ],
+      "verifiers.describe": [
+        {
+          "decoder": "value",
+          "input": "verifier_id",
+          "namespace": "verifier_id"
+        }
+      ],
+      "verifiers.explain": [
+        {
+          "decoder": "value",
+          "input": "output_identity",
+          "namespace": "output_identity"
+        }
+      ],
+      "verifiers.list": [],
+      "verifiers.match": [
+        {
+          "decoder": "value",
+          "input": "uncertainty_classes",
+          "namespace": "uncertainty"
+        },
+        {
+          "decoder": "value",
+          "input": "language",
+          "namespace": "language"
+        },
+        {
+          "decoder": "value",
+          "input": "artifact_type",
+          "namespace": "artifact_type"
+        },
+        {
+          "decoder": "value",
+          "input": "changed_paths",
+          "namespace": "changed"
+        },
+        {
+          "decoder": "value",
+          "input": "scope",
+          "namespace": "scope"
+        },
+        {
+          "decoder": "value",
+          "input": "maximum_cost",
+          "namespace": "maximum_cost"
+        },
+        {
+          "decoder": "value",
+          "input": "required_category",
+          "namespace": "category"
+        },
+        {
+          "decoder": "value",
+          "input": "active_mode",
+          "namespace": "active_mode"
+        }
+      ],
+      "verifiers.run": [
+        {
+          "decoder": "value",
+          "input": "verifier_id",
+          "namespace": "verifier_id"
+        },
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate"
+        },
+        {
+          "decoder": "value",
+          "input": "changed_paths",
+          "namespace": "changed"
+        },
+        {
+          "decoder": "value",
+          "input": "scope",
+          "namespace": "scope"
+        },
+        {
+          "decoder": "json-object",
+          "input": "source_region",
+          "namespace": "source_region"
+        },
+        {
+          "decoder": "value",
+          "input": "contract_identity",
+          "namespace": "contract"
+        },
+        {
+          "decoder": "dependencies",
+          "input": "dependency_slice_identities",
+          "namespace": "dependency"
+        },
+        {
+          "decoder": "value",
+          "input": "prior_artifact_identity",
+          "namespace": "prior_artifact"
+        },
+        {
+          "decoder": "json-object",
+          "input": "question_parameters",
+          "namespace": "parameters"
+        }
+      ]
+    },
+    "commands": {
+      "blockers": {
+        "arguments": [
+          {
+            "default": "promotion",
+            "destination": "claim",
+            "nargs": "?",
+            "options": [],
+            "required": false
+          }
+        ],
+        "operation_id": "claims.blockers"
+      },
+      "bundle": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "workflow",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "candidate",
+            "nargs": null,
+            "options": [
+              "--candidate"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "bundles.build"
+      },
+      "candidate compare": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_ids",
+            "nargs": "+",
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "candidates.compare"
+      },
+      "candidate register": {
+        "arguments": [
+          {
+            "default": [],
+            "destination": "changed",
+            "nargs": null,
+            "options": [
+              "--changed"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "hypothesis",
+            "nargs": null,
+            "options": [
+              "--hypothesis"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "generator",
+            "nargs": null,
+            "options": [
+              "--generator"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "generator_config",
+            "nargs": null,
+            "options": [
+              "--generator-config"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "parent",
+            "nargs": null,
+            "options": [
+              "--parent"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "expected_identity",
+            "nargs": null,
+            "options": [
+              "--expected-identity"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "candidates.register"
+      },
+      "candidate reject": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "reason",
+            "nargs": null,
+            "options": [
+              "--reason"
+            ],
+            "required": true
+          }
+        ],
+        "operation_id": "candidates.reject"
+      },
+      "candidate select": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "reason",
+            "nargs": null,
+            "options": [
+              "--reason"
+            ],
+            "required": true
+          }
+        ],
+        "operation_id": "candidates.select"
+      },
+      "check development": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "workflows",
+            "nargs": "+",
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "candidate",
+            "nargs": null,
+            "options": [
+              "--candidate"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "development.checks.run"
+      },
+      "config validate": {
+        "arguments": [],
+        "operation_id": "config.validate"
+      },
+      "doctor": {
+        "arguments": [],
+        "operation_id": "project.doctor"
+      },
+      "epoch begin": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "generator",
+            "nargs": null,
+            "options": [
+              "--generator"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "evaluator",
+            "nargs": null,
+            "options": [
+              "--evaluator"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "parent",
+            "nargs": null,
+            "options": [
+              "--parent"
+            ],
+            "required": false
+          },
+          {
+            "default": [],
+            "destination": "authority_overlap",
+            "nargs": null,
+            "options": [
+              "--authority-overlap"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "epochs.begin"
+      },
+      "evaluate": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "workflows",
+            "nargs": "+",
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "evaluation.final.run"
+      },
+      "explain": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "result",
+            "nargs": null,
+            "options": [
+              "--result"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "development.failure.explain"
+      },
+      "freeze": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "environment",
+            "nargs": null,
+            "options": [
+              "--environment"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "evidence_plan",
+            "nargs": null,
+            "options": [
+              "--evidence-plan"
+            ],
+            "required": true
+          }
+        ],
+        "operation_id": "candidates.freeze"
+      },
+      "inspect": {
+        "arguments": [],
+        "operation_id": "project.inspect"
+      },
+      "ledger verify": {
+        "arguments": [],
+        "operation_id": "ledger.verify"
+      },
+      "operations": {
+        "arguments": [],
+        "operation_id": "operations.inventory"
+      },
+      "providers blockers": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "capabilities",
+            "nargs": "*",
+            "options": [],
+            "required": false
+          }
+        ],
+        "operation_id": "providers.capability-blockers"
+      },
+      "providers list": {
+        "arguments": [],
+        "operation_id": "providers.list"
+      },
+      "providers probe": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "provider_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "providers.probe"
+      },
+      "reconcile": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate",
+            "nargs": null,
+            "options": [
+              "--candidate"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "evidence.reconcile"
+      },
+      "state": {
+        "arguments": [],
+        "operation_id": "lifecycle.inspect"
+      },
+      "status": {
+        "arguments": [],
+        "operation_id": "claims.status"
+      },
+      "verifier batch": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "verifier_ids",
+            "nargs": "+",
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "candidate",
+            "nargs": null,
+            "options": [
+              "--candidate"
+            ],
+            "required": false
+          },
+          {
+            "default": [],
+            "destination": "changed",
+            "nargs": null,
+            "options": [
+              "--changed"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "scope",
+            "nargs": null,
+            "options": [
+              "--scope"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "source_region",
+            "nargs": null,
+            "options": [
+              "--source-region"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "contract",
+            "nargs": null,
+            "options": [
+              "--contract"
+            ],
+            "required": false
+          },
+          {
+            "default": [],
+            "destination": "dependency",
+            "metavar": "NAME=IDENTITY",
+            "nargs": null,
+            "options": [
+              "--dependency"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "prior_artifact",
+            "nargs": null,
+            "options": [
+              "--prior-artifact"
+            ],
+            "required": false
+          },
+          {
+            "default": "{}",
+            "destination": "parameters",
+            "nargs": null,
+            "options": [
+              "--parameters"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "verifiers.batch"
+      },
+      "verifier describe": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "verifier_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "verifiers.describe"
+      },
+      "verifier explain": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "output_identity",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "verifiers.explain"
+      },
+      "verifier list": {
+        "arguments": [],
+        "operation_id": "verifiers.list"
+      },
+      "verifier match": {
+        "arguments": [
+          {
+            "default": [],
+            "destination": "uncertainty",
+            "nargs": null,
+            "options": [
+              "--uncertainty"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "language",
+            "nargs": null,
+            "options": [
+              "--language"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "artifact_type",
+            "nargs": null,
+            "options": [
+              "--artifact-type"
+            ],
+            "required": false
+          },
+          {
+            "default": [],
+            "destination": "changed",
+            "nargs": null,
+            "options": [
+              "--changed"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "scope",
+            "nargs": null,
+            "options": [
+              "--scope"
+            ],
+            "required": false
+          },
+          {
+            "choices": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "default": "high",
+            "destination": "maximum_cost",
+            "nargs": null,
+            "options": [
+              "--maximum-cost"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "category",
+            "nargs": null,
+            "options": [
+              "--category"
+            ],
+            "required": false
+          },
+          {
+            "choices": [
+              "development",
+              "evaluator"
+            ],
+            "default": null,
+            "destination": "active_mode",
+            "nargs": null,
+            "options": [
+              "--active-mode"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "verifiers.match"
+      },
+      "verifier run": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "verifier_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "candidate",
+            "nargs": null,
+            "options": [
+              "--candidate"
+            ],
+            "required": false
+          },
+          {
+            "default": [],
+            "destination": "changed",
+            "nargs": null,
+            "options": [
+              "--changed"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "scope",
+            "nargs": null,
+            "options": [
+              "--scope"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "source_region",
+            "nargs": null,
+            "options": [
+              "--source-region"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "contract",
+            "nargs": null,
+            "options": [
+              "--contract"
+            ],
+            "required": false
+          },
+          {
+            "default": [],
+            "destination": "dependency",
+            "metavar": "NAME=IDENTITY",
+            "nargs": null,
+            "options": [
+              "--dependency"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "prior_artifact",
+            "nargs": null,
+            "options": [
+              "--prior-artifact"
+            ],
+            "required": false
+          },
+          {
+            "default": "{}",
+            "destination": "parameters",
+            "nargs": null,
+            "options": [
+              "--parameters"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "verifiers.run"
+      }
+    },
+    "global_arguments": [
+      {
+        "default": "mncs-forge.toml",
+        "destination": "config",
+        "nargs": null,
+        "options": [
+          "--config"
+        ],
+        "required": false,
+        "value_type": "path"
+      },
+      {
+        "choices": [
+          "development",
+          "evaluator"
+        ],
+        "default": "development",
+        "destination": "mode",
+        "nargs": null,
+        "options": [
+          "--mode"
+        ],
+        "required": false
+      },
+      {
+        "const": true,
+        "default": false,
+        "destination": "json",
+        "nargs": 0,
+        "options": [
+          "--json"
+        ],
+        "required": false
+      }
+    ]
+  },
+  "configuration": {
+    "definitions": {
+      "command": {
+        "properties": [],
+        "required": []
+      },
+      "pathList": {
+        "properties": [],
+        "required": []
+      },
+      "relativePath": {
+        "properties": [],
+        "required": []
+      },
+      "relativeRoot": {
+        "properties": [],
+        "required": []
+      },
+      "stringList": {
+        "properties": [],
+        "required": []
+      }
+    },
+    "root_properties": [
+      "authority",
+      "commands",
+      "environment_allowlist",
+      "limits",
+      "paths",
+      "policies",
+      "project",
+      "providers",
+      "required_capabilities",
+      "verifier_limits",
+      "verifiers",
+      "version",
+      "workflows"
+    ],
+    "root_required": [
+      "authority",
+      "limits",
+      "paths",
+      "policies",
+      "project",
+      "version",
+      "workflows"
+    ],
+    "semantic_sha256": "68b7b7c7012ca32c2d147aa91146d24e2f61b8b81e23be0ea8bc18c38921aa15"
+  },
+  "intentional_exclusions": [
+    "human-readable help and error prose",
+    "MCP prompts and tool descriptions",
+    "timestamps, filesystem paths, and environment values",
+    "Python callables, module layout behind Forge, and object representations",
+    "performance telemetry and package release version"
+  ],
+  "mcp": {
+    "development": {
+      "resources": [
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://claims/blockers"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://evidence/latest-summary"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://guide/usage"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://operations"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://project/authority-map"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://providers/capability-blockers"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://providers/configured"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://state/active-candidate"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://state/active-epoch"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://state/lifecycle"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://verifiers/declared"
+        }
+      ],
+      "tools": {
+        "mncs_forge_bundle_build": {
+          "input_properties": [
+            "candidate_identity",
+            "workflow_name"
+          ],
+          "input_schema_sha256": "05edc6073dece146936e75d3f8377c18ed257e7fce7b382f47b2a4ee01d117f7",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "workflow_name"
+          ]
+        },
+        "mncs_forge_candidate_compare": {
+          "input_properties": [
+            "candidate_identities"
+          ],
+          "input_schema_sha256": "4e02081502b5482d1000919f983a01ac42d33e43a181d60f29441bd4f513ce84",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_identities"
+          ]
+        },
+        "mncs_forge_candidate_freeze": {
+          "input_properties": [
+            "candidate_identity",
+            "environment_identity",
+            "required_evidence_plan"
+          ],
+          "input_schema_sha256": "a9566ec4b621a145b5d23b5b623cef6cabba7815fcca4c31d7e1248a62aafeb0",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_identity",
+            "environment_identity",
+            "required_evidence_plan"
+          ]
+        },
+        "mncs_forge_candidate_register": {
+          "input_properties": [
+            "changed_files",
+            "expected_identity",
+            "generator_config_identity",
+            "generator_identity",
+            "hypothesis",
+            "parent_candidate"
+          ],
+          "input_schema_sha256": "25c01233cffe54c15a519603904720146361184d67ed6d7a1afe71a16e441822",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "changed_files",
+            "generator_config_identity",
+            "generator_identity",
+            "hypothesis"
+          ]
+        },
+        "mncs_forge_candidate_reject": {
+          "input_properties": [
+            "candidate_identity",
+            "reason"
+          ],
+          "input_schema_sha256": "9101b1ba9bdec9039e3926b04cd9c770a33f620d898e3b88e42a4a61b983efa6",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_identity",
+            "reason"
+          ]
+        },
+        "mncs_forge_candidate_select": {
+          "input_properties": [
+            "candidate_identity",
+            "reason"
+          ],
+          "input_schema_sha256": "9101b1ba9bdec9039e3926b04cd9c770a33f620d898e3b88e42a4a61b983efa6",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_identity",
+            "reason"
+          ]
+        },
+        "mncs_forge_capability_blockers": {
+          "input_properties": [
+            "required_capabilities"
+          ],
+          "input_schema_sha256": "bf26cac6f148e3b4e060e34be5995e9a674def7627a17393607edf37748431b1",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_claim_blockers": {
+          "input_properties": [
+            "requested_claim"
+          ],
+          "input_schema_sha256": "b5713856b95908d0a1f411ed1d8a34160dc8ab4516eab944bc2f46ce48018221",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_claim_status": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_development_checks_run": {
+          "input_properties": [
+            "candidate_identity",
+            "workflow_names"
+          ],
+          "input_schema_sha256": "13e5c01e19209e807a2ea2692040ec0bace22ca7450df1db72aec47699ca5717",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "workflow_names"
+          ]
+        },
+        "mncs_forge_epoch_begin": {
+          "input_properties": [
+            "authority_overlap",
+            "evaluator_identity",
+            "generator_identity",
+            "parent_epoch"
+          ],
+          "input_schema_sha256": "be5cdb3b117b967dd4ff610479dc997df6bd70e1f673c942898055bd666d1cf7",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluator_identity",
+            "generator_identity"
+          ]
+        },
+        "mncs_forge_evidence_reconcile": {
+          "input_properties": [
+            "candidate_identity"
+          ],
+          "input_schema_sha256": "7e41882a711ff8da421f6acfc984dd65e65bbf269740f4d28df564d4e5cd301b",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_failure_explain": {
+          "input_properties": [
+            "output_identity"
+          ],
+          "input_schema_sha256": "4e50bc85b5dd365d75059ec3792f53d04f3188784f653dde48f1c01397a75cc9",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_project_inspect": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_provider_probe": {
+          "input_properties": [
+            "provider_id"
+          ],
+          "input_schema_sha256": "26e17e04c45fc7b27d35661b325491d83b53bae7dce2f1ce3edf51139c3b8db4",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "provider_id"
+          ]
+        },
+        "mncs_forge_providers_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_state_inspect": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_verifier_batch": {
+          "input_properties": [
+            "candidate_identity",
+            "changed_paths",
+            "contract_identity",
+            "dependency_slice_identities",
+            "prior_artifact_identity",
+            "question_parameters",
+            "scope",
+            "source_region",
+            "verifier_ids"
+          ],
+          "input_schema_sha256": "cf3c2f058e692ce3e356869f6201a7b1f1a474ca3dab85d5c91bfe64d710fe40",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "verifier_ids"
+          ]
+        },
+        "mncs_forge_verifier_describe": {
+          "input_properties": [
+            "verifier_id"
+          ],
+          "input_schema_sha256": "8663ba462ea19180937f1a4da3c0d1bc1e1439db6c702c72f7832eb30b81cc5b",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "verifier_id"
+          ]
+        },
+        "mncs_forge_verifier_explain": {
+          "input_properties": [
+            "output_identity"
+          ],
+          "input_schema_sha256": "4844006abababb9a5dc78a1a98518840e9b31bfee684884bfd4930fb0d131e03",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "output_identity"
+          ]
+        },
+        "mncs_forge_verifier_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_verifier_match": {
+          "input_properties": [
+            "active_mode",
+            "artifact_type",
+            "changed_paths",
+            "language",
+            "maximum_cost",
+            "required_category",
+            "scope",
+            "uncertainty_classes"
+          ],
+          "input_schema_sha256": "7f630b69d9927ea0bc79caf9e8463a03e0dfa20596335843063aac64741fa706",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "uncertainty_classes"
+          ]
+        },
+        "mncs_forge_verifier_run": {
+          "input_properties": [
+            "candidate_identity",
+            "changed_paths",
+            "contract_identity",
+            "dependency_slice_identities",
+            "prior_artifact_identity",
+            "question_parameters",
+            "scope",
+            "source_region",
+            "verifier_id"
+          ],
+          "input_schema_sha256": "875d99a21c242d2c263f5550603432295b39c955880ed3e28c6c0164a79dbf86",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "verifier_id"
+          ]
+        }
+      }
+    },
+    "evaluator": {
+      "resources": [
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://claims/blockers"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://evidence/latest-summary"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://guide/usage"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://operations"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://project/authority-map"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://providers/capability-blockers"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://providers/configured"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://state/active-candidate"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://state/active-epoch"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://state/lifecycle"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://verifiers/declared"
+        }
+      ],
+      "tools": {
+        "mncs_forge_bundle_build": {
+          "input_properties": [
+            "candidate_identity",
+            "workflow_name"
+          ],
+          "input_schema_sha256": "05edc6073dece146936e75d3f8377c18ed257e7fce7b382f47b2a4ee01d117f7",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "workflow_name"
+          ]
+        },
+        "mncs_forge_candidate_compare": {
+          "input_properties": [
+            "candidate_identities"
+          ],
+          "input_schema_sha256": "4e02081502b5482d1000919f983a01ac42d33e43a181d60f29441bd4f513ce84",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_identities"
+          ]
+        },
+        "mncs_forge_candidate_freeze": {
+          "input_properties": [
+            "candidate_identity",
+            "environment_identity",
+            "required_evidence_plan"
+          ],
+          "input_schema_sha256": "a9566ec4b621a145b5d23b5b623cef6cabba7815fcca4c31d7e1248a62aafeb0",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_identity",
+            "environment_identity",
+            "required_evidence_plan"
+          ]
+        },
+        "mncs_forge_candidate_register": {
+          "input_properties": [
+            "changed_files",
+            "expected_identity",
+            "generator_config_identity",
+            "generator_identity",
+            "hypothesis",
+            "parent_candidate"
+          ],
+          "input_schema_sha256": "25c01233cffe54c15a519603904720146361184d67ed6d7a1afe71a16e441822",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "changed_files",
+            "generator_config_identity",
+            "generator_identity",
+            "hypothesis"
+          ]
+        },
+        "mncs_forge_candidate_reject": {
+          "input_properties": [
+            "candidate_identity",
+            "reason"
+          ],
+          "input_schema_sha256": "9101b1ba9bdec9039e3926b04cd9c770a33f620d898e3b88e42a4a61b983efa6",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_identity",
+            "reason"
+          ]
+        },
+        "mncs_forge_candidate_select": {
+          "input_properties": [
+            "candidate_identity",
+            "reason"
+          ],
+          "input_schema_sha256": "9101b1ba9bdec9039e3926b04cd9c770a33f620d898e3b88e42a4a61b983efa6",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_identity",
+            "reason"
+          ]
+        },
+        "mncs_forge_capability_blockers": {
+          "input_properties": [
+            "required_capabilities"
+          ],
+          "input_schema_sha256": "bf26cac6f148e3b4e060e34be5995e9a674def7627a17393607edf37748431b1",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_claim_blockers": {
+          "input_properties": [
+            "requested_claim"
+          ],
+          "input_schema_sha256": "b5713856b95908d0a1f411ed1d8a34160dc8ab4516eab944bc2f46ce48018221",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_claim_status": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_development_checks_run": {
+          "input_properties": [
+            "candidate_identity",
+            "workflow_names"
+          ],
+          "input_schema_sha256": "13e5c01e19209e807a2ea2692040ec0bace22ca7450df1db72aec47699ca5717",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "workflow_names"
+          ]
+        },
+        "mncs_forge_epoch_begin": {
+          "input_properties": [
+            "authority_overlap",
+            "evaluator_identity",
+            "generator_identity",
+            "parent_epoch"
+          ],
+          "input_schema_sha256": "be5cdb3b117b967dd4ff610479dc997df6bd70e1f673c942898055bd666d1cf7",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluator_identity",
+            "generator_identity"
+          ]
+        },
+        "mncs_forge_evidence_reconcile": {
+          "input_properties": [
+            "candidate_identity"
+          ],
+          "input_schema_sha256": "7e41882a711ff8da421f6acfc984dd65e65bbf269740f4d28df564d4e5cd301b",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_failure_explain": {
+          "input_properties": [
+            "output_identity"
+          ],
+          "input_schema_sha256": "4e50bc85b5dd365d75059ec3792f53d04f3188784f653dde48f1c01397a75cc9",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_final_evaluation_run": {
+          "input_properties": [
+            "workflow_names"
+          ],
+          "input_schema_sha256": "97a9a70a5404a284df3c296d32afb1c7f28318e1698822b9d7ba32df4082f5a5",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "workflow_names"
+          ]
+        },
+        "mncs_forge_project_inspect": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_provider_probe": {
+          "input_properties": [
+            "provider_id"
+          ],
+          "input_schema_sha256": "26e17e04c45fc7b27d35661b325491d83b53bae7dce2f1ce3edf51139c3b8db4",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "provider_id"
+          ]
+        },
+        "mncs_forge_providers_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_state_inspect": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_verifier_batch": {
+          "input_properties": [
+            "candidate_identity",
+            "changed_paths",
+            "contract_identity",
+            "dependency_slice_identities",
+            "prior_artifact_identity",
+            "question_parameters",
+            "scope",
+            "source_region",
+            "verifier_ids"
+          ],
+          "input_schema_sha256": "cf3c2f058e692ce3e356869f6201a7b1f1a474ca3dab85d5c91bfe64d710fe40",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "verifier_ids"
+          ]
+        },
+        "mncs_forge_verifier_describe": {
+          "input_properties": [
+            "verifier_id"
+          ],
+          "input_schema_sha256": "8663ba462ea19180937f1a4da3c0d1bc1e1439db6c702c72f7832eb30b81cc5b",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "verifier_id"
+          ]
+        },
+        "mncs_forge_verifier_explain": {
+          "input_properties": [
+            "output_identity"
+          ],
+          "input_schema_sha256": "4844006abababb9a5dc78a1a98518840e9b31bfee684884bfd4930fb0d131e03",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "output_identity"
+          ]
+        },
+        "mncs_forge_verifier_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_verifier_match": {
+          "input_properties": [
+            "active_mode",
+            "artifact_type",
+            "changed_paths",
+            "language",
+            "maximum_cost",
+            "required_category",
+            "scope",
+            "uncertainty_classes"
+          ],
+          "input_schema_sha256": "7f630b69d9927ea0bc79caf9e8463a03e0dfa20596335843063aac64741fa706",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "uncertainty_classes"
+          ]
+        },
+        "mncs_forge_verifier_run": {
+          "input_properties": [
+            "candidate_identity",
+            "changed_paths",
+            "contract_identity",
+            "dependency_slice_identities",
+            "prior_artifact_identity",
+            "question_parameters",
+            "scope",
+            "source_region",
+            "verifier_id"
+          ],
+          "input_schema_sha256": "875d99a21c242d2c263f5550603432295b39c955880ed3e28c6c0164a79dbf86",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "verifier_id"
+          ]
+        }
+      }
+    }
+  },
+  "operations": {
+    "operation_ids": [
+      "bundles.build",
+      "candidates.compare",
+      "candidates.freeze",
+      "candidates.register",
+      "candidates.reject",
+      "candidates.select",
+      "claims.blockers",
+      "claims.status",
+      "config.validate",
+      "development.checks.run",
+      "development.failure.explain",
+      "epochs.begin",
+      "evaluation.final.run",
+      "evidence.reconcile",
+      "ledger.verify",
+      "lifecycle.inspect",
+      "operations.inventory",
+      "project.doctor",
+      "project.inspect",
+      "providers.capability-blockers",
+      "providers.list",
+      "providers.probe",
+      "verifiers.batch",
+      "verifiers.describe",
+      "verifiers.explain",
+      "verifiers.list",
+      "verifiers.match",
+      "verifiers.run"
+    ],
+    "schema_version": "1",
+    "semantic_sha256": "db9f10f925d35c20997ea8b9ff6675ef68bab0ec1407817aadb35ba529e72d31"
+  },
+  "packaging": {
+    "dependencies": [
+      "filelock>=3.16,<4",
+      "jsonschema>=4.23,<5",
+      "mcp>=1.29,<2"
+    ],
+    "name": "mncs-forge-mcp",
+    "requires_python": ">=3.11",
+    "scripts": {
+      "mncs-forge": "mncs_forge.cli:main",
+      "mncs-forge-mcp": "mncs_forge.server:main"
+    }
+  },
+  "python_facade": {
+    "aggregate_status": "(statuses: 'Iterable[str]') -> 'str'",
+    "class": "mncs_forge.engine.Forge",
+    "methods": {
+      "__init__": "(self, config: 'ForgeConfig', mode: 'str' = 'development', *, record_store: 'RecordStore | None' = None) -> 'None'",
+      "bundle_build": "(self, workflow_name: 'str', candidate_id: 'str | None' = None) -> 'dict[str, object]'",
+      "candidate_compare": "(self, candidate_ids: 'list[str]') -> 'dict[str, object]'",
+      "candidate_disposition": "(self, candidate_id: 'str', *, disposition: 'str', reason: 'str') -> 'dict[str, object]'",
+      "candidate_freeze": "(self, candidate_id: 'str', *, environment_identity: 'str', required_evidence_plan: 'str') -> 'dict[str, object]'",
+      "candidate_register": "(self, *, changed_files: 'list[str]', hypothesis: 'str', generator_identity: 'str', generator_config_identity: 'str', parent_candidate: 'str | None' = None, expected_identity: 'str | None' = None) -> 'dict[str, object]'",
+      "capability_blockers": "(self, required_capabilities: 'list[str] | None' = None) -> 'dict[str, object]'",
+      "claim_blockers": "(self, requested_claim: 'str') -> 'dict[str, object]'",
+      "claim_status": "(self) -> 'dict[str, object]'",
+      "config_validate": "(self) -> 'dict[str, object]'",
+      "development_checks_run": "(self, workflow_names: 'list[str]', candidate_id: 'str | None' = None) -> 'dict[str, object]'",
+      "doctor": "(self) -> 'dict[str, object]'",
+      "epoch_begin": "(self, *, generator_identity: 'str', evaluator_identity: 'str', parent_epoch: 'str | None' = None, authority_overlap: 'list[str] | None' = None) -> 'dict[str, object]'",
+      "evidence_reconcile": "(self, candidate_id: 'str | None' = None) -> 'dict[str, object]'",
+      "failure_explain": "(self, output_identity: 'str | None' = None) -> 'dict[str, object]'",
+      "final_evaluation_run": "(self, workflow_names: 'list[str]') -> 'dict[str, object]'",
+      "ledger_verify": "(self) -> 'dict[str, object]'",
+      "project_inspect": "(self) -> 'dict[str, object]'",
+      "provider_list": "(self) -> 'dict[str, object]'",
+      "provider_probe": "(self, provider_id: 'str') -> 'dict[str, object]'",
+      "state_inspect": "(self) -> 'dict[str, object]'",
+      "verifier_batch": "(self, verifier_ids: 'list[str]', *, candidate_identity: 'str | None' = None, changed_paths: 'list[str] | None' = None, scope: 'str | None' = None, source_region: 'dict[str, object] | None' = None, contract_identity: 'str | None' = None, dependency_slice_identities: 'dict[str, str] | None' = None, prior_artifact_identity: 'str | None' = None, question_parameters: 'dict[str, object] | None' = None) -> 'dict[str, object]'",
+      "verifier_describe": "(self, verifier_id: 'str') -> 'dict[str, object]'",
+      "verifier_explain": "(self, output_identity: 'str') -> 'dict[str, object]'",
+      "verifier_list": "(self) -> 'dict[str, object]'",
+      "verifier_match": "(self, *, uncertainty_classes: 'list[str]', language: 'str | None' = None, artifact_type: 'str | None' = None, changed_paths: 'list[str] | None' = None, scope: 'str | None' = None, maximum_cost: 'str' = 'high', required_category: 'str | None' = None, active_mode: 'str | None' = None) -> 'dict[str, object]'",
+      "verifier_run": "(self, verifier_id: 'str', *, candidate_identity: 'str | None' = None, changed_paths: 'list[str] | None' = None, scope: 'str | None' = None, source_region: 'dict[str, object] | None' = None, contract_identity: 'str | None' = None, dependency_slice_identities: 'dict[str, str] | None' = None, prior_artifact_identity: 'str | None' = None, question_parameters: 'dict[str, object] | None' = None) -> 'dict[str, object]'"
+    }
+  },
+  "records": {
+    "definitions": {
+      "bundle": {
+        "properties": [
+          "candidate_identity",
+          "category",
+          "duration_seconds",
+          "environment",
+          "extensions",
+          "limitations",
+          "method",
+          "output_identity",
+          "protocol_request_identity",
+          "provider_or_evaluator_identity",
+          "record_type",
+          "recorded_at",
+          "returncode",
+          "schema_version",
+          "scope",
+          "status",
+          "stderr_diagnostic",
+          "subject_type",
+          "unsupported_constructs",
+          "witnesses_or_counterexamples",
+          "workflow"
+        ],
+        "required": [
+          "candidate_identity",
+          "category",
+          "duration_seconds",
+          "environment",
+          "limitations",
+          "method",
+          "output_identity",
+          "protocol_request_identity",
+          "provider_or_evaluator_identity",
+          "record_type",
+          "recorded_at",
+          "returncode",
+          "schema_version",
+          "scope",
+          "status",
+          "stderr_diagnostic",
+          "subject_type",
+          "unsupported_constructs",
+          "witnesses_or_counterexamples",
+          "workflow"
+        ]
+      },
+      "candidate": {
+        "properties": [
+          "candidate_id",
+          "changed_files",
+          "current_file_identities",
+          "declared_hypothesis",
+          "extensions",
+          "generator_configuration_identity",
+          "generator_identity",
+          "objective_identity",
+          "parent_candidate",
+          "record_type",
+          "registered_at",
+          "schema_version",
+          "source_epoch",
+          "supersedes",
+          "useful_benefit_objective"
+        ],
+        "required": [
+          "candidate_id",
+          "changed_files",
+          "current_file_identities",
+          "declared_hypothesis",
+          "generator_configuration_identity",
+          "generator_identity",
+          "objective_identity",
+          "parent_candidate",
+          "record_type",
+          "registered_at",
+          "schema_version",
+          "source_epoch",
+          "supersedes",
+          "useful_benefit_objective"
+        ]
+      },
+      "candidate_disposition": {
+        "properties": [
+          "candidate_identity",
+          "disposition",
+          "disposition_id",
+          "evidence_status",
+          "extensions",
+          "reason",
+          "record_type",
+          "recorded_at",
+          "schema_version",
+          "selection_policy_identity",
+          "selection_rule"
+        ],
+        "required": [
+          "candidate_identity",
+          "disposition",
+          "disposition_id",
+          "evidence_status",
+          "reason",
+          "record_type",
+          "recorded_at",
+          "schema_version",
+          "selection_policy_identity",
+          "selection_rule"
+        ]
+      },
+      "epoch": {
+        "properties": [
+          "authority_identities",
+          "baseline_identity",
+          "contract_identity",
+          "created_at",
+          "declared_authority_overlap",
+          "epoch_id",
+          "evaluator_identity",
+          "extensions",
+          "generator_identity",
+          "objective_identity",
+          "parent_epoch",
+          "record_type",
+          "schema_version",
+          "visible_partition_identities"
+        ],
+        "required": [
+          "authority_identities",
+          "baseline_identity",
+          "contract_identity",
+          "created_at",
+          "declared_authority_overlap",
+          "epoch_id",
+          "evaluator_identity",
+          "generator_identity",
+          "objective_identity",
+          "parent_epoch",
+          "record_type",
+          "schema_version",
+          "visible_partition_identities"
+        ]
+      },
+      "final_evaluation": {
+        "properties": [
+          "candidate_identity",
+          "category",
+          "duration_seconds",
+          "environment",
+          "extensions",
+          "limitations",
+          "method",
+          "output_identity",
+          "protocol_request_identity",
+          "provider_or_evaluator_identity",
+          "record_type",
+          "recorded_at",
+          "returncode",
+          "schema_version",
+          "scope",
+          "status",
+          "stderr_diagnostic",
+          "subject_type",
+          "unsupported_constructs",
+          "witnesses_or_counterexamples",
+          "workflow"
+        ],
+        "required": [
+          "candidate_identity",
+          "category",
+          "duration_seconds",
+          "environment",
+          "limitations",
+          "method",
+          "output_identity",
+          "protocol_request_identity",
+          "provider_or_evaluator_identity",
+          "record_type",
+          "recorded_at",
+          "returncode",
+          "schema_version",
+          "scope",
+          "status",
+          "stderr_diagnostic",
+          "subject_type",
+          "unsupported_constructs",
+          "witnesses_or_counterexamples",
+          "workflow"
+        ]
+      },
+      "freeze": {
+        "properties": [
+          "acceptance_policy_identity",
+          "candidate_identity",
+          "contract_identity",
+          "environment",
+          "evaluator_identity",
+          "extensions",
+          "freeze_id",
+          "frozen_at",
+          "frozen_path_sets",
+          "protected_identity",
+          "record_type",
+          "reference_identity",
+          "required_evidence_plan",
+          "required_evidence_plan_identity",
+          "schema_version",
+          "selection_record"
+        ],
+        "required": [
+          "acceptance_policy_identity",
+          "candidate_identity",
+          "contract_identity",
+          "environment",
+          "evaluator_identity",
+          "freeze_id",
+          "frozen_at",
+          "frozen_path_sets",
+          "protected_identity",
+          "record_type",
+          "reference_identity",
+          "required_evidence_plan",
+          "required_evidence_plan_identity",
+          "schema_version",
+          "selection_record"
+        ]
+      },
+      "ledger_entry": {
+        "properties": [
+          "entry_hash",
+          "kind",
+          "payload",
+          "previous_hash",
+          "record_type",
+          "schema_version",
+          "sequence",
+          "timestamp"
+        ],
+        "required": [
+          "entry_hash",
+          "kind",
+          "payload",
+          "previous_hash",
+          "record_type",
+          "schema_version",
+          "sequence",
+          "timestamp"
+        ]
+      },
+      "provider_probe": {
+        "properties": [
+          "availability",
+          "cancellation",
+          "command",
+          "declared_capabilities",
+          "declared_identity",
+          "declared_version",
+          "descriptor",
+          "duration_seconds",
+          "error_code",
+          "executable",
+          "executable_identity",
+          "expected_executable_identity",
+          "extensions",
+          "health_checks",
+          "limitations",
+          "name",
+          "output_identity",
+          "probe_kind",
+          "probed_capabilities",
+          "protocol_statuses",
+          "provider_id",
+          "provider_identity",
+          "record_type",
+          "recorded_at",
+          "required",
+          "returncode",
+          "schema_version",
+          "status",
+          "stderr_diagnostic",
+          "supported_constructs",
+          "transport",
+          "unsupported_constructs"
+        ],
+        "required": [
+          "availability",
+          "command",
+          "declared_capabilities",
+          "declared_identity",
+          "declared_version",
+          "descriptor",
+          "executable",
+          "executable_identity",
+          "expected_executable_identity",
+          "limitations",
+          "name",
+          "output_identity",
+          "probe_kind",
+          "probed_capabilities",
+          "provider_id",
+          "provider_identity",
+          "record_type",
+          "recorded_at",
+          "required",
+          "schema_version",
+          "status",
+          "supported_constructs",
+          "transport",
+          "unsupported_constructs"
+        ]
+      },
+      "reconciliation": {
+        "properties": [
+          "candidate_identity",
+          "categories",
+          "claim_limitations",
+          "conflicting_evidence",
+          "dominance",
+          "extensions",
+          "normative_logic_delegated",
+          "record_type",
+          "required_gate_aggregation",
+          "schema_version",
+          "stale_identities",
+          "unresolved_blockers"
+        ],
+        "required": [
+          "candidate_identity",
+          "categories",
+          "claim_limitations",
+          "conflicting_evidence",
+          "dominance",
+          "normative_logic_delegated",
+          "record_type",
+          "required_gate_aggregation",
+          "schema_version",
+          "stale_identities",
+          "unresolved_blockers"
+        ]
+      },
+      "verifier_action": {
+        "properties": [
+          "action_id",
+          "candidate_identity",
+          "candidate_parent_identity",
+          "changed_paths",
+          "configuration_identity",
+          "environment_identity",
+          "epoch_identity",
+          "extensions",
+          "freeze_identity",
+          "input_identities",
+          "method",
+          "mode",
+          "policy_identity",
+          "protocol_request_identity",
+          "provider_configuration_identity",
+          "provider_id",
+          "record_type",
+          "requested_at",
+          "schema_version",
+          "scope",
+          "source_region",
+          "supersedes_output_identity",
+          "verifier_id",
+          "verifier_identity",
+          "verifier_version"
+        ],
+        "required": [
+          "action_id",
+          "candidate_identity",
+          "candidate_parent_identity",
+          "changed_paths",
+          "configuration_identity",
+          "environment_identity",
+          "epoch_identity",
+          "freeze_identity",
+          "input_identities",
+          "method",
+          "mode",
+          "policy_identity",
+          "protocol_request_identity",
+          "provider_configuration_identity",
+          "provider_id",
+          "record_type",
+          "requested_at",
+          "schema_version",
+          "scope",
+          "source_region",
+          "supersedes_output_identity",
+          "verifier_id",
+          "verifier_identity",
+          "verifier_version"
+        ]
+      },
+      "verifier_result": {
+        "properties": [
+          "action_id",
+          "assumptions",
+          "candidate_identity",
+          "candidate_parent_identity",
+          "category",
+          "claim",
+          "configuration_identity",
+          "dependency_envelope",
+          "disclosure",
+          "duration_seconds",
+          "environment_identity",
+          "epoch_identity",
+          "evidence_class",
+          "extensions",
+          "freeze_identity",
+          "independent_evaluation",
+          "input_identities",
+          "iterative_development_overlap",
+          "limitations",
+          "method",
+          "mode",
+          "operational_error",
+          "output_identity",
+          "policy_identity",
+          "provider_configuration_identity",
+          "provider_executable_identity",
+          "provider_id",
+          "provider_identity",
+          "provider_response_identity",
+          "record_type",
+          "recorded_at",
+          "returncode",
+          "schema_version",
+          "status",
+          "stderr_diagnostic",
+          "summary",
+          "supersedes_output_identity",
+          "unsupported_constructs",
+          "verifier_id",
+          "verifier_identity",
+          "verifier_version",
+          "witnesses"
+        ],
+        "required": [
+          "action_id",
+          "assumptions",
+          "candidate_identity",
+          "candidate_parent_identity",
+          "category",
+          "claim",
+          "configuration_identity",
+          "dependency_envelope",
+          "disclosure",
+          "duration_seconds",
+          "environment_identity",
+          "epoch_identity",
+          "evidence_class",
+          "freeze_identity",
+          "independent_evaluation",
+          "input_identities",
+          "iterative_development_overlap",
+          "limitations",
+          "method",
+          "mode",
+          "operational_error",
+          "output_identity",
+          "policy_identity",
+          "provider_configuration_identity",
+          "provider_executable_identity",
+          "provider_id",
+          "provider_identity",
+          "provider_response_identity",
+          "record_type",
+          "recorded_at",
+          "returncode",
+          "schema_version",
+          "status",
+          "stderr_diagnostic",
+          "summary",
+          "supersedes_output_identity",
+          "unsupported_constructs",
+          "verifier_id",
+          "verifier_identity",
+          "verifier_version",
+          "witnesses"
+        ]
+      },
+      "workflow_action": {
+        "properties": [
+          "candidate_identity",
+          "extensions",
+          "mode",
+          "protocol_request_identity",
+          "record_type",
+          "requested_at",
+          "schema_version",
+          "workflow"
+        ],
+        "required": [
+          "candidate_identity",
+          "mode",
+          "protocol_request_identity",
+          "record_type",
+          "requested_at",
+          "schema_version",
+          "workflow"
+        ]
+      },
+      "workflow_result": {
+        "properties": [
+          "candidate_identity",
+          "category",
+          "duration_seconds",
+          "environment",
+          "extensions",
+          "limitations",
+          "method",
+          "output_identity",
+          "protocol_request_identity",
+          "provider_or_evaluator_identity",
+          "record_type",
+          "recorded_at",
+          "returncode",
+          "schema_version",
+          "scope",
+          "status",
+          "stderr_diagnostic",
+          "subject_type",
+          "unsupported_constructs",
+          "witnesses_or_counterexamples",
+          "workflow"
+        ],
+        "required": [
+          "candidate_identity",
+          "category",
+          "duration_seconds",
+          "environment",
+          "limitations",
+          "method",
+          "output_identity",
+          "protocol_request_identity",
+          "provider_or_evaluator_identity",
+          "record_type",
+          "recorded_at",
+          "returncode",
+          "schema_version",
+          "scope",
+          "status",
+          "stderr_diagnostic",
+          "subject_type",
+          "unsupported_constructs",
+          "witnesses_or_counterexamples",
+          "workflow"
+        ]
+      }
+    },
+    "root_properties": [],
+    "root_required": [],
+    "semantic_sha256": "dc428b35cc92228e96a38f53d13773b3008dc88522321edd01568a38d79584a4"
+  },
+  "snapshot_schema": "1"
+}

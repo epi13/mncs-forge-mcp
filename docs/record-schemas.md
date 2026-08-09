@@ -84,6 +84,13 @@ Unsupported explicit versions fail closed with `UNSUPPORTED_RECORD_VERSION`. A t
 record that disagrees with its trusted ledger kind or storage group fails with
 `RECORD_TYPE_MISMATCH`.
 
+Early `0.1` workflow results, final evaluations, and bundles created before project-scoped
+workflows existed did not contain `subject_type`. Their migration adds
+`subject_type = "candidate"` only after reproducing the historical identity without that field. A
+normalized legacy record may reproduce the same candidate default on a later parse. Forge never
+infers `project` from a candidate-identity string, and an explicit legacy project subject must
+reproduce an identity that included the subject field.
+
 ## Schema snapshot
 
 [`forge-records-1.schema.json`](../src/mncs_forge/resources/forge-records-1.schema.json) is the
@@ -93,4 +100,10 @@ parser remains authoritative for runtime behavior. Regenerate the snapshot delib
 
 ```bash
 PATH="$PWD/.venv/bin:$PATH" python scripts/generate-record-schema.py
+```
+
+The aggregate release-boundary check is:
+
+```bash
+PATH="$PWD/.venv/bin:$PATH" python scripts/generate-compatibility-snapshot.py --check
 ```

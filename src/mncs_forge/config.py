@@ -187,10 +187,12 @@ def validate_config_data(data: object) -> dict[str, Any]:
 
 
 def load_config(path: Path | str = Path("mncs-forge.toml")) -> ForgeConfig:
-    config_path = Path(path).expanduser().resolve(strict=True)
     try:
+        config_path = Path(path).expanduser().resolve(strict=True)
         with config_path.open("rb") as stream:
             raw = validate_config_data(tomllib.load(stream))
+    except tomllib.TOMLDecodeError as exc:
+        raise ForgeError("CONFIG_INVALID", f"configuration TOML is malformed: {exc}") from exc
     except OSError as exc:
         raise ForgeError("CONFIG_READ", f"cannot read configuration: {exc}") from exc
     project_root = validate_relative_path(str(raw["project"]["root"]), allow_dot=True)

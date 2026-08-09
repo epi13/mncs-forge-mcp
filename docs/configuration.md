@@ -40,3 +40,10 @@ declared checks work in a fresh checkout without mutable candidate ledger state.
 
 See [`examples/minimal`](../examples/minimal) and the
 [EdgeStream template](../examples/edgestream/mncs-forge.toml).
+
+The version-1 schema is the explicit compatibility contract; Forge does not introduce a second
+configuration-version mechanism for `0.1.0b1`. Unknown sections, missing required fields, and an
+unsupported `version` fail with `CONFIG_INVALID`. Malformed TOML also fails with
+`CONFIG_INVALID`, while a missing or unreadable file fails with `CONFIG_READ`. Defaults and the
+schema's semantic validation digest are frozen by the
+[`0.1.0b1` compatibility boundary](compatibility-boundary-0.1.0b1.md).

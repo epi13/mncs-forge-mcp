@@ -78,6 +78,14 @@ WORKFLOW_RESULT_FIELDS = frozenset(
     }
 )
 
+LEGACY_CANDIDATE_SUBJECT_RECORDS = frozenset(
+    {
+        RecordType.WORKFLOW_RESULT,
+        RecordType.FINAL_EVALUATION,
+        RecordType.BUNDLE,
+    }
+)
+
 RECORD_SPECS: dict[RecordType, RecordSpec] = {
     RecordType.EPOCH: RecordSpec(
         required=frozenset(
@@ -1001,15 +1009,32 @@ class MigrationRegistry:
         spec = RECORD_SPECS[record_type]
         if spec.identity_field is not None:
             supplied = data.get(spec.identity_field)
-            if supplied != _legacy_identity(
+            identity_matches = supplied == _legacy_identity(
                 record_type,
                 data,
                 restore_preserved_unknowns=restore_preserved_unknowns,
+            )
+            if (
+                not identity_matches
+                and record_type in LEGACY_CANDIDATE_SUBJECT_RECORDS
+                and data.get("subject_type") == "candidate"
             ):
+                without_compatibility_default = dict(data)
+                without_compatibility_default.pop("subject_type")
+                identity_matches = supplied == _legacy_identity(
+                    record_type,
+                    without_compatibility_default,
+                    restore_preserved_unknowns=restore_preserved_unknowns,
+                )
+            if not identity_matches:
                 raise ForgeError(
                     "RECORD_IDENTITY",
                     f"legacy {record_type.value} identity does not reproduce historically",
                 )
+        if record_type in LEGACY_CANDIDATE_SUBJECT_RECORDS and "subject_type" not in data:
+            # Before project-scoped workflows existed, every persisted workflow-like result was
+            # candidate-scoped. Do not infer broader project authority from an identity string.
+            data["subject_type"] = "candidate"
         unknown = sorted(set(data).difference(spec.allowed))
         if unknown:
             preserved = {key: data.pop(key) for key in unknown}

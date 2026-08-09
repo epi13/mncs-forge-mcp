@@ -24,6 +24,7 @@ development planning. The root README remains a short project entrypoint.
 - [Intent-aware security verification](intent-aware-security-verification.md)
 - [Forge Cell execution assurance](forge-cell.md)
 - [Compatibility](compatibility.md)
+- [`0.1.0b1` compatibility boundary](compatibility-boundary-0.1.0b1.md)
 
 ## Providers and integrations
 
@@ -57,6 +58,8 @@ development planning. The root README remains a short project entrypoint.
   CLI/MCP compatibility mapping and intentional asymmetries.
 - [Task 6 validation evidence](development-evidence/task-6-validation.md) — registry design,
   compatibility enforcement, benchmark comparison, and Joern dispatch review.
+- [`0.1.0b1` compatibility validation](development-evidence/0.1.0b1-compatibility-validation.md) —
+  semantic boundary, migration/wheel matrix, benchmark, and comparative Joern findings.
 
 ## Documentation rules
 

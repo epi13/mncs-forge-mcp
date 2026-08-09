@@ -48,17 +48,17 @@ Required work:
    interfaces;
 2. completed: retain a small public `Forge` facade for compatibility;
 3. completed: create one typed operation registry shared by CLI and MCP dispatch;
-4. add schema compatibility snapshots and migration tests; and
+4. completed: add semantic schema/interface compatibility snapshots and migration tests; and
 5. completed: document extension boundaries for providers, verifiers, storage, execution, and
    operations.
 
-Task 5 completed service and dependency decomposition. Task 6 now provides the shared typed
-operation registry, deterministic inventory, generated FastMCP tools, registry-bound argparse
-dispatch, explicit asymmetries, and compatibility enforcement. The extension boundaries are
-documented in [Architecture and trust boundaries](docs/architecture.md), with detailed registry,
-provider, storage, and verifier guides. Remaining `0.1.0b1` work is focused on schema/migration
-compatibility review. Full runner receipts, sandbox-capable adapters, and execution assurance
-remain Task 7.
+Task 5 completed service and dependency decomposition. Task 6 provides the shared typed operation
+registry, deterministic inventory, generated FastMCP tools, registry-bound argparse dispatch,
+explicit asymmetries, and compatibility enforcement. The final compatibility review added one
+semantic cross-surface snapshot, early-`0.1` migration coverage, stable configuration read/parse
+errors, Provider Protocol request characterization, and installed-wheel upgrade verification. The
+[`0.1.0b1` compatibility boundary](docs/compatibility-boundary-0.1.0b1.md) is complete. Full runner
+receipts, sandbox-capable adapters, and execution assurance remain Task 7.
 
 ## `0.2.0` — stable local Forge
 
