@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Repair the Task 9B Windows test-harness portability regressions without changing raw local-runner
+  output semantics or shrinking the oversized Provider Protocol corpus. Add the Task 9C
+  implementation-mapped stable-local threat model, executable evidence mapping, and explicit
+  `0.2.0` release-gate review. Task 7 receipts/sandbox work and the full `0.2.0` gate remain
+  deferred.
 - Complete the Task 9A local-stability harness in the current baseline and begin Task 9B with
   built-wheel/source-distribution verification, clean-environment import-origin checks, historical
   state validation through the installed wheel, package/dependency audits, CI artifact checks, and

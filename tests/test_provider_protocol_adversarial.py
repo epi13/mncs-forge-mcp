@@ -51,16 +51,21 @@ def _valid_capabilities() -> dict[str, Any]:
 @pytest.mark.parametrize(
     ("stdout", "code"),
     [
-        (b"", "PROVIDER_FRAMING"),
-        (b"\n", "PROVIDER_FRAMING"),
-        (
+        pytest.param(b"", "PROVIDER_FRAMING", id="empty"),
+        pytest.param(b"\n", "PROVIDER_FRAMING", id="blank-line"),
+        pytest.param(
             _line({"protocol_version": "0.1"}) + _line({"protocol_version": "0.1"}),
             "PROVIDER_FRAMING",
+            id="two-json-lines",
         ),
-        (_line({"protocol_version": "0.1"}) + b"\n", "PROVIDER_FRAMING"),
-        (b"\xff\n", "PROVIDER_FRAMING"),
-        (b"{" + b"x" * 65536, "PROVIDER_MALFORMED"),
-        (_line([]), "PROVIDER_MALFORMED"),
+        pytest.param(
+            _line({"protocol_version": "0.1"}) + b"\n",
+            "PROVIDER_FRAMING",
+            id="trailing-blank-line",
+        ),
+        pytest.param(b"\xff\n", "PROVIDER_FRAMING", id="invalid-utf8"),
+        pytest.param(b"{" + b"x" * 65536, "PROVIDER_MALFORMED", id="oversized-malformed-json"),
+        pytest.param(_line([]), "PROVIDER_MALFORMED", id="non-object-json"),
     ],
 )
 def test_provider_framing_corpus_fails_closed(stdout: bytes, code: str) -> None:
@@ -72,18 +77,18 @@ def test_provider_framing_corpus_fails_closed(stdout: bytes, code: str) -> None:
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("protocol_version", None),
-        ("protocol_version", "0.2"),
-        ("type", None),
-        ("type", 3),
-        ("provider", None),
-        ("provider", []),
-        ("extensions", None),
-        ("extensions", []),
-        ("status", "pass"),
-        ("status", 1),
-        ("status", {}),
-        ("status", []),
+        pytest.param("protocol_version", None, id="missing-protocol-version"),
+        pytest.param("protocol_version", "0.2", id="unsupported-protocol-version"),
+        pytest.param("type", None, id="missing-type"),
+        pytest.param("type", 3, id="numeric-type"),
+        pytest.param("provider", None, id="missing-provider"),
+        pytest.param("provider", [], id="list-provider"),
+        pytest.param("extensions", None, id="null-extensions"),
+        pytest.param("extensions", [], id="list-extensions"),
+        pytest.param("status", "pass", id="lowercase-status"),
+        pytest.param("status", 1, id="numeric-status"),
+        pytest.param("status", {}, id="object-status"),
+        pytest.param("status", [], id="list-status"),
     ],
 )
 def test_provider_metadata_and_status_mutations_never_become_analysis_pass(
@@ -100,19 +105,23 @@ def test_provider_metadata_and_status_mutations_never_become_analysis_pass(
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("analyses", ["bounded-structural", "bounded-structural"]),
-        ("analyses", [""]),
-        ("analyses", [None]),
-        ("statuses", []),
-        ("statuses", ["pass"]),
-        ("statuses", ["PASS", 1]),
-        ("cancellation", None),
-        ("cancellation", "false"),
-        ("health_checks", None),
-        ("health_checks", {}),
-        ("extensions", {"supported_constructs": [""]}),
-        ("extensions", {"unsupported_constructs": [None]}),
-        ("extensions", {"limitations": "not-an-array"}),
+        pytest.param(
+            "analyses", ["bounded-structural", "bounded-structural"], id="duplicate-analysis"
+        ),
+        pytest.param("analyses", [""], id="empty-analysis"),
+        pytest.param("analyses", [None], id="null-analysis"),
+        pytest.param("statuses", [], id="empty-statuses"),
+        pytest.param("statuses", ["pass"], id="lowercase-status-declaration"),
+        pytest.param("statuses", ["PASS", 1], id="numeric-status-declaration"),
+        pytest.param("cancellation", None, id="null-cancellation"),
+        pytest.param("cancellation", "false", id="string-cancellation"),
+        pytest.param("health_checks", None, id="null-health-checks"),
+        pytest.param("health_checks", {}, id="object-health-checks"),
+        pytest.param("extensions", {"supported_constructs": [""]}, id="empty-supported-construct"),
+        pytest.param(
+            "extensions", {"unsupported_constructs": [None]}, id="null-unsupported-construct"
+        ),
+        pytest.param("extensions", {"limitations": "not-an-array"}, id="string-limitations"),
     ],
 )
 def test_capability_mutation_corpus_remains_malformed(field: str, value: object) -> None:
