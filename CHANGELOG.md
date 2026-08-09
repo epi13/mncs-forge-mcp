@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Close the `0.1.0b1` compatibility boundary with a regenerable semantic snapshot spanning record
+  and configuration schemas, CLI arguments/defaults/bindings, MCP mode inventories/schemas/
+  resources, canonical operations, the public `Forge` facade, and packaging entry points.
+- Migrate early unversioned `0.1` workflow-like records that predate `subject_type` to the
+  historically accurate candidate scope in memory without identity/status drift or project-
+  authority inference; preserve raw-ledger-first verification and immutable historical bytes.
+- Give malformed/unsupported and unreadable configuration stable `CONFIG_INVALID` and
+  `CONFIG_READ` errors, and add Provider Protocol 0.1 request-shape, adversarial migration, and
+  installed-wheel upgrade coverage.
+
 - Add one typed operation registry for canonical IDs, frozen input models, output contracts,
   mode/mutation policy, authority/lifecycle requirements, disclosure, CLI mappings, MCP tool
   visibility, resources, and explicit interface exclusions.
