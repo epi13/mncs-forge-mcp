@@ -58,9 +58,10 @@ explicit asymmetries, and compatibility enforcement. The final compatibility rev
 semantic cross-surface snapshot, early-`0.1` migration coverage, stable configuration read/parse
 errors, Provider Protocol request characterization, and installed-wheel upgrade verification. The
 [`0.1.0b1` compatibility boundary](docs/compatibility-boundary-0.1.0b1.md) is complete. Task 7
-has begun with the bounded Task 7A local-runner extraction: the typed runner boundary and
-hardened local-process tests are complete as a focused increment. Full runner receipts,
-sandbox-capable adapters, and execution assurance remain outstanding Task 7 work.
+is complete through Task 7A and Task 7B-1's raw local-runner observations plus adapter-ready seam
+for the experimental MNCS `mncs-execution-receipt` `0.1-experimental` envelope. Forge does not
+persist or interpret those observations as assurance. Persistent identity-bound Forge receipt
+integration, sandbox-capable adapters, and execution assurance remain outstanding Task 7 work.
 
 ## `0.2.0` — stable local Forge
 

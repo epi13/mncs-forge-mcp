@@ -56,7 +56,7 @@ Forge extensions attach at explicit inward-facing boundaries:
 | Micro-verifier | typed verifier declaration over a declared provider method | a whole-program proof, result cache, or normative validator |
 | Application service | focused service with typed ports and shared composition-root dependencies | a replacement lifecycle policy or interface adapter |
 | Storage | `RecordReader`/`RecordCommitter` ports implemented by `LocalRecordStore` | external anchoring, custody, witnessing, or remote storage |
-| Execution | typed `Runner` port and `LocalProcessRunner` adapter | runner receipts, sandbox assurance, containers, SSH, or attestation |
+| Execution | typed `Runner` port, `LocalProcessRunner`, and raw observation-to-MNCS adapter seam | persistent runner receipts, sandbox assurance, containers, SSH, or attestation |
 | Public operation | frozen definition in `operations.py` with CLI/MCP/resource metadata | lifecycle authorization, which remains in `ForgeStateMachine` |
 
 The operation registry is the public dispatch extension point; application services are the
@@ -71,11 +71,14 @@ for the detailed contracts.
 `LocalProcessRunner` adapter preserves argument-array, no-shell, explicit cwd/environment, stdin,
 output, timeout, return-code, and platform-specific termination behavior. Its typed capability
 inspection reports local process facts and enforced bounds while marking sandbox, network, and
-filesystem isolation as `not-provided`. `CommandExecutor` and `LocalCommandExecutor` remain
-compatibility aliases during the Task 7A transition. This boundary does not add runner receipts,
-containers, SSH, mount/network policy, or attestation; those remain future Task 7 work. Likewise,
-project observation centralizes existing filesystem identity and workspace behavior without
-changing identity algorithms or authority semantics.
+filesystem isolation as `not-provided`. Task 7B-1 adds `ExecutionObservation` for bounded raw
+stream/lifecycle facts and a non-persistent adapter to MNCS's experimental
+`mncs-execution-receipt` envelope using RFC 8785 identities. It does not interpret harness status,
+create execution assurance, or persist receipts. `CommandExecutor` and `LocalCommandExecutor`
+remain compatibility aliases. Containers, SSH, mount/network policy, persistent receipt authority,
+and attestation remain future Task 7 work. Likewise, project observation centralizes existing
+filesystem identity and workspace behavior without changing identity algorithms or authority
+semantics.
 
 Development mode can see declared contracts, references, and development evidence, register
 candidates, run declared development workflows, compare candidates under the configured policy,

@@ -21,6 +21,7 @@ dependencies = [
   "filelock>=3.16,<4",
   "jsonschema>=4.23,<5",
   "mcp>=1.29,<2",
+  "rfc8785>=0.1.4,<1",
 ]
 
 [project.optional-dependencies]

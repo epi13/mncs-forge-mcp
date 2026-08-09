@@ -32,8 +32,10 @@ authorization, local project observation, bounded local execution, Provider Prot
 transactional local persistence, package/runtime integrity, and development/evaluator evidence
 classification.
 
-It does not model a future Podman, Docker, SSH, Forge Cell, receipt, attestation, external-anchor,
-or distributed-worker implementation as though it exists. Those are future controls. In
+It does not model a future Podman, Docker, SSH, Forge Cell, persistent receipt, attestation,
+external-anchor, or distributed-worker implementation as though it exists. Task 7B-1's
+non-persistent observation adapter is modeled only as an observation boundary, not a control that
+creates assurance. Those stronger properties remain future controls. In
 particular, `LocalProcessRunner` executes trusted configured code with host permissions; it is not
 an operating-system, filesystem, process, memory, CPU, disk, or network sandbox.
 
@@ -100,7 +102,7 @@ filesystem, or CI runner produced it.
 | Interface -> operation registry | canonical operation ID, schema, mode/mutation policy, centralized invoke | prevent | registry binding and dispatch tests |
 | Application -> domain state | lifecycle, authority, freshness, freeze, terminality checks | prevent | `test_state_machine.py`, `test_state_machine_properties.py` |
 | Application -> Runner | typed `Runner` port; no application subprocess bypass | prevent/contain | `test_architecture.py`, `test_execution.py` |
-| Runner -> configured executable | argument array, no shell, declared cwd/environment, stdin/output/timeout bounds | prevent/contain | execution validation, shell, limit, timeout tests |
+| Runner -> configured executable | argument array, no shell, declared cwd/environment, stdin/output/timeout bounds, raw observation | prevent/contain/label | execution and observation tests; MNCS adapter tests |
 | Project input -> observer/workspace | relative containment, traversal/symlink checks, protected overlap checks | prevent/detect | `test_config_paths.py`, `test_micro_verifiers.py` |
 | Provider output -> evidence | one JSONL response, UTF-8, schema/type/status/capability validation | prevent/detect | `test_provider_protocol_adversarial.py` |
 | State transition -> RecordStore | typed record construction, transactional commit and expected ledger head | prevent/recover | `test_record_store.py`, `test_recovery.py` |
@@ -139,7 +141,7 @@ architecture is needed.
 
 ## Controls not present
 
-This iteration does not claim persistent execution receipts or receipt identity semantics; Podman,
+This iteration does not claim persistent Forge execution receipts or receipt authority; Podman,
 Docker, SSH, Forge Cell, namespaces, mounts, seccomp, Landlock, cgroups, network isolation,
 external checkpoints, witnesses, protected custody, independently administered evaluators, complete
 resource isolation, complete secret-disclosure prevention, or protection from host root replacing
@@ -162,6 +164,7 @@ the entire unanchored history.
 | Reviewed local threat model | this iteration | this document and linked evidence |
 | External anchoring/protected custody | outstanding | future Task 8/evidence architecture |
 | Identity-bound execution receipts | outstanding | later Task 7 iteration |
+| Raw runner observations and MNCS adapter readiness | satisfied for this increment | observation, adapter, pinned-schema, and sibling-validator tests |
 | Sandbox-capable runner | outstanding | later Task 7 iteration |
 
 ## Review limitations

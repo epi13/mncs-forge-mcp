@@ -125,6 +125,14 @@ def test_subprocess_implementation_is_confined_to_execution_modules() -> None:
     assert direct_subprocess == ["execution.py", "execution_windows.py"]
 
 
+def test_mncs_receipt_adapter_consumes_observations_without_execution_bypass() -> None:
+    adapter = PACKAGE / "mncs_execution_receipt.py"
+    source = adapter.read_text(encoding="utf-8")
+    assert "subprocess" not in source
+    assert "run_bounded" not in source
+    assert "LocalProcessRunner" not in source
+
+
 def test_facade_composes_services_and_services_do_not_import_facade() -> None:
     engine_imports = imports(PACKAGE / "engine.py")
     application_imports = {

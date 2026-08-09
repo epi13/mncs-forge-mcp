@@ -12,15 +12,18 @@ from pathlib import Path
 
 from .config import ForgeConfig, Provider
 from .errors import ForgeError
-from .execution import run_bounded
+from .execution import run_bounded, validate_argv, validate_limits
+from .execution_observations import ExecutionObservationBuilder
 from .identity import content_identity, file_identity, identity_map
 from .paths import is_within, resolve_contained, validate_relative_path
-from .ports import ExecutionResult, RunnerCapabilities
+from .ports import ExecutionObservation, ExecutionResult, RunnerCapabilities
 from .serialization import local_json_identity, read_json
 
 
 class LocalProcessRunner:
     """Run declared commands locally while preserving the bounded subprocess contract."""
+
+    runner_identity = "runner.local-process-v1"
 
     def execute(
         self,
@@ -42,6 +45,67 @@ class LocalProcessRunner:
             environment=environment,
             stdin=stdin,
         )
+
+    def observe(
+        self,
+        command: object,
+        *,
+        cwd: Path,
+        timeout: float,
+        output_cap: int,
+        stderr_cap: int | None = None,
+        environment: dict[str, str],
+        stdin: bytes = b"",
+    ) -> ExecutionObservation:
+        """Execute through the same bounded path while retaining raw observations."""
+
+        argv = validate_argv(command)
+        validate_limits(timeout, output_cap, stderr_cap)
+        builder = ExecutionObservationBuilder(
+            argv=argv,
+            cwd=cwd,
+            timeout=timeout,
+            stdout_limit=output_cap,
+            stderr_limit=stderr_cap or output_cap,
+            environment=environment,
+            stdin=stdin,
+            capabilities=self.inspect_capabilities(),
+            runner_identity=self.runner_identity,
+            runner_version="1",
+            executable_identity=self._executable_identity(argv, cwd),
+        )
+        try:
+            result = run_bounded(
+                argv,
+                cwd=cwd,
+                timeout=timeout,
+                output_cap=output_cap,
+                stderr_cap=stderr_cap,
+                environment=environment,
+                stdin=stdin,
+                _observation=builder,
+            )
+        except ForgeError as exc:
+            builder.failed(exc)
+            return builder.build()
+        builder.completed(result)
+        return builder.build()
+
+    @staticmethod
+    def _executable_identity(argv: list[str], cwd: Path) -> str | None:
+        executable = Path(argv[0])
+        if not executable.is_absolute() and (executable.parent != Path(".")):
+            executable = cwd / executable
+        else:
+            resolved = shutil.which(argv[0])
+            if resolved is None:
+                return None
+            executable = Path(resolved)
+        try:
+            identity = file_identity(executable)
+        except ForgeError:
+            return None
+        return identity.removeprefix("sha256:")
 
     def inspect_capabilities(self) -> RunnerCapabilities:
         return RunnerCapabilities(
