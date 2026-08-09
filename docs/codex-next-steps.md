@@ -544,11 +544,13 @@ The resulting status model must distinguish at least:
 **Target:** `0.2.0`  
 **Depends on:** Tasks 1 through 7
 
-**Status:** Task 9A is in progress. The first bounded stability harness adds reusable Hypothesis
-properties for status precedence and randomized lifecycle ordering, an adversarial Provider
-Protocol 0.1 corpus, a compact raw-ledger corruption corpus, and a reproducible branch-coverage
-command. Existing runner, RecordStore/recovery, compatibility, and architecture suites were
-audited and retained where already strong. Task 9 and the full `0.2.0` gate remain incomplete.
+**Status:** Task 9A is complete in the current `main` baseline. Its reusable Hypothesis properties
+for status precedence and randomized lifecycle ordering, adversarial Provider Protocol 0.1 corpus,
+compact raw-ledger corruption corpus, strengthened runner coverage, and reproducible branch-coverage
+command are retained. Task 9B is in progress as a bounded release-engineering increment covering
+actual built-artifact installation, historical-state reads through the installed wheel,
+package/dependency audits, CI artifact checks, and non-normative benchmark comparison. Task 9 and
+the full `0.2.0` gate remain incomplete.
 
 Run local branch coverage with:
 
@@ -560,6 +562,26 @@ This is development evidence for policy-branch discovery, not an assurance claim
 threshold. Hypothesis settings are bounded and deterministic for this harness while preserving
 shrinking. Podman, execution receipts, external witnessing, and stronger execution authority stay
 deferred to later iterations.
+
+Run the package artifact verification locally with:
+
+```bash
+python scripts/verify-package.py
+```
+
+Capture and compare benchmark telemetry explicitly when investigating a change:
+
+```bash
+python scripts/benchmark-micro-verifiers.py --iterations 25 > baseline.json
+python scripts/benchmark-micro-verifiers.py --iterations 25 > candidate.json
+python scripts/compare-benchmarks.py baseline.json candidate.json
+```
+
+The artifact verifier builds and installs the wheel and source distribution in temporary virtual
+environments, checks import origin and packaged resources, exercises public entry points, and
+reads a copied historical state corpus without mutating the frozen fixtures. Benchmark comparison
+is operator-controlled development telemetry: it reports environment differences and metric deltas
+but has no repository performance threshold and does not establish correctness or assurance.
 
 ### Objective
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Complete the Task 9A local-stability harness in the current baseline and begin Task 9B with
+  built-wheel/source-distribution verification, clean-environment import-origin checks, historical
+  state validation through the installed wheel, package/dependency audits, CI artifact checks, and
+  non-normative benchmark capture/comparison. Task 9 and the `0.2.0` gate remain incomplete.
 - Begin Task 7 with a typed `Runner` boundary and explicitly named `LocalProcessRunner`, while
   preserving the existing bounded no-shell subprocess semantics and compatibility aliases.
 - Add deterministic local-runner capability inspection that distinguishes enforced execution

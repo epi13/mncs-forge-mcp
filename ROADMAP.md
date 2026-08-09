@@ -78,11 +78,14 @@ Release criteria:
 - stable machine-readable CLI/MCP operation inventory; and
 - a reviewed threat model covering the local trust boundary.
 
-Task 9A has begun as a bounded stability-hardening increment: reusable Hypothesis lifecycle and
-Provider Protocol properties, a compact ledger-corruption corpus, and reproducible branch-coverage
-measurement are now in progress. This does not complete the `0.2.0` gate; package upgrade tests,
-the dependency/packaging audit, benchmark trend evidence, and the reviewed local threat model
-remain outstanding alongside the deferred Task 7 execution-receipt and sandbox work.
+Task 9A is complete in the current `main` baseline: reusable Hypothesis lifecycle and Provider
+Protocol properties, a compact ledger-corruption corpus, strengthened local-runner coverage, and
+reproducible branch-coverage measurement are present. Task 9B has begun as a bounded
+release-engineering increment adding built-wheel/sdist verification, clean-environment import
+checks, supported historical-state checks through the installed wheel, package/dependency audits,
+and non-normative benchmark capture/comparison. Task 9 and the full `0.2.0` gate remain incomplete;
+the reviewed local threat model and deferred Task 7 execution-receipt and sandbox work remain
+outstanding.
 
 ## `0.2.x` — execution and evidence adapters
 
