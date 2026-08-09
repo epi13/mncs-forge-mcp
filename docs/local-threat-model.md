@@ -157,7 +157,7 @@ the entire unanchored history.
 | Adversarial Provider Protocol corpus | satisfied | malformed corpus plus Hypothesis tests |
 | Adversarial subprocess corpus | satisfied | validation, bounds, timeout, shell, stdin, cleanup tests |
 | Ledger/concurrency corpus | satisfied | mutation, companion, journal, index, writer tests |
-| Wheel/sdist install and historical-state gate | local pass; CI confirmation pending | `scripts/verify-package.py` and supported matrix |
+| Wheel/sdist install and historical-state gate | satisfied for this increment | `scripts/verify-package.py`; all 3 OS × 3 Python CI rows passed and Windows artifact logs were confirmed |
 | CLI/MCP inventory stability | satisfied | operation registry and compatibility tests |
 | Reviewed local threat model | this iteration | this document and linked evidence |
 | External anchoring/protected custody | outstanding | future Task 8/evidence architecture |

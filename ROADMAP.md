@@ -84,8 +84,8 @@ reproducible branch-coverage measurement are present. Task 9B package/release en
 complete in the current `main` baseline, subject to the supported matrix remaining green after the
 Windows test-harness portability repair: built-wheel/sdist verification, clean-environment import
 checks, supported historical-state checks through the installed wheel, package/dependency audits,
-and non-normative benchmark capture/comparison are present. Task 9C is the current bounded
-increment for the implementation-mapped local threat model and release-gate review. Task 9 and
+and non-normative benchmark capture/comparison are present. Task 9C is complete as this bounded
+implementation-mapped local threat-model and release-gate review increment. Task 9 and
 the full `0.2.0` gate remain incomplete; deferred Task 7 execution receipts and sandbox-capable
 runners remain outstanding.
 

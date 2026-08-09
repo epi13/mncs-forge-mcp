@@ -548,9 +548,9 @@ The resulting status model must distinguish at least:
 for status precedence and randomized lifecycle ordering, adversarial Provider Protocol 0.1 corpus,
 compact raw-ledger corruption corpus, strengthened runner coverage, and reproducible branch-coverage
 command are retained. Task 9B package/release engineering is complete in the current `main`
-baseline, with final supported-matrix confirmation required after the Windows test-harness repair.
-Task 9C is in progress as a bounded implementation-mapped local threat-model and release-gate
-review. Task 9 and the full `0.2.0` gate remain incomplete.
+baseline, and all supported OS/Python matrix rows passed after the Windows test-harness repair.
+Task 9C is complete as this bounded implementation-mapped local threat-model and release-gate
+review increment. Task 9 and the full `0.2.0` gate remain incomplete.
 
 Run local branch coverage with:
 
