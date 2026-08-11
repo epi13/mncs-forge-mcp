@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Stable stdio entry point for Codex. Installation remains the repository's
+# existing editable .venv package; this wrapper only makes failures explicit
+# and removes any working-directory or activated-shell dependency.
+set -euo pipefail
+
+repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+server="$repository_root/.venv/bin/mncs-forge-mcp"
+
+if [[ ! -x "$server" ]]; then
+  echo "MNCS Forge MCP is not installed or executable: $server" >&2
+  echo "Run $repository_root/scripts/install-codex-mcp.sh [path/to/mncs-forge.toml]" >&2
+  exit 78
+fi
+
+exec "$server" "$@"

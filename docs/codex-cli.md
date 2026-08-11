@@ -2,12 +2,14 @@
 
 The installer inspects the locally installed `codex mcp add --help`, uses the supported command,
 creates or reuses `.venv`, performs an editable install, refuses to overwrite an unrelated
-`mncs-forge` registration, registers an absolute stdio executable/config path, lists the
-registration, runs `doctor`, and performs an MCP initialize/list-tools/inspection smoke.
+`mncs-forge` registration, registers the checked-in absolute `scripts/codex-mcp` stdio wrapper,
+lists the registration, runs `doctor`, and performs a real MCP initialize/list-tools/inspection
+health probe. The default project configuration is the empirical configuration owned by
+`mncs-reference-studies`; pass another project configuration explicitly when working on one.
 
 ```bash
-./scripts/install-codex-mcp.sh /absolute/project/mncs-forge.toml
-./scripts/verify-codex-mcp.sh /absolute/project/mncs-forge.toml
+./scripts/install-codex-mcp.sh
+./scripts/verify-codex-mcp.sh
 codex mcp get mncs-forge --json
 ```
 
@@ -15,9 +17,23 @@ The supported registration is equivalent to:
 
 ```bash
 codex mcp add mncs-forge -- \
-  /absolute/forge/.venv/bin/mncs-forge-mcp \
-  --config /absolute/project/mncs-forge.toml --mode development
+  /absolute/forge/scripts/codex-mcp \
+  --config /absolute/mncs-reference-studies/mncs-forge.toml --mode development
 ```
+
+The wrapper does not activate a shell or depend on `$PWD`; it resolves the Forge checkout and
+executes its existing `.venv/bin/mncs-forge-mcp`. Missing or non-executable environments fail
+with a remediation message on stderr. `scripts/mcp-health.py` distinguishes missing config,
+missing/start-failing executable, MCP initialization failure, missing required tools, and a
+healthy Forge path:
+
+```bash
+./scripts/verify-codex-mcp.sh
+```
+
+The standards repository intentionally no longer owns a root `mncs-forge.toml`; migration of
+empirical studies moved that configuration to `mncs-reference-studies`. A stale reference to
+`machine-native-complexity-standard/mncs-forge.toml` causes Forge to exit before MCP initialize.
 
 Start a new Codex session before expecting discovery. Uninstall:
 
