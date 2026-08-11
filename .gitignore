@@ -5,6 +5,7 @@
 .ruff_cache/
 .joern/
 .joern-analysis/
+.joern-agent/
 build/
 dist/
 *.egg-info/
