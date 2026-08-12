@@ -22,8 +22,10 @@ codex mcp add mncs-forge -- \
 ```
 
 The wrapper does not activate a shell or depend on `$PWD`; it resolves the Forge checkout and
-executes its existing `.venv/bin/mncs-forge-mcp`. Missing or non-executable environments fail
-with a remediation message on stderr. `scripts/mcp-health.py` distinguishes missing config,
+executes `python -m mncs_forge.server` through the checkout's `.venv/bin/python`. This avoids
+host-absolute shebangs in generated entry points when the checkout is mounted at `/workspace`
+inside the MNCS Control Bubblewrap sandbox. Missing or non-executable environments fail with a
+remediation message on stderr. `scripts/mcp-health.py` distinguishes missing config,
 missing/start-failing executable, MCP initialization failure, missing required tools, and a
 healthy Forge path:
 

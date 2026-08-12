@@ -79,6 +79,26 @@ def test_mcp_startup_reports_missing_configuration(tmp_path: Path) -> None:
     assert "MNCS Forge startup failed [CONFIG_READ]" in result.stderr
 
 
+def test_codex_launcher_uses_relocatable_module_entrypoint(project: Path) -> None:
+    root = Path(__file__).parents[1]
+    launcher = root / "scripts" / "codex-mcp"
+    result = subprocess.run(
+        [
+            str(launcher),
+            "--config",
+            str(project / "mncs-forge.toml"),
+            "--mode",
+            "development",
+        ],
+        input="",
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0
+    assert "bad interpreter" not in result.stderr
+
+
 async def _provider_mcp_calls(executable: Path, config: Path) -> None:
     parameters = StdioServerParameters(
         command=str(executable),
