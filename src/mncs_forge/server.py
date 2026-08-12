@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
+import sys
 from collections.abc import Callable, Mapping
 from dataclasses import MISSING, fields
 from pathlib import Path
@@ -14,6 +15,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .config import load_config
 from .engine import Forge
+from .errors import ForgeError
 from .operations import (
     DEFAULT_OPERATION_REGISTRY,
     OperationDefinition,
@@ -225,8 +227,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
-    forge = Forge(load_config(args.config), mode=args.mode)
-    build_server(forge).run(transport="stdio")
+    try:
+        forge = Forge(load_config(args.config), mode=args.mode)
+        build_server(forge).run(transport="stdio")
+    except ForgeError as exc:
+        print(f"MNCS Forge startup failed [{exc.code}]: {exc.message}", file=sys.stderr)
+        raise SystemExit(2) from exc
 
 
 if __name__ == "__main__":
