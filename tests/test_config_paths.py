@@ -38,6 +38,15 @@ def test_configuration_defaults_remain_compatible(config: ForgeConfig) -> None:
     assert provider.required is False
 
 
+def test_runtime_state_override_is_outside_source_tree(
+    config: ForgeConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runtime_root = tmp_path.parent / "forge-runtime-state"
+    monkeypatch.setenv("MNCS_FORGE_STATE_DIR", str(runtime_root))
+    assert config.state_dir == (runtime_root / config.project_identity).resolve()
+    assert config.root not in config.state_dir.parents
+
+
 def test_provider_defaults_are_applied_when_optional_fields_are_absent(project: Path) -> None:
     path = project / "mncs-forge.toml"
     text = path.read_text(encoding="utf-8")

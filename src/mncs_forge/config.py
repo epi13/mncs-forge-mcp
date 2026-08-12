@@ -122,6 +122,9 @@ class ForgeConfig:
 
     @property
     def state_dir(self) -> Path:
+        override = os.environ.get("MNCS_FORGE_STATE_DIR")
+        if override:
+            return Path(override).expanduser().resolve() / self.project_identity
         return self.root / ".mncs-forge"
 
     def paths(self, key: str, *, must_exist: bool = False) -> list[Path]:
