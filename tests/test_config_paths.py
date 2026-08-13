@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -45,6 +46,14 @@ def test_runtime_state_override_is_outside_source_tree(
     monkeypatch.setenv("MNCS_FORGE_STATE_DIR", str(runtime_root))
     assert config.state_dir == (runtime_root / config.project_identity).resolve()
     assert config.root not in config.state_dir.parents
+
+
+def test_go_workflow_gets_bounded_toolchain_cache(config: ForgeConfig) -> None:
+    workflow = replace(config.workflows["project-check"], command=("go", "test", "./..."))
+    bounded = config.environment(workflow)
+    assert Path(bounded["HOME"]).is_relative_to(config.state_dir)
+    assert Path(bounded["XDG_CACHE_HOME"]).is_relative_to(config.state_dir)
+    assert Path(bounded["GOCACHE"]).is_relative_to(config.state_dir)
 
 
 def test_provider_defaults_are_applied_when_optional_fields_are_absent(project: Path) -> None:

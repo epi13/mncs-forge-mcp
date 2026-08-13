@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tomllib
+from contextlib import suppress
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path, PurePosixPath
@@ -139,7 +140,29 @@ class ForgeConfig:
         ]
 
     def environment(self, workflow: Workflow) -> dict[str, str]:
-        return self._environment(workflow.environment, f"workflow {workflow.name}")
+        result = self._environment(workflow.environment, f"workflow {workflow.name}")
+        if any(
+            Path(token).name in {"go", "gofmt", "go test", "go vet"}
+            for token in workflow.command
+        ):
+            runtime = self.state_dir / "runtime"
+            cache = runtime / "cache"
+            go_cache = runtime / "go-cache"
+            for directory in (runtime, cache, go_cache):
+                directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+                with suppress(OSError):
+                    os.chmod(directory, 0o700)
+            # Go refuses to start without a cache/home in Forge's intentionally
+            # sparse environment. These paths are Forge-owned and bounded to the
+            # project state directory; the host HOME is never exposed.
+            result.update(
+                {
+                    "HOME": str(runtime),
+                    "XDG_CACHE_HOME": str(cache),
+                    "GOCACHE": str(go_cache),
+                }
+            )
+        return result
 
     def provider_environment(self, provider: Provider) -> dict[str, str]:
         return self._environment(provider.environment, f"provider {provider.provider_id}")
