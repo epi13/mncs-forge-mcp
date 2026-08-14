@@ -58,10 +58,11 @@ explicit asymmetries, and compatibility enforcement. The final compatibility rev
 semantic cross-surface snapshot, early-`0.1` migration coverage, stable configuration read/parse
 errors, Provider Protocol request characterization, and installed-wheel upgrade verification. The
 [`0.1.0b1` compatibility boundary](docs/compatibility-boundary-0.1.0b1.md) is complete. Task 7
-is complete through Task 7A and Task 7B-1's raw local-runner observations plus adapter-ready seam
-for the experimental MNCS `mncs-execution-receipt` `0.1-experimental` envelope. Forge does not
-persist or interpret those observations as assurance. Persistent identity-bound Forge receipt
-integration, sandbox-capable adapters, and execution assurance remain outstanding Task 7 work.
+is complete through Task 7A, Task 7B-1, and Task 7B-2. Declared workflow execution now persists
+identity-bound `execution_receipt_binding` records that reference, but do not fork, the
+experimental MNCS `mncs-execution-receipt` envelope. Local receipts remain same-operator provenance
+and cannot become evidence `PASS`. Sandbox-capable adapters, verifier-action receipts, and
+execution assurance remain outstanding Task 7 work.
 
 ## `0.2.0` — stable local Forge
 
@@ -87,8 +88,8 @@ Windows test-harness portability repair: built-wheel/sdist verification, clean-e
 checks, supported historical-state checks through the installed wheel, package/dependency audits,
 and non-normative benchmark capture/comparison are present. Task 9C is complete as this bounded
 implementation-mapped local threat-model and release-gate review increment. Task 9 and
-the full `0.2.0` gate remain incomplete; deferred Task 7 execution receipts and sandbox-capable
-runners remain outstanding.
+the full `0.2.0` gate remain incomplete; deferred Task 7 sandbox-capable runners remain
+outstanding. Identity-bound local receipt persistence is present.
 
 ## `0.2.x` — execution and evidence adapters
 
@@ -173,24 +174,28 @@ by [ADR 0007](docs/adr/0007-intent-aware-security-verification.md). Implementati
 records, transactional storage, the shared operation registry, micro-verifier capability matching,
 query-driven diagnostics, and stable freshness semantics.
 
-## `0.3.0` — distributed Forge
+## `0.3.0` — Forge over Fabric
 
-Goal: coordinate bounded jobs across heterogeneous machines while preserving identities,
-capability constraints, partial failure, and evidence classification.
+Goal: evaluate distributed executions without Forge becoming a second execution fabric.
 
-Planned components:
+`mncs-fabric` is the persistent heterogeneous execution substrate. It owns worker inventory,
+`fleet.refresh`, detached jobs, capability declaration, availability windows, the work queue,
+containment reporting, and bounded artifact transport. Forge must not duplicate those mechanics.
 
-- coordinator and worker protocol;
-- immutable content-addressed job envelopes;
-- worker capability and environment declarations;
-- leases, retries, idempotency, and duplicate-result reconciliation;
-- artifact transfer identity verification;
-- cohort plans for cross-platform and different-performance hosts; and
-- explicit separation between replication, public reproduction, witnessing, and independent
-  evaluation.
+Forge-owned requirements remain:
+
+- immutable job/subject/action identity;
+- worker, runner, and environment identity binding;
+- capability-drift detection at the evidence layer;
+- retry/attempt lineage and duplicate-result reconciliation;
+- evidence classification;
+- reproduction semantics;
+- same-operator versus independent execution; and
+- challenge, freeze, and policy authority.
 
 The MCP server remains the agent-facing control plane. It should not become the distributed
-scheduler itself.
+scheduler. The principle is: Fabric decides where and how an eligible job executes; Forge decides
+what that execution proves. See [ADR 0011](docs/adr/0011-forge-fabric-execution-boundary.md).
 
 ## `0.3.x` — measured and externally held evaluation
 

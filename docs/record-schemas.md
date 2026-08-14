@@ -15,6 +15,8 @@ current hash projection includes ledger metadata and the versioned payload.
 | ledger `epoch`; `records/epochs` | `epoch` |
 | ledger `candidate`; `records/candidates` | `candidate` |
 | ledger `provider_probe`; `records/provider-probes` | `provider_probe` |
+| ledger `workflow_action`; `records/workflow-actions` | `workflow_action` |
+| ledger `execution_receipt_binding`; `records/execution-receipt-bindings` | `execution_receipt_binding` |
 | ledger `result`; `records/results` | `workflow_result` |
 | ledger `verifier_action`; `records/verifier-actions` | `verifier_action` |
 | ledger `verifier_result`; `records/verifier-results` | `verifier_result` |
@@ -24,11 +26,10 @@ current hash projection includes ledger metadata and the versioned payload.
 | ledger `bundle`; `records/bundles` | `bundle` |
 | ledger line | `ledger_entry` |
 
-The public typed vocabulary also includes `workflow_action` and `reconciliation`. In historical
-`0.1` Forge, workflow actions were transient requests and reconciliation was a derived interface
-object. Task 2 versions those internal/interface boundaries without inventing new persistence
-events. Task 4 makes only the listed persisted contexts transactional; it does not invent
-persistence for workflow actions or reconciliation.
+The public typed vocabulary also includes `reconciliation`. In historical `0.1` Forge, workflow
+actions were transient requests and reconciliation was a derived interface object. Task 7B-2 now
+persists `workflow_action` and `execution_receipt_binding` as new current-schema records. Historical
+fixtures remain readable without those events. Reconciliation remains a derived interface object.
 
 ## Legacy migration
 

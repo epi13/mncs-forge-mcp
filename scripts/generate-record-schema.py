@@ -21,6 +21,10 @@ OUTPUT = ROOT / "src/mncs_forge/resources/forge-records-1.schema.json"
 
 STRING_FIELDS = {
     "action_id",
+    "action_identity",
+    "action_kind",
+    "architecture",
+    "binding_id",
     "bundle_id",
     "candidate_id",
     "candidate_identity",
@@ -28,18 +32,37 @@ STRING_FIELDS = {
     "created_at",
     "disposition_id",
     "evidence_status",
+    "execution_scope",
     "freeze_id",
     "frozen_at",
     "method",
     "mode",
+    "os_family",
     "output_identity",
     "probe_kind",
+    "project_identity",
+    "receipt_completeness",
     "recorded_at",
     "requested_at",
+    "runner_identity",
+    "runner_kind",
+    "runner_version",
     "schema_version",
     "status",
+    "termination_category",
     "verifier_id",
     "workflow",
+    "workflow_or_verifier",
+}
+NULLABLE_STRING_FIELDS = {
+    "executable_identity",
+    "host_identity",
+    "image_identity",
+    "receipt_identity",
+    "receipt_schema_version",
+    "request_identity",
+    "result_identity",
+    "worker_identity",
 }
 for required_fields in REQUIRED_STRING_FIELDS.values():
     STRING_FIELDS.update(required_fields)
@@ -54,6 +77,16 @@ def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
         RecordType.BUNDLE,
     }:
         return {"type": ["string", "null"]}
+    if field == "epoch_identity" and record_type is RecordType.EXECUTION_RECEIPT_BINDING:
+        return {"type": ["string", "null"]}
+    if field in NULLABLE_STRING_FIELDS:
+        return {"type": ["string", "null"]}
+    if field == "mncs_receipt":
+        return {"type": ["object", "null"]}
+    if field == "action_kind":
+        return {"enum": ["workflow_action", "verifier_action"]}
+    if field == "receipt_completeness":
+        return {"enum": ["complete", "incomplete", "malformed", "unsupported", "unavailable"]}
     if field == "extensions":
         return {
             "type": "object",

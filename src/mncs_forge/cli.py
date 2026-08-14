@@ -161,6 +161,20 @@ def _common_parser() -> argparse.ArgumentParser:
     bundle.add_argument("workflow")
     bundle.add_argument("--candidate")
 
+    receipts = commands.add_parser(_cli_command("execution.receipts.list", 0))
+    receipt_commands = receipts.add_subparsers(dest="receipt_command", required=True)
+    receipt_list = _register(
+        receipt_commands.add_parser(_cli_command("execution.receipts.list")),
+        "execution.receipts.list",
+    )
+    receipt_list.add_argument("--candidate")
+    receipt_list.add_argument("--action")
+    receipt_get = _register(
+        receipt_commands.add_parser(_cli_command("execution.receipts.get")),
+        "execution.receipts.get",
+    )
+    receipt_get.add_argument("binding_id")
+
     ledger = commands.add_parser(_cli_command("ledger.verify", 0))
     ledger_commands = ledger.add_subparsers(dest="ledger_command", required=True)
     _register(ledger_commands.add_parser(_cli_command("ledger.verify")), "ledger.verify")

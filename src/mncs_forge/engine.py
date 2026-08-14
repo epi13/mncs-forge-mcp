@@ -9,6 +9,7 @@ from .adapters import LocalProcessRunner, LocalProjectObserver
 from .application.candidates import CandidateService
 from .application.evaluation import EvaluationService
 from .application.evidence import EvidenceService
+from .application.execution_receipts import get_binding, list_bindings
 from .application.lifecycle import LifecycleContext
 from .application.project import ProjectService
 from .application.providers import ProviderService
@@ -370,3 +371,17 @@ class Forge:
         self, workflow_name: str, candidate_id: str | None = None
     ) -> dict[str, object]:
         return self._evidence_service.build_bundle(workflow_name, candidate_id)
+
+    def execution_receipts_list(
+        self,
+        candidate_identity: str | None = None,
+        action_identity: str | None = None,
+    ) -> dict[str, object]:
+        return list_bindings(
+            self.ledger,
+            candidate_identity=candidate_identity,
+            action_identity=action_identity,
+        )
+
+    def execution_receipts_get(self, binding_id: str) -> dict[str, object]:
+        return get_binding(self.ledger, binding_id)

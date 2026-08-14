@@ -242,6 +242,17 @@ class BundleBuildInput(OperationInput):
     candidate_identity: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ExecutionReceiptListInput(OperationInput):
+    candidate_identity: str | None = None
+    action_identity: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionReceiptGetInput(OperationInput):
+    binding_id: str
+
+
 class ForgeOperationTarget(Protocol):
     """Facade surface consumed by registry handlers without importing the concrete facade."""
 
@@ -328,6 +339,12 @@ class ForgeOperationTarget(Protocol):
     def final_evaluation_run(self, workflow_names: list[str]) -> JsonObject: ...
     def evidence_reconcile(self, candidate_id: str | None = None) -> JsonObject: ...
     def bundle_build(self, workflow_name: str, candidate_id: str | None = None) -> JsonObject: ...
+    def execution_receipts_list(
+        self,
+        candidate_identity: str | None = None,
+        action_identity: str | None = None,
+    ) -> JsonObject: ...
+    def execution_receipts_get(self, binding_id: str) -> JsonObject: ...
     def ledger_verify(self) -> JsonObject: ...
     def config_validate(self) -> JsonObject: ...
 
@@ -571,6 +588,16 @@ def _evidence_reconcile(forge: ForgeOperationTarget, value: OperationInput) -> J
 def _bundle_build(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
     request = _typed(value, BundleBuildInput)
     return forge.bundle_build(request.workflow_name, request.candidate_identity)
+
+
+def _execution_receipts_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, ExecutionReceiptListInput)
+    return forge.execution_receipts_list(request.candidate_identity, request.action_identity)
+
+
+def _execution_receipts_get(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, ExecutionReceiptGetInput)
+    return forge.execution_receipts_get(request.binding_id)
 
 
 def _ledger_verify(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
@@ -1042,6 +1069,44 @@ _OPERATIONS = (
             ),
         ),
         mcp=_mcp("mncs_forge_bundle_build"),
+    ),
+    _operation(
+        "execution.receipts.list",
+        input_model=ExecutionReceiptListInput,
+        output=OutputContract.INVENTORY,
+        handler=_execution_receipts_list,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        description=(
+            "List identity-bound execution-receipt bindings without treating them as evidence PASS."
+        ),
+        cli=_cli(
+            "receipts",
+            "list",
+            bindings=(
+                _binding("candidate_identity", "candidate"),
+                _binding("action_identity", "action"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_execution_receipts_list"),
+        resources=(ResourceExposure("mncs-forge://execution/receipts"),),
+    ),
+    _operation(
+        "execution.receipts.get",
+        input_model=ExecutionReceiptGetInput,
+        output=OutputContract.RECORD,
+        handler=_execution_receipts_get,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        description=(
+            "Read one persisted execution-receipt binding and its referenced MNCS envelope."
+        ),
+        cli=_cli(
+            "receipts",
+            "get",
+            bindings=(_binding("binding_id"),),
+        ),
+        mcp=_mcp("mncs_forge_execution_receipts_get"),
     ),
     _operation(
         "ledger.verify",

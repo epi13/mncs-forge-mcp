@@ -70,15 +70,17 @@ minimal controlled workflow.
 
 ## Current development priority
 
-The next release should stabilize the internal architecture before adding more verifier types,
-distributed execution, or sandbox backends. The verifier lifecycle now has one explicit service,
-and persistent evidence now crosses a frozen typed, versioned boundary with deterministic legacy
-migration. Explicit state transitions derive from append-only typed history, authorized
-record-plus-ledger changes commit through one recoverable local transaction boundary, and the
-compatibility facade delegates to explicit services through typed storage, execution, and identity
-ports. CLI and MCP dispatch now share one typed operation registry and deterministic interface
-inventory. Remaining `0.1.0b1` work reviews schema/migration compatibility; extension boundaries
-are documented before Task 7 expands runner semantics. Forge Cell schemas and fail-closed assurance
+The next release should stabilize the internal architecture before adding more verifier types or
+sandbox backends. Distributed execution should consume `mncs-fabric` rather than a second Forge
+fleet. The verifier lifecycle now has one explicit service, and persistent evidence now crosses a
+frozen typed, versioned boundary with deterministic legacy migration. Explicit state transitions
+derive from append-only typed history, authorized record-plus-ledger changes commit through one
+recoverable local transaction boundary, and the compatibility facade delegates to explicit services
+through typed storage, execution, and identity ports. CLI and MCP dispatch now share one typed
+operation registry and deterministic interface inventory. Declared workflow execution persists
+identity-bound receipt bindings that reference the experimental MNCS execution-receipt envelope
+without claiming sandbox, independence, or custody. Remaining Task 7 work is sandbox-capable
+runners. Forge Cell schemas and fail-closed assurance
 assessment are available as a specification foundation; the actual Linux isolation and attestation
 backends remain ordered follow-up work. Query-driven micro-debugging now also has an architecture,
 versioned reference vocabulary, and a separate implementation queue; runtime sessions and reusable

@@ -266,6 +266,181 @@
       ],
       "type": "object"
     },
+    "execution_receipt_binding": {
+      "additionalProperties": false,
+      "properties": {
+        "action_identity": {
+          "type": "string"
+        },
+        "action_kind": {
+          "enum": [
+            "workflow_action",
+            "verifier_action"
+          ]
+        },
+        "architecture": {
+          "type": "string"
+        },
+        "binding_id": {
+          "type": "string"
+        },
+        "candidate_identity": {
+          "type": "string"
+        },
+        "environment_identity": {
+          "type": "string"
+        },
+        "epoch_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "established_properties": {
+          "type": "object"
+        },
+        "executable_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "execution_scope": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "host_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "image_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mncs_receipt": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "os_family": {
+          "type": "string"
+        },
+        "project_identity": {
+          "type": "string"
+        },
+        "receipt_completeness": {
+          "enum": [
+            "complete",
+            "incomplete",
+            "malformed",
+            "unsupported",
+            "unavailable"
+          ]
+        },
+        "receipt_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receipt_schema_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "record_type": {
+          "const": "execution_receipt_binding"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "request_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runner_identity": {
+          "type": "string"
+        },
+        "runner_kind": {
+          "type": "string"
+        },
+        "runner_version": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "termination_category": {
+          "type": "string"
+        },
+        "worker_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workflow_or_verifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "action_identity",
+        "action_kind",
+        "architecture",
+        "binding_id",
+        "candidate_identity",
+        "environment_identity",
+        "epoch_identity",
+        "established_properties",
+        "executable_identity",
+        "execution_scope",
+        "host_identity",
+        "image_identity",
+        "mncs_receipt",
+        "os_family",
+        "project_identity",
+        "receipt_completeness",
+        "receipt_identity",
+        "receipt_schema_version",
+        "recorded_at",
+        "request_identity",
+        "result_identity",
+        "runner_identity",
+        "runner_kind",
+        "runner_version",
+        "status",
+        "termination_category",
+        "worker_identity",
+        "workflow_or_verifier"
+      ],
+      "type": "object"
+    },
     "final_evaluation": {
       "additionalProperties": false,
       "properties": {
@@ -525,6 +700,25 @@
           "if": {
             "properties": {
               "kind": {
+                "const": "execution_receipt_binding"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/execution_receipt_binding"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
                 "const": "freeze"
               }
             },
@@ -615,6 +809,25 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "workflow_action"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/workflow_action"
+              }
+            }
+          }
         }
       ],
       "properties": {
@@ -629,11 +842,13 @@
             "disposition",
             "epoch",
             "evaluation",
+            "execution_receipt_binding",
             "freeze",
             "provider_probe",
             "result",
             "verifier_action",
-            "verifier_result"
+            "verifier_result",
+            "workflow_action"
           ]
         },
         "payload": {
@@ -651,6 +866,9 @@
               "$ref": "#/$defs/epoch"
             },
             {
+              "$ref": "#/$defs/execution_receipt_binding"
+            },
+            {
               "$ref": "#/$defs/final_evaluation"
             },
             {
@@ -664,6 +882,9 @@
             },
             {
               "$ref": "#/$defs/verifier_result"
+            },
+            {
+              "$ref": "#/$defs/workflow_action"
             },
             {
               "$ref": "#/$defs/workflow_result"
@@ -715,7 +936,12 @@
         "duration_seconds": {},
         "error_code": {},
         "executable": {},
-        "executable_identity": {},
+        "executable_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "expected_executable_identity": {},
         "extensions": {
           "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
@@ -1100,6 +1326,9 @@
     "workflow_action": {
       "additionalProperties": false,
       "properties": {
+        "action_id": {
+          "type": "string"
+        },
         "candidate_identity": {
           "type": "string"
         },
@@ -1135,6 +1364,7 @@
       "required": [
         "record_type",
         "schema_version",
+        "action_id",
         "candidate_identity",
         "mode",
         "protocol_request_identity",
@@ -1244,6 +1474,9 @@
     },
     {
       "$ref": "#/$defs/workflow_action"
+    },
+    {
+      "$ref": "#/$defs/execution_receipt_binding"
     },
     {
       "$ref": "#/$defs/workflow_result"

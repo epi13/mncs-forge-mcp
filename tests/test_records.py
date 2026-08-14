@@ -59,6 +59,27 @@ def _sample_fields(record_type: RecordType) -> dict[str, object]:
     if record_type is RecordType.VERIFIER_RESULT:
         fields["independent_evaluation"] = False
         fields["status"] = "UNKNOWN"
+    if record_type is RecordType.EXECUTION_RECEIPT_BINDING:
+        fields["status"] = "UNKNOWN"
+        fields["receipt_completeness"] = "incomplete"
+        fields["action_kind"] = "workflow_action"
+        fields["established_properties"] = {
+            "execution_completed": "unknown",
+            "local_result_validity": "unknown",
+            "runner_capability": "unknown",
+            "filesystem_isolation": "not-established",
+            "network_isolation": "not-established",
+            "containerization": "not-established",
+            "same_operator_execution": "established",
+            "external_anchoring": "not-established",
+            "witnessing": "not-established",
+            "protected_custody": "not-established",
+            "evaluator_independence": "not-established",
+            "governance_certification": "not-established",
+        }
+        fields["mncs_receipt"] = None
+        fields["receipt_identity"] = None
+        fields["receipt_schema_version"] = None
     return fields
 
 

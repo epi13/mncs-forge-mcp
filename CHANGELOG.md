@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add Task 7B-2 identity-bound persistent execution-receipt integration. Declared workflow
+  execution now persists `workflow_action` and `execution_receipt_binding` records that reference
+  the experimental MNCS `mncs-execution-receipt` envelope without forking it. Incomplete
+  timeout/output-limit executions persist explicit `UNKNOWN` bindings. Binding status cannot be
+  evidence `PASS`. Add `receipts list` / `receipts get` operations and a Fabric execution-adapter
+  seam that does not import or duplicate Fabric fleet mechanics.
 - Add Task 7B-1 raw `LocalProcessRunner` observations and an adapter-ready seam for the
   experimental MNCS `mncs-execution-receipt` `0.1-experimental` contract. The adapter uses pinned
   RFC 8785 identities, bounded stream facts, explicit termination/enforcement mapping, and fixed

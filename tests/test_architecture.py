@@ -125,6 +125,23 @@ def test_subprocess_implementation_is_confined_to_execution_modules() -> None:
     assert direct_subprocess == ["execution.py", "execution_windows.py"]
 
 
+def test_core_does_not_import_fabric_or_fleet_mechanics() -> None:
+    failures: list[str] = []
+    for path in PACKAGE.rglob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        if "mncs_fabric" in source or "from mncs_fabric" in source:
+            failures.append(f"{path.relative_to(PACKAGE)}: imports Fabric")
+    for name in ("records.py", "state_machine.py"):
+        source = (PACKAGE / name).read_text(encoding="utf-8")
+        if "fabric_execution" in source:
+            failures.append(f"{name}: domain imports Fabric adapter")
+    for path in APPLICATION.glob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        if "fabric_execution" in source or "ScriptedRunner" in source:
+            failures.append(f"{path.name}: application imports Fabric adapter")
+    assert failures == []
+
+
 def test_mncs_receipt_adapter_consumes_observations_without_execution_bypass() -> None:
     adapter = PACKAGE / "mncs_execution_receipt.py"
     source = adapter.read_text(encoding="utf-8")
@@ -142,6 +159,7 @@ def test_facade_composes_services_and_services_do_not_import_facade() -> None:
         ".application.candidates",
         ".application.evaluation",
         ".application.evidence",
+        ".application.execution_receipts",
         ".application.project",
         ".application.providers",
         ".application.recovery",
@@ -254,6 +272,8 @@ def test_cli_and_mcp_have_no_independent_forge_business_dispatch() -> None:
         "final_evaluation_run",
         "evidence_reconcile",
         "bundle_build",
+        "execution_receipts_list",
+        "execution_receipts_get",
     }
     failures: list[str] = []
     for interface in (PACKAGE / "cli.py", PACKAGE / "server.py"):

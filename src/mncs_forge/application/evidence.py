@@ -9,6 +9,7 @@ from ..errors import ForgeError
 from ..ports import RecordCommitter
 from ..records import BundleRecord, RecordType, new_record
 from ..serialization import read_json
+from .execution_receipts import persist_workflow_execution, summarize_binding
 from .lifecycle import LifecycleContext
 from .support import CLAIM_CLASSES, aggregate_status
 from .workflows import DevelopmentWorkflowService, WorkflowExecutor
@@ -230,15 +231,23 @@ class EvidenceService:
         workflow = self.workflows.workflow(workflow_name, self.mode)
         if workflow.category not in {"mncs_bundle_validation", "mncds_record_validation"}:
             raise ForgeError("WORKFLOW_CATEGORY", "bundle requires an MNCS or MNCDS workflow")
-        result = self.workflows.run(
+        execution = self.workflows.execute(
             workflow,
             candidate,
             evaluator=self.mode == "evaluator",
             record_type=RecordType.BUNDLE,
         )
+        binding = persist_workflow_execution(
+            config=self.config,
+            records=self.lifecycle.records,
+            record_store=self.record_store,
+            execution=execution,
+        )
+        if execution.error is not None:
+            raise execution.error
+        result = execution.result
         if not isinstance(result, BundleRecord):
             raise ForgeError("INTERNAL_RECORD", "bundle produced an invalid record model")
-        self.record_store.commit("bundles", "bundle", result)
         integrity = str(result["status"])
         return {
             "package_creation": "COMPLETED" if result["returncode"] == 0 else "FAILED",
@@ -249,5 +258,6 @@ class EvidenceService:
             "certification_eligibility": "UNKNOWN",
             "operational_disposition": "REVIEW_REQUIRED",
             "result_reference": result["output_identity"],
+            "execution_receipt": summarize_binding(binding),
             "note": "a valid package or signature is not proof of correctness",
         }

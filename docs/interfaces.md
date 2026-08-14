@@ -27,6 +27,8 @@ MCP tools:
 - `mncs_forge_candidate_freeze`
 - `mncs_forge_evidence_reconcile`
 - `mncs_forge_bundle_build`
+- `mncs_forge_execution_receipts_list`
+- `mncs_forge_execution_receipts_get`
 
 The development inventory contains the tools above. A separately started evaluator-mode
 server additionally exposes `mncs_forge_final_evaluation_run`; the development registration

@@ -32,10 +32,11 @@ authorization, local project observation, bounded local execution, Provider Prot
 transactional local persistence, package/runtime integrity, and development/evaluator evidence
 classification.
 
-It does not model a future Podman, Docker, SSH, Forge Cell, persistent receipt, attestation,
-external-anchor, or distributed-worker implementation as though it exists. Task 7B-1's
-non-persistent observation adapter is modeled only as an observation boundary, not a control that
-creates assurance. Those stronger properties remain future controls. In
+It does not model a future Podman, Docker, SSH, Forge Cell, attestation, external-anchor, or
+Fabric-backed live runner as though those controls exist. Task 7B-2's persisted
+`execution_receipt_binding` is a local provenance/linkage record. It does not create sandbox,
+independence, custody, witnessing, or certification. A Fabric adapter seam can translate remote
+facts into the same observation type; it does not import Fabric or move the trust boundary. In
 particular, `LocalProcessRunner` executes trusted configured code with host permissions; it is not
 an operating-system, filesystem, process, memory, CPU, disk, or network sandbox.
 
