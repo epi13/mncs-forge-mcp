@@ -20,10 +20,7 @@
     "paths": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "candidates", "generated", "contracts", "references", "evaluators",
-        "acceptance_policies", "development_evidence", "protected", "outputs"
-      ],
+      "required": ["candidates", "generated", "contracts", "references", "evaluators", "acceptance_policies", "development_evidence", "protected", "outputs"],
       "properties": {
         "candidates": {"$ref": "#/$defs/pathList"},
         "generated": {"$ref": "#/$defs/pathList"},
@@ -51,11 +48,7 @@
       "properties": {
         "max_batch": {"type": "integer", "minimum": 1, "maximum": 32},
         "request_bytes": {"type": "integer", "minimum": 1024, "maximum": 1048576},
-        "batch_timeout_seconds": {
-          "type": "number",
-          "exclusiveMinimum": 0,
-          "maximum": 3600
-        },
+        "batch_timeout_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
         "witness_bytes": {"type": "integer", "minimum": 256, "maximum": 1048576},
         "stderr_bytes": {"type": "integer", "minimum": 256, "maximum": 1048576},
         "result_bytes": {"type": "integer", "minimum": 2048, "maximum": 4194304},
@@ -72,11 +65,7 @@
         "mncds": {"$ref": "#/$defs/command"}
       }
     },
-    "environment_allowlist": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}
-    },
+    "environment_allowlist": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}},
     "required_capabilities": {"$ref": "#/$defs/stringList"},
     "authority": {
       "type": "object",
@@ -96,10 +85,7 @@
         "evaluator": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "candidate_read_only", "authority_read_only", "require_frozen_identities",
-            "withhold_repair_feedback"
-          ],
+          "required": ["candidate_read_only", "authority_read_only", "require_frozen_identities", "withhold_repair_feedback"],
           "properties": {
             "candidate_read_only": {"const": true},
             "authority_read_only": {"const": true},
@@ -136,14 +122,20 @@
           "supported_constructs": {"$ref": "#/$defs/stringList"},
           "unsupported_constructs": {"$ref": "#/$defs/stringList"},
           "limitations": {"$ref": "#/$defs/stringList"},
-          "executable_identity": {
-            "type": "string",
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          },
+          "executable_identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "descriptor": {"$ref": "#/$defs/relativePath"},
-          "environment": {
-            "type": "object",
-            "additionalProperties": {"type": "string"}
+          "environment": {"type": "object", "additionalProperties": {"type": "string"}},
+          "module_roots": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1, "maxLength": 512}
+          },
+          "python_packages": {
+            "type": "array",
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}
           }
         }
       }
@@ -153,10 +145,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "id", "version", "workflow", "provider", "method", "claim", "category",
-          "modes", "scopes", "input_kinds", "cost"
-        ],
+        "required": ["id", "version", "workflow", "provider", "method", "claim", "category", "modes", "scopes", "input_kinds", "cost"],
         "properties": {
           "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
           "version": {"type": "string", "pattern": ".*\\S.*", "maxLength": 128},
@@ -164,64 +153,19 @@
           "provider": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
           "method": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
           "claim": {"type": "string", "pattern": ".*\\S.*", "maxLength": 2048},
-          "category": {
-            "enum": [
-              "build", "compiler_matrix", "differential_behavior", "mutation",
-              "sanitizers", "bounded_structural_analysis", "resource_checks",
-              "checkpoint_recovery", "benchmark", "evidence_derivation",
-              "mncs_bundle_validation", "mncds_record_validation", "inspection"
-            ]
-          },
-          "modes": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {"enum": ["development", "evaluator"]}
-          },
+          "category": {"enum": ["build", "compiler_matrix", "differential_behavior", "mutation", "sanitizers", "bounded_structural_analysis", "resource_checks", "checkpoint_recovery", "benchmark", "evidence_derivation", "mncs_bundle_validation", "mncds_record_validation", "inspection"]},
+          "modes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["development", "evaluator"]}},
           "languages": {"$ref": "#/$defs/stringList"},
           "artifact_types": {"$ref": "#/$defs/stringList"},
-          "scopes": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "enum": [
-                "region", "function", "file", "module", "package", "candidate",
-                "contract", "artifact", "evidence", "dependency-slice"
-              ]
-            }
-          },
-          "input_kinds": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "enum": [
-                "candidate_identity", "changed_paths", "source_region",
-                "contract_identity", "dependency_slice_identities",
-                "prior_artifact_identity", "question_parameters"
-              ]
-            }
-          },
+          "scopes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["region", "function", "file", "module", "package", "candidate", "contract", "artifact", "evidence", "dependency-slice"]}},
+          "input_kinds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["candidate_identity", "changed_paths", "source_region", "contract_identity", "dependency_slice_identities", "prior_artifact_identity", "question_parameters"]}},
           "limitations": {"$ref": "#/$defs/stringList"},
           "assumptions": {"$ref": "#/$defs/stringList"},
-          "timeout_seconds": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "maximum": 3600
-          },
+          "timeout_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
           "cost": {"enum": ["low", "medium", "high"]},
           "uncertainty_classes": {"$ref": "#/$defs/stringList"},
           "tags": {"$ref": "#/$defs/stringList"},
-          "parameter_keys": {
-            "type": "array",
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_]*$",
-              "not": {"enum": ["shared", "by_verifier"]}
-            }
-          },
+          "parameter_keys": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$", "not": {"enum": ["shared", "by_verifier"]}}},
           "disclosure": {"enum": ["compact", "status-only"]}
         }
       }
@@ -235,53 +179,23 @@
         "required": ["name", "category", "mode", "command", "provider_protocol"],
         "properties": {
           "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
-          "category": {
-            "enum": [
-              "build", "compiler_matrix", "differential_behavior", "mutation",
-              "sanitizers", "bounded_structural_analysis", "resource_checks",
-              "checkpoint_recovery", "benchmark", "evidence_derivation",
-              "mncs_bundle_validation", "mncds_record_validation", "inspection"
-            ]
-          },
+          "category": {"enum": ["build", "compiler_matrix", "differential_behavior", "mutation", "sanitizers", "bounded_structural_analysis", "resource_checks", "checkpoint_recovery", "benchmark", "evidence_derivation", "mncs_bundle_validation", "mncds_record_validation", "inspection"]},
           "mode": {"enum": ["development", "evaluator", "both"]},
           "command": {"$ref": "#/$defs/command"},
           "provider_protocol": {"type": "boolean"},
           "provider_id": {"type": "string"},
           "subject": {"enum": ["candidate", "project"]},
-          "environment": {
-            "type": "object",
-            "additionalProperties": {"type": "string"}
-          },
+          "environment": {"type": "object", "additionalProperties": {"type": "string"}},
           "disclosure": {"enum": ["compact", "status-only"]}
         }
       }
     }
   },
   "$defs": {
-    "relativePath": {
-      "type": "string",
-      "minLength": 1,
-      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\u0000).+$"
-    },
-    "relativeRoot": {
-      "type": "string",
-      "minLength": 1,
-      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\u0000).+$"
-    },
-    "pathList": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {"$ref": "#/$defs/relativePath"}
-    },
-    "stringList": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {"type": "string", "minLength": 1}
-    },
-    "command": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "minLength": 1}
-    }
+    "relativePath": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\u0000).+$"},
+    "relativeRoot": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\u0000).+$"},
+    "pathList": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/relativePath"}},
+    "stringList": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
   }
 }

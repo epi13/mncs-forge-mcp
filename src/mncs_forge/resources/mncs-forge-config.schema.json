@@ -124,7 +124,19 @@
           "limitations": {"$ref": "#/$defs/stringList"},
           "executable_identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "descriptor": {"$ref": "#/$defs/relativePath"},
-          "environment": {"type": "object", "additionalProperties": {"type": "string"}}
+          "environment": {"type": "object", "additionalProperties": {"type": "string"}},
+          "module_roots": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1, "maxLength": 512}
+          },
+          "python_packages": {
+            "type": "array",
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}
+          }
         }
       }
     },
