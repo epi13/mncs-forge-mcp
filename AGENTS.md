@@ -1,7 +1,10 @@
 # MNCS Forge agent guidance
 
 - Use Forge for controlled candidate/evidence workflow when a project has a validated
-  `mncs-forge.toml`.
+  `mncs-forge.toml`. After modifying candidate content, call `candidate refresh` or
+  Control's `forge_candidate_refresh` before another candidate-scoped evaluation.
+  Refresh registers a successor identity; it does not reuse prior evidence as if it
+  were still current.
 - Forge does not replace MNCS or MNCDS offline validation and is not required for conformance.
 - Modify candidate or generated files only within the declared paths. Never write to contracts,
   references, evaluators, policies, or protected authorities through Forge.

@@ -329,6 +329,21 @@ class Forge:
             expected_identity=expected_identity,
         )
 
+    def candidate_refresh(
+        self,
+        *,
+        hypothesis: str,
+        generator_identity: str,
+        generator_config_identity: str,
+        changed_files: list[str] | None = None,
+    ) -> dict[str, object]:
+        return self._candidate_service.refresh(
+            hypothesis=hypothesis,
+            generator_identity=generator_identity,
+            generator_config_identity=generator_config_identity,
+            changed_files=changed_files,
+        )
+
     def development_checks_run(
         self, workflow_names: list[str], candidate_id: str | None = None
     ) -> dict[str, object]:

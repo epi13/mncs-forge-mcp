@@ -120,6 +120,14 @@ def _common_parser() -> argparse.ArgumentParser:
     register.add_argument("--generator-config", required=True)
     register.add_argument("--parent")
     register.add_argument("--expected-identity")
+    refresh = _register(
+        candidate_commands.add_parser(_cli_command("candidates.refresh")),
+        "candidates.refresh",
+    )
+    refresh.add_argument("--hypothesis", required=True)
+    refresh.add_argument("--generator", required=True)
+    refresh.add_argument("--generator-config", required=True)
+    refresh.add_argument("--changed", action="append", default=[])
     compare = _register(
         candidate_commands.add_parser(_cli_command("candidates.compare")),
         "candidates.compare",

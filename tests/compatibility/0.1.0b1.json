@@ -38,6 +38,28 @@
           "namespace": "evidence_plan"
         }
       ],
+      "candidates.refresh": [
+        {
+          "decoder": "value",
+          "input": "hypothesis",
+          "namespace": "hypothesis"
+        },
+        {
+          "decoder": "value",
+          "input": "generator_identity",
+          "namespace": "generator"
+        },
+        {
+          "decoder": "value",
+          "input": "generator_config_identity",
+          "namespace": "generator_config"
+        },
+        {
+          "decoder": "value",
+          "input": "changed_files",
+          "namespace": "changed"
+        }
+      ],
       "candidates.register": [
         {
           "decoder": "value",
@@ -394,6 +416,47 @@
           }
         ],
         "operation_id": "candidates.compare"
+      },
+      "candidate refresh": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "hypothesis",
+            "nargs": null,
+            "options": [
+              "--hypothesis"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "generator",
+            "nargs": null,
+            "options": [
+              "--generator"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "generator_config",
+            "nargs": null,
+            "options": [
+              "--generator-config"
+            ],
+            "required": true
+          },
+          {
+            "default": [],
+            "destination": "changed",
+            "nargs": null,
+            "options": [
+              "--changed"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "candidates.refresh"
       },
       "candidate register": {
         "arguments": [
@@ -1180,6 +1243,21 @@
             "required_evidence_plan"
           ]
         },
+        "mncs_forge_candidate_refresh": {
+          "input_properties": [
+            "changed_files",
+            "generator_config_identity",
+            "generator_identity",
+            "hypothesis"
+          ],
+          "input_schema_sha256": "67d64f466ccd28973ff6af5bf956ca6407b6627449a700e39b82464c0f2b5478",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "generator_config_identity",
+            "generator_identity",
+            "hypothesis"
+          ]
+        },
         "mncs_forge_candidate_register": {
           "input_properties": [
             "changed_files",
@@ -1496,6 +1574,21 @@
             "required_evidence_plan"
           ]
         },
+        "mncs_forge_candidate_refresh": {
+          "input_properties": [
+            "changed_files",
+            "generator_config_identity",
+            "generator_identity",
+            "hypothesis"
+          ],
+          "input_schema_sha256": "67d64f466ccd28973ff6af5bf956ca6407b6627449a700e39b82464c0f2b5478",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "generator_config_identity",
+            "generator_identity",
+            "hypothesis"
+          ]
+        },
         "mncs_forge_candidate_register": {
           "input_properties": [
             "changed_files",
@@ -1745,6 +1838,7 @@
       "bundles.build",
       "candidates.compare",
       "candidates.freeze",
+      "candidates.refresh",
       "candidates.register",
       "candidates.reject",
       "candidates.select",
@@ -1774,7 +1868,7 @@
       "verifiers.run"
     ],
     "schema_version": "1",
-    "semantic_sha256": "4a3744165fcf87c479a00ce30c2a89725c27643886b66c7190e2428da93dbf92"
+    "semantic_sha256": "871d98caef0907f76b65f1468ee1c32c0fa859136a7e4448f3fd4f361330734e"
   },
   "packaging": {
     "dependencies": [
@@ -1799,6 +1893,7 @@
       "candidate_compare": "(self, candidate_ids: 'list[str]') -> 'dict[str, object]'",
       "candidate_disposition": "(self, candidate_id: 'str', *, disposition: 'str', reason: 'str') -> 'dict[str, object]'",
       "candidate_freeze": "(self, candidate_id: 'str', *, environment_identity: 'str', required_evidence_plan: 'str') -> 'dict[str, object]'",
+      "candidate_refresh": "(self, *, hypothesis: 'str', generator_identity: 'str', generator_config_identity: 'str', changed_files: 'list[str] | None' = None) -> 'dict[str, object]'",
       "candidate_register": "(self, *, changed_files: 'list[str]', hypothesis: 'str', generator_identity: 'str', generator_config_identity: 'str', parent_candidate: 'str | None' = None, expected_identity: 'str | None' = None) -> 'dict[str, object]'",
       "capability_blockers": "(self, required_capabilities: 'list[str] | None' = None) -> 'dict[str, object]'",
       "claim_blockers": "(self, requested_claim: 'str') -> 'dict[str, object]'",
