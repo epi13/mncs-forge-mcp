@@ -198,6 +198,14 @@ class CandidateRegisterInput(OperationInput):
 
 
 @dataclass(frozen=True, slots=True)
+class CandidateRefreshInput(OperationInput):
+    hypothesis: str
+    generator_identity: str
+    generator_config_identity: str
+    changed_files: list[str] | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class DevelopmentChecksInput(OperationInput):
     workflow_names: list[str]
     candidate_identity: str | None = None
@@ -324,6 +332,14 @@ class ForgeOperationTarget(Protocol):
         generator_config_identity: str,
         parent_candidate: str | None = None,
         expected_identity: str | None = None,
+    ) -> JsonObject: ...
+    def candidate_refresh(
+        self,
+        *,
+        hypothesis: str,
+        generator_identity: str,
+        generator_config_identity: str,
+        changed_files: list[str] | None = None,
     ) -> JsonObject: ...
     def development_checks_run(
         self, workflow_names: list[str], candidate_id: str | None = None
@@ -534,6 +550,16 @@ def _candidate_register(forge: ForgeOperationTarget, value: OperationInput) -> J
         generator_config_identity=request.generator_config_identity,
         parent_candidate=request.parent_candidate,
         expected_identity=request.expected_identity,
+    )
+
+
+def _candidate_refresh(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CandidateRefreshInput)
+    return forge.candidate_refresh(
+        hypothesis=request.hypothesis,
+        generator_identity=request.generator_identity,
+        generator_config_identity=request.generator_config_identity,
+        changed_files=request.changed_files,
     )
 
 
@@ -916,6 +942,32 @@ _OPERATIONS = (
             ),
         ),
         mcp=_mcp("mncs_forge_candidate_register"),
+    ),
+    _operation(
+        "candidates.refresh",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=CandidateRefreshInput,
+        output=OutputContract.RECORD,
+        handler=_candidate_refresh,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        lifecycle=LifecycleRequirement.CURRENT_CANDIDATE,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Rebind the active development candidate to current content without "
+            "reusing prior evidence as if it were still current."
+        ),
+        cli=_cli(
+            "candidate",
+            "refresh",
+            bindings=(
+                _binding("hypothesis"),
+                _binding("generator_identity", "generator"),
+                _binding("generator_config_identity", "generator_config"),
+                _binding("changed_files", "changed"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_candidate_refresh"),
     ),
     _operation(
         "development.checks.run",

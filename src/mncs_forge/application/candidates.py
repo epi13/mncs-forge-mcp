@@ -115,6 +115,62 @@ class CandidateService:
         self.record_store.commit("candidates", "candidate", record)
         return record.to_object_dict()
 
+    def refresh(
+        self,
+        *,
+        hypothesis: str,
+        generator_identity: str,
+        generator_config_identity: str,
+        changed_files: list[str] | None = None,
+    ) -> dict[str, object]:
+        """Register a successor candidate when working-tree content drifted.
+
+        Prior evidence remains bound to the previous candidate identity. A
+        current, matching candidate is returned unchanged so callers can always
+        rebind before evaluation without inventing a new identity.
+        """
+
+        state_machine = self.lifecycle.machine()
+        existing = state_machine.projection.current_candidate
+        if existing is None:
+            raise ForgeError("NO_CANDIDATE", "no candidate exists in the active epoch")
+        current = self.observer.current_candidate_identity()
+        existing_id = str(existing["candidate_id"])
+        if state_machine.projection.candidate_freshness == "CURRENT" and existing_id == current:
+            return {
+                "refreshed": False,
+                "reason": "candidate already matches current content",
+                "previous_candidate_identity": existing_id,
+                "candidate_identity": existing_id,
+                "candidate": existing.to_object_dict(),
+                "note": "prior evidence remains bound to this candidate identity",
+            }
+        files = list(changed_files or [])
+        if not files:
+            previous = existing.get("changed_files")
+            if isinstance(previous, list):
+                files = [str(item) for item in previous if isinstance(item, str) and item]
+        if not files:
+            raise ForgeError(
+                "INVALID_CHANGED_FILE",
+                "candidate refresh requires changed files when none were previously declared",
+            )
+        record = self.register(
+            changed_files=files,
+            hypothesis=hypothesis,
+            generator_identity=generator_identity,
+            generator_config_identity=generator_config_identity,
+            parent_candidate=existing_id,
+        )
+        return {
+            "refreshed": True,
+            "reason": "working-tree content no longer matched the bound candidate",
+            "previous_candidate_identity": existing_id,
+            "candidate_identity": record["candidate_id"],
+            "candidate": record,
+            "note": "prior evidence remains bound to the previous candidate identity",
+        }
+
     def compare(self, candidate_ids: list[str]) -> dict[str, object]:
         if len(candidate_ids) < 2:
             raise ForgeError("COMPARE_INPUT", "at least two candidate identities are required")

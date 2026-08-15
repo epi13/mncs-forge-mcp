@@ -34,6 +34,7 @@ EXPECTED_CLI = {
     "candidate compare",
     "freeze",
     "candidate register",
+    "candidate refresh",
     "candidate reject",
     "candidate select",
     "check development",
@@ -66,6 +67,7 @@ EXPECTED_DEVELOPMENT_MCP = {
     "mncs_forge_candidate_compare",
     "mncs_forge_candidate_freeze",
     "mncs_forge_candidate_register",
+    "mncs_forge_candidate_refresh",
     "mncs_forge_candidate_reject",
     "mncs_forge_candidate_select",
     "mncs_forge_capability_blockers",
@@ -109,7 +111,7 @@ def semantic_snapshot() -> list[tuple[object, ...]]:
 def test_registry_is_unique_validated_and_deterministically_ordered() -> None:
     operation_ids = [item.operation_id for item in DEFAULT_OPERATION_REGISTRY.operations]
     assert operation_ids == sorted(operation_ids)
-    assert len(operation_ids) == len(set(operation_ids)) == 30
+    assert len(operation_ids) == len(set(operation_ids)) == 31
     assert all(callable(item.handler) for item in DEFAULT_OPERATION_REGISTRY.operations)
     assert all(
         fields(item.input_model) is not None for item in DEFAULT_OPERATION_REGISTRY.operations
@@ -140,7 +142,7 @@ def test_inventory_is_canonical_json_and_omits_unstable_handler_details() -> Non
     assert first == second
     inventory = canonical_operation_inventory()
     assert inventory["schema_version"] == "1"
-    assert len(inventory["operations"]) == 30
+    assert len(inventory["operations"]) == 31
     assert "0x" not in first
     assert "handler" not in first
     semantic = json.dumps(
@@ -158,7 +160,7 @@ def test_inventory_is_canonical_json_and_omits_unstable_handler_details() -> Non
         separators=(",", ":"),
     )
     assert hashlib.sha256(semantic.encode()).hexdigest() == (
-        "4a3744165fcf87c479a00ce30c2a89725c27643886b66c7190e2428da93dbf92"
+        "871d98caef0907f76b65f1468ee1c32c0fa859136a7e4448f3fd4f361330734e"
     )
 
 
@@ -278,6 +280,7 @@ def test_mutation_metadata_matches_persisted_operation_set() -> None:
     assert mutating == {
         "bundles.build",
         "candidates.freeze",
+        "candidates.refresh",
         "candidates.register",
         "candidates.reject",
         "candidates.select",
