@@ -16,6 +16,7 @@ from .ports import (
     AggregateOutputObservation,
     ExecutionObservation,
     ExecutionResult,
+    ExecutionSession,
     ExecutionTermination,
     RunnerCapabilities,
     StreamObservation,
@@ -61,6 +62,9 @@ class _StreamCapture:
         self.limit_hit = True
         self._complete_possible = False
 
+    def retained(self) -> bytes:
+        return bytes(self._retained)
+
     def snapshot(self, *, complete: bool) -> StreamObservation:
         retained_bytes = len(self._retained)
         retained_sha256 = bytes_sha256(bytes(self._retained)) if retained_bytes else None
@@ -101,6 +105,13 @@ class ExecutionObservationBuilder:
         runner_identity: str,
         runner_version: str,
         executable_identity: str | None,
+        worker_identity: str | None = None,
+        host_identity: str | None = None,
+        image_identity: str | None = None,
+        placement_identity: str | None = None,
+        filesystem_policy: str = "unrestricted-process-workspace",
+        network_policy: str = "ambient-process-network",
+        same_operator: bool | None = True,
     ) -> None:
         self.argv = tuple(argv)
         self.command_identity = canonical_sha256({"argv": list(argv)})
@@ -117,6 +128,13 @@ class ExecutionObservationBuilder:
         self.runner_version = runner_version
         self.executable_identity = executable_identity
         self.runtime_identity = f"runtime.python-{platform.python_version()}"
+        self.worker_identity = worker_identity
+        self.host_identity = host_identity
+        self.image_identity = image_identity
+        self.placement_identity = placement_identity
+        self.filesystem_policy = filesystem_policy
+        self.network_policy = network_policy
+        self.same_operator = same_operator
         self._stdout = _StreamCapture(stdout_limit)
         self._stderr = _StreamCapture(stderr_limit)
         self._created_monotonic = time.monotonic()
@@ -209,6 +227,13 @@ class ExecutionObservationBuilder:
             executable_identity=self.executable_identity,
             runtime_identity=self.runtime_identity,
             error_code=None,
+            worker_identity=self.worker_identity,
+            host_identity=self.host_identity,
+            image_identity=self.image_identity,
+            placement_identity=self.placement_identity,
+            filesystem_policy=self.filesystem_policy,
+            network_policy=self.network_policy,
+            same_operator=self.same_operator,
         )
         self._finished = True
 
@@ -241,6 +266,13 @@ class ExecutionObservationBuilder:
             executable_identity=self.executable_identity,
             runtime_identity=self.runtime_identity,
             error_code=error.code,
+            worker_identity=self.worker_identity,
+            host_identity=self.host_identity,
+            image_identity=self.image_identity,
+            placement_identity=self.placement_identity,
+            filesystem_policy=self.filesystem_policy,
+            network_policy=self.network_policy,
+            same_operator=self.same_operator,
         )
         self._finished = True
 
@@ -248,3 +280,15 @@ class ExecutionObservationBuilder:
         if self._observation is None:
             raise RuntimeError("execution observation is not complete")
         return self._observation
+
+    def session(self, result: ExecutionResult | None, error: ForgeError | None) -> ExecutionSession:
+        stdout = result.stdout if result is not None else self._stdout.retained()
+        stderr = result.stderr if result is not None else self._stderr.retained()
+        return ExecutionSession(
+            observation=self.build(),
+            stdout=stdout,
+            stderr=stderr,
+            result=result,
+            error_code=None if error is None else error.code,
+            error_message=None if error is None else str(error),
+        )

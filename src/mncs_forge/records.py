@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 import re
 from collections.abc import Iterator, Mapping
@@ -9,7 +10,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
-from typing import TypeAlias, cast
+from typing import Any, TypeAlias, cast
+
+import rfc8785
 
 from .errors import ForgeError
 from .serialization import local_json_identity, read_json
@@ -30,6 +33,7 @@ class RecordType(StrEnum):
     CANDIDATE = "candidate"
     PROVIDER_PROBE = "provider_probe"
     WORKFLOW_ACTION = "workflow_action"
+    EXECUTION_RECEIPT_BINDING = "execution_receipt_binding"
     WORKFLOW_RESULT = "workflow_result"
     VERIFIER_ACTION = "verifier_action"
     VERIFIER_RESULT = "verifier_result"
@@ -175,8 +179,49 @@ RECORD_SPECS: dict[RecordType, RecordSpec] = {
                 "mode",
                 "protocol_request_identity",
                 "requested_at",
+                "action_id",
             }
-        )
+        ),
+        identity_field="action_id",
+        identity_prefix="workflow-action:",
+    ),
+    RecordType.EXECUTION_RECEIPT_BINDING: RecordSpec(
+        required=frozenset(
+            {
+                "project_identity",
+                "epoch_identity",
+                "candidate_identity",
+                "action_kind",
+                "action_identity",
+                "result_identity",
+                "request_identity",
+                "workflow_or_verifier",
+                "runner_identity",
+                "runner_kind",
+                "runner_version",
+                "worker_identity",
+                "host_identity",
+                "os_family",
+                "architecture",
+                "executable_identity",
+                "image_identity",
+                "environment_identity",
+                "execution_scope",
+                "termination_category",
+                "receipt_schema_version",
+                "receipt_identity",
+                "receipt_completeness",
+                "status",
+                "established_properties",
+                "mncs_receipt",
+                "recorded_at",
+                "binding_id",
+            }
+        ),
+        identity_field="binding_id",
+        identity_prefix="execution-receipt-binding:",
+        identity_exclusions=frozenset({"mncs_receipt"}),
+        status_field="status",
     ),
     RecordType.WORKFLOW_RESULT: RecordSpec(
         required=WORKFLOW_RESULT_FIELDS,
@@ -339,6 +384,8 @@ LEDGER_KIND_TYPES: dict[str, RecordType] = {
     "epoch": RecordType.EPOCH,
     "candidate": RecordType.CANDIDATE,
     "provider_probe": RecordType.PROVIDER_PROBE,
+    "workflow_action": RecordType.WORKFLOW_ACTION,
+    "execution_receipt_binding": RecordType.EXECUTION_RECEIPT_BINDING,
     "result": RecordType.WORKFLOW_RESULT,
     "verifier_action": RecordType.VERIFIER_ACTION,
     "verifier_result": RecordType.VERIFIER_RESULT,
@@ -352,6 +399,8 @@ RECORD_GROUP_TYPES: dict[str, RecordType] = {
     "epochs": RecordType.EPOCH,
     "candidates": RecordType.CANDIDATE,
     "provider-probes": RecordType.PROVIDER_PROBE,
+    "workflow-actions": RecordType.WORKFLOW_ACTION,
+    "execution-receipt-bindings": RecordType.EXECUTION_RECEIPT_BINDING,
     "results": RecordType.WORKFLOW_RESULT,
     "verifier-actions": RecordType.VERIFIER_ACTION,
     "verifier-results": RecordType.VERIFIER_RESULT,
@@ -379,6 +428,15 @@ PERSISTED_RECORD_CONTEXTS: dict[str, PersistedRecordContext] = {
     ),
     "provider_probe": PersistedRecordContext(
         "provider-probes", "provider_probe", RecordType.PROVIDER_PROBE, "output_identity"
+    ),
+    "workflow_action": PersistedRecordContext(
+        "workflow-actions", "workflow_action", RecordType.WORKFLOW_ACTION, "action_id"
+    ),
+    "execution_receipt_binding": PersistedRecordContext(
+        "execution-receipt-bindings",
+        "execution_receipt_binding",
+        RecordType.EXECUTION_RECEIPT_BINDING,
+        "binding_id",
     ),
     "result": PersistedRecordContext(
         "results", "result", RecordType.WORKFLOW_RESULT, "output_identity"
@@ -473,7 +531,28 @@ REQUIRED_STRING_FIELDS: dict[RecordType, frozenset[str]] = {
         }
     ),
     RecordType.WORKFLOW_ACTION: frozenset(
-        {"workflow", "candidate_identity", "mode", "requested_at"}
+        {"workflow", "candidate_identity", "mode", "requested_at", "action_id"}
+    ),
+    RecordType.EXECUTION_RECEIPT_BINDING: frozenset(
+        {
+            "project_identity",
+            "candidate_identity",
+            "action_kind",
+            "action_identity",
+            "workflow_or_verifier",
+            "runner_identity",
+            "runner_kind",
+            "runner_version",
+            "os_family",
+            "architecture",
+            "environment_identity",
+            "execution_scope",
+            "termination_category",
+            "receipt_completeness",
+            "status",
+            "recorded_at",
+            "binding_id",
+        }
     ),
     RecordType.WORKFLOW_RESULT: frozenset(
         {
@@ -599,6 +678,7 @@ REQUIRED_STRING_FIELDS: dict[RecordType, frozenset[str]] = {
 REQUIRED_OBJECT_FIELDS: dict[RecordType, frozenset[str]] = {
     RecordType.EPOCH: frozenset({"visible_partition_identities", "authority_identities"}),
     RecordType.CANDIDATE: frozenset({"current_file_identities"}),
+    RecordType.EXECUTION_RECEIPT_BINDING: frozenset({"established_properties"}),
     RecordType.WORKFLOW_RESULT: frozenset({"environment"}),
     RecordType.VERIFIER_ACTION: frozenset({"input_identities"}),
     RecordType.VERIFIER_RESULT: frozenset({"input_identities", "dependency_envelope"}),
@@ -729,6 +809,11 @@ class WorkflowActionRecord(ForgeRecord):
 
 
 @dataclass(frozen=True, slots=True)
+class ExecutionReceiptBindingRecord(ForgeRecord):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
 class WorkflowResultRecord(ForgeRecord):
     pass
 
@@ -773,6 +858,7 @@ MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.CANDIDATE: CandidateRecord,
     RecordType.PROVIDER_PROBE: ProviderProbeRecord,
     RecordType.WORKFLOW_ACTION: WorkflowActionRecord,
+    RecordType.EXECUTION_RECEIPT_BINDING: ExecutionReceiptBindingRecord,
     RecordType.WORKFLOW_RESULT: WorkflowResultRecord,
     RecordType.VERIFIER_ACTION: VerifierActionRecord,
     RecordType.VERIFIER_RESULT: VerifierResultRecord,
@@ -853,6 +939,104 @@ def _validate_fields(record_type: RecordType, fields: JsonObject) -> None:
         raise ForgeError(
             "RECORD_AUTHORITY",
             "local verifier records cannot claim independent evaluation",
+        )
+    if record_type is RecordType.EXECUTION_RECEIPT_BINDING:
+        _validate_execution_receipt_binding(fields)
+
+
+RECEIPT_COMPLETENESS = frozenset(
+    {"complete", "incomplete", "malformed", "unsupported", "unavailable"}
+)
+RECEIPT_ACTION_KINDS = frozenset({"workflow_action", "verifier_action"})
+ESTABLISHED_PROPERTY_STATES = frozenset({"established", "not-established", "unknown"})
+ESTABLISHED_PROPERTY_KEYS = (
+    "execution_completed",
+    "local_result_validity",
+    "runner_capability",
+    "filesystem_isolation",
+    "network_isolation",
+    "containerization",
+    "same_operator_execution",
+    "external_anchoring",
+    "witnessing",
+    "protected_custody",
+    "evaluator_independence",
+    "governance_certification",
+)
+
+
+def _validate_execution_receipt_binding(fields: JsonObject) -> None:
+    if fields["action_kind"] not in RECEIPT_ACTION_KINDS:
+        raise ForgeError("RECORD_MALFORMED", "execution receipt action_kind is invalid")
+    completeness = fields["receipt_completeness"]
+    if completeness not in RECEIPT_COMPLETENESS:
+        raise ForgeError("RECORD_MALFORMED", "execution receipt completeness is invalid")
+    properties = fields["established_properties"]
+    if not isinstance(properties, dict) or set(properties) != set(ESTABLISHED_PROPERTY_KEYS):
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            "execution receipt established_properties must declare every authority dimension",
+        )
+    invalid_states = sorted(
+        key for key, value in properties.items() if value not in ESTABLISHED_PROPERTY_STATES
+    )
+    if invalid_states:
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            "execution receipt established_properties have invalid states: "
+            + ", ".join(invalid_states),
+        )
+    if fields["status"] == "PASS":
+        raise ForgeError(
+            "RECORD_AUTHORITY",
+            "execution receipt bindings cannot claim evidence PASS",
+        )
+    receipt = fields.get("mncs_receipt")
+    receipt_identity = fields.get("receipt_identity")
+    if completeness == "complete":
+        if not isinstance(receipt, dict):
+            raise ForgeError(
+                "RECORD_MALFORMED", "complete execution receipt bindings require mncs_receipt"
+            )
+        if not isinstance(receipt_identity, str) or not receipt_identity:
+            raise ForgeError(
+                "RECORD_MALFORMED",
+                "complete execution receipt bindings require receipt_identity",
+            )
+        expected_identity = hashlib.sha256(
+            rfc8785.dumps(
+                cast(
+                    Any,
+                    {key: value for key, value in receipt.items() if key != "receipt_identity"},
+                )
+            )
+        ).hexdigest()
+        if (
+            receipt.get("receipt_identity") != receipt_identity
+            or expected_identity != receipt_identity
+        ):
+            raise ForgeError(
+                "RECORD_IDENTITY",
+                "receipt_identity does not match the stored MNCS receipt envelope",
+            )
+        if receipt.get("record_type") != "mncs-execution-receipt":
+            raise ForgeError("RECORD_MALFORMED", "mncs_receipt must be an MNCS execution receipt")
+        schema_version = fields.get("receipt_schema_version")
+        if schema_version != receipt.get("schema_version"):
+            raise ForgeError(
+                "RECORD_MALFORMED",
+                "receipt_schema_version does not match the stored MNCS receipt envelope",
+            )
+        return
+    if completeness in {"incomplete", "unavailable"} and receipt is not None:
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            f"{completeness} execution receipt bindings cannot embed an MNCS envelope",
+        )
+    if completeness in {"incomplete", "unavailable"} and receipt_identity is not None:
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            f"{completeness} execution receipt bindings cannot claim a receipt identity",
         )
 
 

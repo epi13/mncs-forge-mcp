@@ -142,8 +142,7 @@ class ForgeConfig:
     def environment(self, workflow: Workflow) -> dict[str, str]:
         result = self._environment(workflow.environment, f"workflow {workflow.name}")
         if any(
-            Path(token).name in {"go", "gofmt", "go test", "go vet"}
-            for token in workflow.command
+            Path(token).name in {"go", "gofmt", "go test", "go vet"} for token in workflow.command
         ):
             runtime = self.state_dir / "runtime"
             cache = runtime / "cache"

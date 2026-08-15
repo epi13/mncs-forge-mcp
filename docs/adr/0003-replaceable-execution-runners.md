@@ -1,6 +1,6 @@
 # ADR 0003: Replaceable execution runners
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Target:** `0.2.x`
 
 ## Context
@@ -9,15 +9,17 @@ Forge currently performs bounded local subprocess execution and correctly docume
 reduced workspace, no-shell invocation, timeouts, and output caps are not an operating-system or
 network sandbox. Configured providers retain the ambient permissions of the Forge process.
 
-Future container, remote-host, and distributed execution must not be added as special cases inside
-provider or workflow services. Execution properties also need to become material evidence rather
-than informal deployment assumptions.
+Future container and Fabric-backed execution must not be added as special cases inside provider or
+workflow services. Execution properties also need to become material evidence rather than informal
+deployment assumptions. Generic fleet scheduling belongs to `mncs-fabric`; see
+[ADR 0011](0011-forge-fabric-execution-boundary.md).
 
 ## Decision
 
 Forge will define a typed runner protocol with capability inspection and bounded execution. The
-first adapter will preserve current behavior as `LocalProcessRunner`. Later adapters may provide
-rootless Podman, Docker, SSH, or worker execution.
+first adapter preserves current behavior as `LocalProcessRunner`. Later adapters may provide
+rootless Podman, Docker, or a Fabric-backed runner. Forge does not grow a second worker registry
+or scheduler.
 
 Every execution receipt will bind the material properties needed to interpret the result,
 including:

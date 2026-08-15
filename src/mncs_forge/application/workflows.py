@@ -22,6 +22,7 @@ from ..records import (
     new_record,
 )
 from ..serialization import canonical_bytes, local_json_identity
+from .execution_receipts import WorkflowExecution, persist_workflow_execution, summarize_binding
 from .lifecycle import LifecycleContext
 from .support import aggregate_status, now, redact
 
@@ -53,14 +54,14 @@ class WorkflowExecutor:
             )
         return workflow
 
-    def run(
+    def execute(
         self,
         workflow: Workflow,
         candidate: Mapping[str, object],
         *,
         evaluator: bool,
         record_type: RecordType = RecordType.WORKFLOW_RESULT,
-    ) -> WorkflowResultRecord | FinalEvaluationRecord | BundleRecord:
+    ) -> WorkflowExecution:
         request: dict[str, object] | None = None
         stdin = b""
         if workflow.provider_protocol:
@@ -104,8 +105,9 @@ class WorkflowExecutor:
         )
         if not isinstance(action, WorkflowActionRecord):
             raise ForgeError("INTERNAL_RECORD", "workflow action produced an invalid model")
+        epoch_identity = candidate.get("source_epoch")
         with workspace as workspace_path:
-            execution = self.executor.execute(
+            session = self.executor.run(
                 workflow.command,
                 cwd=Path(workspace_path),
                 timeout=self.config.timeout,
@@ -113,18 +115,58 @@ class WorkflowExecutor:
                 environment=self.config.environment(workflow),
                 stdin=stdin,
             )
+        error: ForgeError | None = None
+        if session.error_code is not None:
+            error = ForgeError(session.error_code, session.error_message or session.error_code)
+            return WorkflowExecution(
+                action=action,
+                result=None,
+                session=session,
+                workflow=workflow,
+                epoch_identity=epoch_identity if isinstance(epoch_identity, str) else None,
+                error=error,
+            )
+        execution = session.result
+        if execution is None:
+            error = ForgeError("COMMAND_START", "runner produced no execution result")
+            return WorkflowExecution(
+                action=action,
+                result=None,
+                session=session,
+                workflow=workflow,
+                epoch_identity=epoch_identity if isinstance(epoch_identity, str) else None,
+                error=error,
+            )
         protocol: dict[str, Any] | None = None
         witnesses: list[object]
         limitations: list[object]
         unsupported: list[object]
         if workflow.provider_protocol:
             if execution.returncode != 0:
-                raise ForgeError(
+                error = ForgeError(
                     "PROVIDER_EXIT",
                     f"provider exited {execution.returncode}: "
-                    + redact(execution.stderr.decode("utf-8", errors="replace")),
+                    + redact(session.stderr.decode("utf-8", errors="replace")),
                 )
-            protocol = parse_provider_response(execution.stdout)
+                return WorkflowExecution(
+                    action=action,
+                    result=None,
+                    session=session,
+                    workflow=workflow,
+                    epoch_identity=epoch_identity if isinstance(epoch_identity, str) else None,
+                    error=error,
+                )
+            try:
+                protocol = parse_provider_response(session.stdout)
+            except ForgeError as exc:
+                return WorkflowExecution(
+                    action=action,
+                    result=None,
+                    session=session,
+                    workflow=workflow,
+                    epoch_identity=epoch_identity if isinstance(epoch_identity, str) else None,
+                    error=exc,
+                )
             status = str(protocol.get("status", "UNKNOWN"))
             method = str(protocol.get("type"))
             provider = dict(protocol["provider"])
@@ -145,9 +187,9 @@ class WorkflowExecutor:
                 status = "FAIL"
                 witnesses = [{"exit_code": execution.returncode}]
                 limitations = []
-            elif execution.stdout:
+            elif session.stdout:
                 try:
-                    value = json.loads(execution.stdout)
+                    value = json.loads(session.stdout)
                     if isinstance(value, dict) and value.get("status") in STATUSES:
                         status = str(value["status"])
                         witnesses = list(value.get("witnesses", []))
@@ -176,7 +218,7 @@ class WorkflowExecutor:
                 "witnesses_or_counterexamples": witnesses[:20],
                 "limitations": limitations[:20],
                 "unsupported_constructs": unsupported[:20],
-                "stderr_diagnostic": redact(execution.stderr.decode("utf-8", errors="replace")),
+                "stderr_diagnostic": redact(session.stderr.decode("utf-8", errors="replace")),
                 "returncode": execution.returncode,
                 "recorded_at": now(),
                 "protocol_request_identity": action["protocol_request_identity"],
@@ -184,7 +226,31 @@ class WorkflowExecutor:
         )
         if not isinstance(record, (WorkflowResultRecord, FinalEvaluationRecord, BundleRecord)):
             raise ForgeError("INTERNAL_RECORD", "workflow produced an invalid record model")
-        return record
+        return WorkflowExecution(
+            action=action,
+            result=record,
+            session=session,
+            workflow=workflow,
+            epoch_identity=epoch_identity if isinstance(epoch_identity, str) else None,
+            error=None,
+        )
+
+    def run(
+        self,
+        workflow: Workflow,
+        candidate: Mapping[str, object],
+        *,
+        evaluator: bool,
+        record_type: RecordType = RecordType.WORKFLOW_RESULT,
+    ) -> WorkflowResultRecord | FinalEvaluationRecord | BundleRecord:
+        """Compatibility wrapper that returns only the result or raises."""
+
+        execution = self.execute(workflow, candidate, evaluator=evaluator, record_type=record_type)
+        if execution.error is not None:
+            raise execution.error
+        if execution.result is None:
+            raise ForgeError("INTERNAL_RECORD", "workflow produced no result")
+        return execution.result
 
 
 class DevelopmentWorkflowService:
@@ -208,6 +274,7 @@ class DevelopmentWorkflowService:
     def run(self, workflow_names: list[str], candidate_id: str | None = None) -> dict[str, object]:
         state_machine = self.lifecycle.machine()
         results: list[WorkflowResultRecord] = []
+        receipts: list[dict[str, object]] = []
         candidate: ForgeRecord | None = None
         for name in workflow_names:
             workflow = self.workflows.workflow(name, "development")
@@ -225,15 +292,25 @@ class DevelopmentWorkflowService:
                 if candidate is None:
                     raise ForgeError("NO_CANDIDATE", "candidate workflow requires a candidate")
                 subject = candidate
-            result = self.workflows.run(workflow, subject, evaluator=False)
+            execution = self.workflows.execute(workflow, subject, evaluator=False)
+            binding = persist_workflow_execution(
+                config=self.config,
+                records=self.records,
+                record_store=self.record_store,
+                execution=execution,
+            )
+            if execution.error is not None:
+                raise execution.error
+            result = execution.result
             if not isinstance(result, WorkflowResultRecord):
                 raise ForgeError("INTERNAL_RECORD", "development check produced invalid model")
-            self.record_store.commit("results", "result", result)
             results.append(result)
+            receipts.append(summarize_binding(binding))
         return {
             "candidate_identity": candidate["candidate_id"] if candidate else None,
             "subject_identities": sorted({str(item["candidate_identity"]) for item in results}),
             "results": [result.to_object_dict() for result in results],
+            "execution_receipts": receipts,
             "aggregate_status": aggregate_status(str(item["status"]) for item in results),
             "dominance": "FAIL > UNKNOWN > PASS",
         }

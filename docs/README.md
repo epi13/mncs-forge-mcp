@@ -63,6 +63,8 @@ development planning. The root README remains a short project entrypoint.
   semantic boundary, migration/wheel matrix, benchmark, and comparative Joern findings.
 - [Task 7B-1 MNCS receipt-adapter evidence](development-evidence/task-7b1-mncs-receipt-adapter.md) —
   pinned contract, dogfood scope, raw observations, adapter boundary, and validation classification.
+- [Task 7B-2 execution-receipt integration](development-evidence/task-7b2-execution-receipt-integration.md) —
+  identity-bound persistence, incomplete observations, and the Forge/Fabric adapter seam.
 
 ## Documentation rules
 

@@ -150,6 +150,13 @@ class ExecutionObservation:
     executable_identity: str | None
     runtime_identity: str | None
     error_code: str | None
+    worker_identity: str | None
+    host_identity: str | None
+    image_identity: str | None
+    placement_identity: str | None
+    filesystem_policy: str
+    network_policy: str
+    same_operator: bool | None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -176,7 +183,26 @@ class ExecutionObservation:
             "executable_identity": self.executable_identity,
             "runtime_identity": self.runtime_identity,
             "error_code": self.error_code,
+            "worker_identity": self.worker_identity,
+            "host_identity": self.host_identity,
+            "image_identity": self.image_identity,
+            "placement_identity": self.placement_identity,
+            "filesystem_policy": self.filesystem_policy,
+            "network_policy": self.network_policy,
+            "same_operator": self.same_operator,
         }
+
+
+@dataclass(frozen=True)
+class ExecutionSession:
+    """One runner invocation: retained output plus raw observation facts."""
+
+    observation: ExecutionObservation
+    stdout: bytes
+    stderr: bytes
+    result: ExecutionResult | None
+    error_code: str | None
+    error_message: str | None
 
 
 class ExecutionObservationSink(Protocol):
@@ -215,6 +241,18 @@ class Runner(Protocol):
         environment: dict[str, str],
         stdin: bytes = b"",
     ) -> ExecutionObservation: ...
+
+    def run(
+        self,
+        command: object,
+        *,
+        cwd: Path,
+        timeout: float,
+        output_cap: int,
+        stderr_cap: int | None = None,
+        environment: dict[str, str],
+        stdin: bytes = b"",
+    ) -> ExecutionSession: ...
 
     def inspect_capabilities(self) -> RunnerCapabilities: ...
 

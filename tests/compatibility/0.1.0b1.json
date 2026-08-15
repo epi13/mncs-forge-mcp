@@ -158,6 +158,25 @@
           "namespace": "candidate"
         }
       ],
+      "execution.receipts.get": [
+        {
+          "decoder": "value",
+          "input": "binding_id",
+          "namespace": "binding_id"
+        }
+      ],
+      "execution.receipts.list": [
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate"
+        },
+        {
+          "decoder": "value",
+          "input": "action_identity",
+          "namespace": "action"
+        }
+      ],
       "ledger.verify": [],
       "lifecycle.inspect": [],
       "operations.inventory": [],
@@ -642,6 +661,41 @@
           }
         ],
         "operation_id": "providers.probe"
+      },
+      "receipts get": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "binding_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "execution.receipts.get"
+      },
+      "receipts list": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate",
+            "nargs": null,
+            "options": [
+              "--candidate"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "action",
+            "nargs": null,
+            "options": [
+              "--action"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "execution.receipts.list"
       },
       "reconcile": {
         "arguments": [
@@ -1223,6 +1277,25 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_execution_receipts_get": {
+          "input_properties": [
+            "binding_id"
+          ],
+          "input_schema_sha256": "5bc8d65528ebadf2a2e45c97184eca5a39b21e699a8d0c3e19ed1bc374752f10",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "binding_id"
+          ]
+        },
+        "mncs_forge_execution_receipts_list": {
+          "input_properties": [
+            "action_identity",
+            "candidate_identity"
+          ],
+          "input_schema_sha256": "16e35366402fb08caf452450498df16bd585a541773be335b3a1f868c8dac79f",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_failure_explain": {
           "input_properties": [
             "output_identity"
@@ -1520,6 +1593,25 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_execution_receipts_get": {
+          "input_properties": [
+            "binding_id"
+          ],
+          "input_schema_sha256": "5bc8d65528ebadf2a2e45c97184eca5a39b21e699a8d0c3e19ed1bc374752f10",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "binding_id"
+          ]
+        },
+        "mncs_forge_execution_receipts_list": {
+          "input_properties": [
+            "action_identity",
+            "candidate_identity"
+          ],
+          "input_schema_sha256": "16e35366402fb08caf452450498df16bd585a541773be335b3a1f868c8dac79f",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_failure_explain": {
           "input_properties": [
             "output_identity"
@@ -1664,6 +1756,8 @@
       "epochs.begin",
       "evaluation.final.run",
       "evidence.reconcile",
+      "execution.receipts.get",
+      "execution.receipts.list",
       "ledger.verify",
       "lifecycle.inspect",
       "operations.inventory",
@@ -1680,7 +1774,7 @@
       "verifiers.run"
     ],
     "schema_version": "1",
-    "semantic_sha256": "db9f10f925d35c20997ea8b9ff6675ef68bab0ec1407817aadb35ba529e72d31"
+    "semantic_sha256": "4a3744165fcf87c479a00ce30c2a89725c27643886b66c7190e2428da93dbf92"
   },
   "packaging": {
     "dependencies": [
@@ -1714,6 +1808,8 @@
       "doctor": "(self) -> 'dict[str, object]'",
       "epoch_begin": "(self, *, generator_identity: 'str', evaluator_identity: 'str', parent_epoch: 'str | None' = None, authority_overlap: 'list[str] | None' = None) -> 'dict[str, object]'",
       "evidence_reconcile": "(self, candidate_id: 'str | None' = None) -> 'dict[str, object]'",
+      "execution_receipts_get": "(self, binding_id: 'str') -> 'dict[str, object]'",
+      "execution_receipts_list": "(self, candidate_identity: 'str | None' = None, action_identity: 'str | None' = None) -> 'dict[str, object]'",
       "failure_explain": "(self, output_identity: 'str | None' = None) -> 'dict[str, object]'",
       "final_evaluation_run": "(self, workflow_names: 'list[str]') -> 'dict[str, object]'",
       "ledger_verify": "(self) -> 'dict[str, object]'",
@@ -1871,6 +1967,73 @@
           "record_type",
           "schema_version",
           "visible_partition_identities"
+        ]
+      },
+      "execution_receipt_binding": {
+        "properties": [
+          "action_identity",
+          "action_kind",
+          "architecture",
+          "binding_id",
+          "candidate_identity",
+          "environment_identity",
+          "epoch_identity",
+          "established_properties",
+          "executable_identity",
+          "execution_scope",
+          "extensions",
+          "host_identity",
+          "image_identity",
+          "mncs_receipt",
+          "os_family",
+          "project_identity",
+          "receipt_completeness",
+          "receipt_identity",
+          "receipt_schema_version",
+          "record_type",
+          "recorded_at",
+          "request_identity",
+          "result_identity",
+          "runner_identity",
+          "runner_kind",
+          "runner_version",
+          "schema_version",
+          "status",
+          "termination_category",
+          "worker_identity",
+          "workflow_or_verifier"
+        ],
+        "required": [
+          "action_identity",
+          "action_kind",
+          "architecture",
+          "binding_id",
+          "candidate_identity",
+          "environment_identity",
+          "epoch_identity",
+          "established_properties",
+          "executable_identity",
+          "execution_scope",
+          "host_identity",
+          "image_identity",
+          "mncs_receipt",
+          "os_family",
+          "project_identity",
+          "receipt_completeness",
+          "receipt_identity",
+          "receipt_schema_version",
+          "record_type",
+          "recorded_at",
+          "request_identity",
+          "result_identity",
+          "runner_identity",
+          "runner_kind",
+          "runner_version",
+          "schema_version",
+          "status",
+          "termination_category",
+          "worker_identity",
+          "workflow_or_verifier"
         ]
       },
       "final_evaluation": {
@@ -2216,6 +2379,7 @@
       },
       "workflow_action": {
         "properties": [
+          "action_id",
           "candidate_identity",
           "extensions",
           "mode",
@@ -2226,6 +2390,7 @@
           "workflow"
         ],
         "required": [
+          "action_id",
           "candidate_identity",
           "mode",
           "protocol_request_identity",
@@ -2285,7 +2450,7 @@
     },
     "root_properties": [],
     "root_required": [],
-    "semantic_sha256": "dc428b35cc92228e96a38f53d13773b3008dc88522321edd01568a38d79584a4"
+    "semantic_sha256": "2988066ab8dd0b0ef467f7049b6602f66001f308273a703336cc6ec1ca09b5fc"
   },
   "snapshot_schema": "1"
 }
