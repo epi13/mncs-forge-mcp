@@ -165,3 +165,24 @@ def test_relative_provider_symlink_escape_is_unavailable(project: Path, tmp_path
     with pytest.raises(ForgeError) as issue:
         load_config(path)
     assert issue.value.code == "SYMLINK_ESCAPE"
+
+
+def test_family_module_root_resolves_sibling_and_rejects_escape(tmp_path: Path) -> None:
+    from mncs_forge.paths import FAMILY_MODULE_ROOTS_MECHANISM, resolve_family_module_root
+
+    workspace = tmp_path / "Projects"
+    project = workspace / "mncs-forge-project"
+    sibling = workspace / "machine-native-complexity-standard" / "src"
+    sibling.mkdir(parents=True)
+    (sibling / "mncs_validator").mkdir()
+    (sibling / "mncs_validator" / "__init__.py").write_text("", encoding="utf-8")
+    project.mkdir()
+    resolved = resolve_family_module_root(project, "../machine-native-complexity-standard/src")
+    assert resolved == sibling.resolve()
+    with pytest.raises(ForgeError) as escaped:
+        resolve_family_module_root(project, "../../outside")
+    assert escaped.value.code == "FAMILY_MODULE_ROOT_ESCAPE"
+    with pytest.raises(ForgeError) as absolute:
+        resolve_family_module_root(project, str(sibling))
+    assert absolute.value.code == "ABSOLUTE_PATH"
+    assert FAMILY_MODULE_ROOTS_MECHANISM.startswith("mncs-forge.family-module-roots")

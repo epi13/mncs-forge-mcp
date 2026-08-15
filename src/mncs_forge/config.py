@@ -15,8 +15,11 @@ from jsonschema import Draft202012Validator
 
 from .errors import ForgeError
 from .execution import validate_argv
+from .serialization import local_json_identity
 from .paths import (
+    FAMILY_MODULE_ROOTS_MECHANISM,
     resolve_contained,
+    resolve_family_module_root,
     validate_relative_path,
     validate_scopes_do_not_overlap,
     validate_tree_containment,
@@ -52,6 +55,8 @@ class Provider:
     executable_identity: str | None
     descriptor: str | None
     environment: dict[str, str]
+    module_roots: tuple[str, ...] = ()
+    python_packages: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -163,8 +168,31 @@ class ForgeConfig:
             )
         return result
 
+    def resolved_module_roots(self, provider: Provider) -> list[tuple[Path, str]]:
+        roots: list[tuple[Path, str]] = []
+        for value in provider.module_roots:
+            resolved = resolve_family_module_root(self.root, value)
+            identity = local_json_identity(
+                {
+                    "mechanism": FAMILY_MODULE_ROOTS_MECHANISM,
+                    "declared": value,
+                    "resolved": str(resolved),
+                    "entries": sorted(path.name for path in resolved.iterdir()),
+                }
+            )
+            roots.append((resolved, identity))
+        return roots
+
     def provider_environment(self, provider: Provider) -> dict[str, str]:
-        return self._environment(provider.environment, f"provider {provider.provider_id}")
+        result = self._environment(provider.environment, f"provider {provider.provider_id}")
+        roots = self.resolved_module_roots(provider)
+        if roots:
+            existing = result.get("PYTHONPATH", "")
+            result["PYTHONPATH"] = os.pathsep.join(
+                [str(path) for path, _identity in roots]
+                + ([existing] if existing else [])
+            )
+        return result
 
     def _environment(self, declared: dict[str, str], label: str) -> dict[str, str]:
         allowed = set(self.raw.get("environment_allowlist", []))
@@ -285,7 +313,11 @@ def load_config(path: Path | str = Path("mncs-forge.toml")) -> ForgeConfig:
             ),
             descriptor=descriptor,
             environment=dict(item.get("environment", {})),
+            module_roots=tuple(str(declared) for declared in item.get("module_roots", [])),
+            python_packages=tuple(str(name) for name in item.get("python_packages", [])),
         )
+        for declared_root in providers[provider_id].module_roots:
+            resolve_family_module_root(root, declared_root)
     for workflow in workflows.values():
         if workflow.provider_protocol and tuple(workflow.command) not in provider_commands:
             raise ForgeError(
