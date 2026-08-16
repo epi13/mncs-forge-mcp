@@ -1,0 +1,54 @@
+name: Diagnose Compatibility Snapshot
+
+on:
+  push:
+    branches: [fix-rights-provenance-integration-ci]
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e '.[dev]'
+      - name: Show semantic snapshot differences
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          expected = json.loads(Path('tests/compatibility/0.1.0b1.json').read_text())
+          actual = json.loads(subprocess.check_output([sys.executable, 'scripts/generate-compatibility-snapshot.py'], text=True))
+
+          def walk(a, b, path='root'):
+              if type(a) is not type(b):
+                  print(path, 'TYPE', type(a).__name__, '!=', type(b).__name__)
+                  return
+              if isinstance(a, dict):
+                  for key in sorted(set(a) | set(b)):
+                      if key not in a:
+                          print(f'{path}.{key}', 'MISSING_EXPECTED', repr(b[key]))
+                      elif key not in b:
+                          print(f'{path}.{key}', 'MISSING_ACTUAL', repr(a[key]))
+                      else:
+                          walk(a[key], b[key], f'{path}.{key}')
+              elif isinstance(a, list):
+                  if len(a) != len(b):
+                      print(path, 'LEN', len(a), '!=', len(b))
+                  for index, (left, right) in enumerate(zip(a, b)):
+                      walk(left, right, f'{path}[{index}]')
+              elif a != b:
+                  print(path, repr(a), '!=', repr(b))
+
+          walk(expected, actual)
+          PY
