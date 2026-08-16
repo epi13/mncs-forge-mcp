@@ -189,8 +189,7 @@ class ForgeConfig:
         if roots:
             existing = result.get("PYTHONPATH", "")
             result["PYTHONPATH"] = os.pathsep.join(
-                [str(path) for path, _identity in roots]
-                + ([existing] if existing else [])
+                [str(path) for path, _identity in roots] + ([existing] if existing else [])
             )
         return result
 
