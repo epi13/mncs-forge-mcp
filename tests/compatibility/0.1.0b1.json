@@ -1136,6 +1136,7 @@
       "project",
       "providers",
       "required_capabilities",
+      "rights_provenance",
       "verifier_limits",
       "verifiers",
       "version",
@@ -1150,7 +1151,7 @@
       "version",
       "workflows"
     ],
-    "semantic_sha256": "e009ccc8a4d1c39a06f935ed294eedfff22edf8b9aa408d0ad544ac0f4b52b44"
+    "semantic_sha256": "72364b155b9f4c7d437529154f31f6185c9038a73a8716e8afa3337902bf6d57"
   },
   "intentional_exclusions": [
     "human-readable help and error prose",
