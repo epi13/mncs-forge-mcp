@@ -133,9 +133,13 @@ class EvidenceService:
     def claim_blockers(self, requested_claim: str) -> dict[str, object]:
         rights = self._rights_status()
         rights_blockers = rights.get("blockers")
-        rights_items = [str(item) for item in rights_blockers] if isinstance(rights_blockers, list) else []
+        rights_items = (
+            [str(item) for item in rights_blockers] if isinstance(rights_blockers, list) else []
+        )
         rights_policy = rights.get("policy")
-        rights_blocking = isinstance(rights_policy, Mapping) and rights_policy.get("blocking") is True
+        rights_blocking = (
+            isinstance(rights_policy, Mapping) and rights_policy.get("blocking") is True
+        )
 
         if requested_claim in {"rights", "rights_provenance"}:
             blockers = [
