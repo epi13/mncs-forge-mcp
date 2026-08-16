@@ -316,9 +316,9 @@ def assess_manifest(
             elif human_review_status == "FAIL":
                 blockers.append("human review rejected the artifact")
 
-        rights = manifest.get("rights")
-        if isinstance(rights, Mapping):
-            rights_status, rights_blockers = _rights_basis_status(rights)
+        rights_value = manifest.get("rights")
+        if isinstance(rights_value, Mapping):
+            rights_status, rights_blockers = _rights_basis_status(rights_value)
             blockers.extend(rights_blockers)
 
     evidence_status = aggregate_status(
@@ -327,9 +327,15 @@ def assess_manifest(
     policy = _policy_projection(mode, evidence_status, blockers)
     technical = _technical_status(development, candidate)
 
-    rights = manifest.get("rights") if isinstance(manifest.get("rights"), Mapping) else {}
-    provenance = (
-        manifest.get("provenance") if isinstance(manifest.get("provenance"), Mapping) else {}
+    rights_value = manifest.get("rights")
+    rights: Mapping[str, object] = (
+        cast(Mapping[str, object], rights_value) if isinstance(rights_value, Mapping) else {}
+    )
+    provenance_value = manifest.get("provenance")
+    provenance: Mapping[str, object] = (
+        cast(Mapping[str, object], provenance_value)
+        if isinstance(provenance_value, Mapping)
+        else {}
     )
     return {
         "contract": RIGHTS_CONTRACT,
