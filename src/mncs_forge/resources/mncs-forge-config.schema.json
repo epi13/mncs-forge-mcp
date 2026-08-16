@@ -67,6 +67,14 @@
     },
     "environment_allowlist": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}},
     "required_capabilities": {"$ref": "#/$defs/stringList"},
+    "rights_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"enum": ["observe", "advisory", "enforced"]},
+        "manifest": {"$ref": "#/$defs/relativePath"}
+      }
+    },
     "authority": {
       "type": "object",
       "additionalProperties": false,
