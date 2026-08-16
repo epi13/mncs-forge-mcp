@@ -7,7 +7,6 @@ from pathlib import Path, PurePosixPath
 
 from .errors import ForgeError
 
-
 FAMILY_MODULE_ROOTS_MECHANISM = "mncs-forge.family-module-roots.v0.1"
 
 

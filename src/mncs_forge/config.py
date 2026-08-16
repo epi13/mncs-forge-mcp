@@ -15,7 +15,6 @@ from jsonschema import Draft202012Validator
 
 from .errors import ForgeError
 from .execution import validate_argv
-from .serialization import local_json_identity
 from .paths import (
     FAMILY_MODULE_ROOTS_MECHANISM,
     resolve_contained,
@@ -24,6 +23,7 @@ from .paths import (
     validate_scopes_do_not_overlap,
     validate_tree_containment,
 )
+from .serialization import local_json_identity
 
 
 @dataclass(frozen=True)
@@ -189,8 +189,7 @@ class ForgeConfig:
         if roots:
             existing = result.get("PYTHONPATH", "")
             result["PYTHONPATH"] = os.pathsep.join(
-                [str(path) for path, _identity in roots]
-                + ([existing] if existing else [])
+                [str(path) for path, _identity in roots] + ([existing] if existing else [])
             )
         return result
 

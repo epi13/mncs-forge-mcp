@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -254,17 +255,12 @@ def run(argv: list[str] | None = None) -> tuple[int, dict[str, Any]]:
 def _cli_json(value: object) -> object:
     """Make Forge CLI output JSON-serializable without changing record meaning."""
 
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         return {str(key): _cli_json(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_cli_json(item) for item in value]
     if isinstance(value, (str, int, float, bool)) or value is None:
         return value
-    if hasattr(value, "items") and hasattr(value, "keys"):
-        try:
-            return {str(key): _cli_json(item) for key, item in dict(value).items()}
-        except Exception:
-            return str(value)
     return str(value)
 
 

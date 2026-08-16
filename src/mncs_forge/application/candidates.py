@@ -8,6 +8,7 @@ from ..paths import resolve_contained
 from ..ports import ProjectObserver, RecordCommitter
 from ..records import RecordType, new_record
 from .lifecycle import LifecycleContext
+from .rights_provenance import enforce_rights_provenance_selection, rights_provenance_status
 from .support import aggregate_status, now
 from .workflows import DevelopmentWorkflowService
 
@@ -209,6 +210,12 @@ class CandidateService:
                         item["workflow"] for item in results if item["status"] == "UNKNOWN"
                     ],
                     "environmental_comparability": "UNKNOWN",
+                    "rights_provenance": rights_provenance_status(
+                        config=self.config,
+                        lifecycle=self.lifecycle,
+                        development=self.development,
+                        candidate_identity=candidate_id,
+                    ),
                 }
             )
         return {
@@ -221,19 +228,27 @@ class CandidateService:
         }
 
     def dispose(self, candidate_id: str, *, disposition: str, reason: str) -> dict[str, object]:
+        rights: dict[str, object] | None = None
+        if disposition == "selected":
+            rights = enforce_rights_provenance_selection(
+                config=self.config,
+                lifecycle=self.lifecycle,
+                development=self.development,
+                candidate_identity=candidate_id,
+            )
         state_machine = self.lifecycle.machine()
         _, readiness = state_machine.authorize_candidate_disposition(candidate_id, disposition)
-        record = new_record(
-            RecordType.CANDIDATE_DISPOSITION,
-            {
-                "candidate_identity": candidate_id,
-                "disposition": disposition,
-                "reason": reason,
-                "selection_rule": str(self.config.raw["policies"]["selection"]),
-                "selection_policy_identity": state_machine.selection_policy_identity,
-                "evidence_status": readiness.status,
-                "recorded_at": now(),
-            },
-        )
+        fields: dict[str, object] = {
+            "candidate_identity": candidate_id,
+            "disposition": disposition,
+            "reason": reason,
+            "selection_rule": str(self.config.raw["policies"]["selection"]),
+            "selection_policy_identity": state_machine.selection_policy_identity,
+            "evidence_status": readiness.status,
+            "recorded_at": now(),
+        }
+        if rights is not None:
+            fields["extensions"] = {"rights_provenance": rights}
+        record = new_record(RecordType.CANDIDATE_DISPOSITION, fields)
         self.record_store.commit("dispositions", "disposition", record)
         return record.to_object_dict()
