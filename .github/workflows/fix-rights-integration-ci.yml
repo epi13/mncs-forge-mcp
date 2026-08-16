@@ -1,0 +1,58 @@
+name: Fix Rights Integration CI Helper
+
+on:
+  push:
+    branches: [fix-rights-provenance-integration-ci]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix-rights-provenance-integration-ci
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Apply integration corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          rights = Path('src/mncs_forge/application/rights_provenance.py')
+          text = rights.read_text()
+          old = '''    projection = lifecycle.machine(\n        observe_epoch_authority=False,\n        observe_freeze_bindings=False,\n        observe_policy=False,\n        history_kinds=frozenset({"candidate"}),\n    ).projection\n'''
+          new = '''    projection = lifecycle.machine(\n        observe_epoch_authority=False,\n        observe_freeze_bindings=False,\n        observe_policy=False,\n    ).projection\n'''
+          if old not in text:
+              raise SystemExit('candidate projection target not found')
+          rights.write_text(text.replace(old, new))
+
+          launcher = Path('scripts/codex-mcp')
+          text = launcher.read_text()
+          old = '''python="$repository_root/.venv/bin/python"\n\nif [[ ! -x "$python" ]]; then\n  echo "MNCS Forge Python environment is not installed or executable: $python" >&2\n  echo "Run $repository_root/scripts/install-codex-mcp.sh [path/to/mncs-forge.toml]" >&2\n  exit 78\nfi\n'''
+          new = '''python="$repository_root/.venv/bin/python"\n\n# Prefer the repository-managed environment in operator deployments. During\n# development/CI an editable Forge installation may instead live in the active\n# interpreter, so fall back to a Python already present on PATH rather than\n# making the wrapper depend on a checkout-local .venv.\nif [[ ! -x "$python" ]]; then\n  python="$(command -v python3 || command -v python || true)"\nfi\nif [[ -z "$python" || ! -x "$python" ]]; then\n  echo "MNCS Forge Python environment is not installed or executable." >&2\n  echo "Run $repository_root/scripts/install-codex-mcp.sh [path/to/mncs-forge.toml]" >&2\n  exit 78\nfi\n'''
+          if old not in text:
+              raise SystemExit('launcher target not found')
+          launcher.write_text(text.replace(old, new))
+          PY
+      - run: python -m pip install -e '.[dev]'
+      - name: Refresh semantic compatibility snapshot
+        run: python scripts/generate-compatibility-snapshot.py
+      - run: ruff format src/mncs_forge/application/rights_provenance.py
+      - run: ruff format --check .
+      - run: ruff check .
+      - run: mypy src
+      - name: Run affected tests
+        run: pytest tests/test_rights_provenance.py tests/test_compatibility.py tests/test_cli_mcp_edgestream.py
+      - name: Commit generated corrections
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/mncs_forge/application/rights_provenance.py scripts/codex-mcp tests/compatibility/0.1.0b1.json
+          git diff --cached --check
+          git commit -m "Fix rights provenance integration CI"
+          git push origin HEAD:fix-rights-provenance-integration-ci
