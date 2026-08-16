@@ -65,7 +65,6 @@ def _candidate_identity(lifecycle: LifecycleContext, candidate_identity: str | N
         observe_epoch_authority=False,
         observe_freeze_bindings=False,
         observe_policy=False,
-        history_kinds=frozenset({"candidate"}),
     ).projection
     current = projection.current_candidate
     if current is None:
