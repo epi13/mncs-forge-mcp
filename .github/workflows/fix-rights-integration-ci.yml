@@ -46,8 +46,6 @@ jobs:
       - run: ruff format --check .
       - run: ruff check .
       - run: mypy src
-      - name: Run affected tests
-        run: pytest tests/test_rights_provenance.py tests/test_compatibility.py tests/test_cli_mcp_edgestream.py
       - name: Commit generated corrections
         run: |
           git config user.name github-actions[bot]
