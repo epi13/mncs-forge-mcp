@@ -51,9 +51,7 @@ def _manifest(
         },
         "provenance": {
             "origin_classification": origin,
-            "participants": [
-                {"type": "agent", "role": "generator", "name": "generator-v1"}
-            ],
+            "participants": [{"type": "agent", "role": "generator", "name": "generator-v1"}],
             "process_evidence": [],
         },
         "rights": {
