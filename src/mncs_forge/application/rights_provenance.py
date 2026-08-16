@@ -149,7 +149,10 @@ def draft_manifest(
             "origin_classification": "origin-uncertain",
             "participants": participants,
             "process_evidence": _receipt_evidence(lifecycle, candidate),
-            "notes": "Forge-derived draft: unknown fields remain explicit until supplied evidence resolves them.",
+            "notes": (
+                "Forge-derived draft: unknown fields remain explicit until supplied evidence "
+                "resolves them."
+            ),
         },
         "rights": {
             "distribution_license": "Apache-2.0",
