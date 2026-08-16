@@ -58,9 +58,7 @@ def _policy(config: ForgeConfig) -> tuple[str, Path | None]:
     return mode, resolve_contained(config.root, str(declared), must_exist=False)
 
 
-def _candidate_identity(
-    lifecycle: LifecycleContext, candidate_identity: str | None
-) -> str | None:
+def _candidate_identity(lifecycle: LifecycleContext, candidate_identity: str | None) -> str | None:
     if candidate_identity is not None:
         return candidate_identity
     projection = lifecycle.machine(
