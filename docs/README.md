@@ -31,6 +31,8 @@ development planning. The root README remains a short project entrypoint.
 
 - [Provider Protocol integration](provider-protocol.md)
 - [Machine-native micro-verifiers](micro-verifiers.md)
+- [Property-oriented verifier fleet](verifier-fleet.md) — polyglot verifier families, Haskell
+  pilots, proof-strength separation, overlapping verification, and the Fabric placement boundary.
 - [Query-driven micro-debugging](micro-debugging.md)
 - [Forge and provider transition](provider-transition.md)
 - [EdgeStream integration](edgestream.md)
