@@ -20,6 +20,7 @@ requirements.
 - [ADR 0009: Recoverable local record and ledger commits](0009-recoverable-record-store.md)
 - [ADR 0010: Canonical typed operation registry](0010-canonical-operation-registry.md)
 - [ADR 0011: Forge/Fabric execution and evidence boundary](0011-forge-fabric-execution-boundary.md)
+- [ADR 0013: Consume language-owned compiler experiment observations](0013-language-owned-compiler-experiment-observations.md)
 
 ## Proposed decisions
 

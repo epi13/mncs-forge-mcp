@@ -60,6 +60,7 @@ minimal controlled workflow.
 - [Provider Protocol integration](docs/provider-protocol.md)
 - [Machine-native micro-verifiers](docs/micro-verifiers.md)
 - [Query-driven micro-debugging](docs/micro-debugging.md)
+- [Compiler evolution observations](docs/compiler-evolution.md)
 - [Evidence and identity model](docs/evidence-model.md)
 - [Lifecycle state machine](docs/lifecycle.md)
 - [Transactional local storage](docs/storage.md)
