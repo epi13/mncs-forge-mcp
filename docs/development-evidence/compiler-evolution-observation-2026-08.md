@@ -63,3 +63,22 @@ The query was executed from `/tmp` with absolute paths to avoid Joern's local pr
 ## Residual uncertainty
 
 The consumer validates only the pinned projection required for comparison; it does not independently recompute the Rust record's content identity or validate compiler semantics. A future persisted integration must bind the raw language artifact identity, validator identity, and assurance policy without changing existing Forge authority semantics.
+
+## Windows CI baseline repair
+
+The PR matrix reproduced an existing `main` failure in all Windows jobs: `test_codex_launcher_uses_relocatable_module_entrypoint` attempted to execute the Bash `scripts/codex-mcp` file directly and failed with `WinError 193`. The same failure is present in `main` run `32280197735`; it was not introduced by the compiler consumer.
+
+The test now invokes the launcher through `bash` on Windows and skips only when no Bash implementation is installed. Linux/macOS retain direct execution. Focused local tests passed.
+
+The graph-sensitive test change used same-scope baseline/post CPGs over `tests/`:
+
+```bash
+joern-parse tests -o workspace/windows-launcher-test-baseline.cpg.bin --language pythonsrc
+joern --script scripts/joern/windows-launcher-test.sc \
+  --param cpgFile=workspace/windows-launcher-test-baseline.cpg.bin --nocolors
+joern-parse tests -o workspace/windows-launcher-test-post.cpg.bin --language pythonsrc
+joern --script scripts/joern/windows-launcher-test.sc \
+  --param cpgFile=workspace/windows-launcher-test-post.cpg.bin --nocolors
+```
+
+The focused method changed from no control structures to two bounded `IF` branches: Windows platform selection and Bash availability. New calls are limited to `which`, `insert`, and `skip`; subprocess execution and assertions remain in the same test method. This repair changes test execution routing only and does not alter Forge runtime authority or launcher behavior.
