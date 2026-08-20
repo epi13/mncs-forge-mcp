@@ -39,6 +39,9 @@ EXPECTED_CLI = {
     "candidate select",
     "check development",
     "config validate",
+    "compiler compare",
+    "compiler list",
+    "compiler record",
     "doctor",
     "epoch begin",
     "evaluate",
@@ -73,6 +76,9 @@ EXPECTED_DEVELOPMENT_MCP = {
     "mncs_forge_capability_blockers",
     "mncs_forge_claim_blockers",
     "mncs_forge_claim_status",
+    "mncs_forge_compiler_experiment_record",
+    "mncs_forge_compiler_experiments_compare",
+    "mncs_forge_compiler_experiments_list",
     "mncs_forge_development_checks_run",
     "mncs_forge_evidence_reconcile",
     "mncs_forge_epoch_begin",
@@ -111,7 +117,7 @@ def semantic_snapshot() -> list[tuple[object, ...]]:
 def test_registry_is_unique_validated_and_deterministically_ordered() -> None:
     operation_ids = [item.operation_id for item in DEFAULT_OPERATION_REGISTRY.operations]
     assert operation_ids == sorted(operation_ids)
-    assert len(operation_ids) == len(set(operation_ids)) == 31
+    assert len(operation_ids) == len(set(operation_ids)) == 34
     assert all(callable(item.handler) for item in DEFAULT_OPERATION_REGISTRY.operations)
     assert all(
         fields(item.input_model) is not None for item in DEFAULT_OPERATION_REGISTRY.operations
@@ -142,7 +148,7 @@ def test_inventory_is_canonical_json_and_omits_unstable_handler_details() -> Non
     assert first == second
     inventory = canonical_operation_inventory()
     assert inventory["schema_version"] == "1"
-    assert len(inventory["operations"]) == 31
+    assert len(inventory["operations"]) == 34
     assert "0x" not in first
     assert "handler" not in first
     semantic = json.dumps(
@@ -160,7 +166,7 @@ def test_inventory_is_canonical_json_and_omits_unstable_handler_details() -> Non
         separators=(",", ":"),
     )
     assert hashlib.sha256(semantic.encode()).hexdigest() == (
-        "871d98caef0907f76b65f1468ee1c32c0fa859136a7e4448f3fd4f361330734e"
+        "d262e5241b81ed330e8bf0bdfa83c51854575f18930ca04753da535e436a3438"
     )
 
 
@@ -172,7 +178,10 @@ def test_cli_and_mcp_coverage_and_intentional_asymmetry() -> None:
         item.mcp.tool_name for item in DEFAULT_OPERATION_REGISTRY.for_mcp("evaluator") if item.mcp
     }
     assert development_tools == EXPECTED_DEVELOPMENT_MCP
-    assert evaluator_tools == EXPECTED_DEVELOPMENT_MCP | {"mncs_forge_final_evaluation_run"}
+    assert evaluator_tools == (
+        EXPECTED_DEVELOPMENT_MCP - {"mncs_forge_compiler_experiment_record"}
+        | {"mncs_forge_final_evaluation_run"}
+    )
     excluded = [item for item in DEFAULT_OPERATION_REGISTRY.operations if item.mcp is None]
     assert {item.operation_id for item in excluded} == {
         "config.validate",
@@ -284,6 +293,7 @@ def test_mutation_metadata_matches_persisted_operation_set() -> None:
         "candidates.register",
         "candidates.reject",
         "candidates.select",
+        "compiler.experiments.record",
         "development.checks.run",
         "epochs.begin",
         "evaluation.final.run",

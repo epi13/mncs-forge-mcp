@@ -70,6 +70,17 @@ for required_fields in REQUIRED_STRING_FIELDS.values():
 
 def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
     spec = RECORD_SPECS[record_type]
+    if record_type is RecordType.COMPILER_EXPERIMENT and field in {
+        "assurance_status",
+        "conformance_status",
+    }:
+        return {"type": "null"}
+    if record_type is RecordType.COMPILER_EXPERIMENT and field == "language_contract_id":
+        return {"const": "mncs:language:compilation-study-result:0.1"}
+    if record_type is RecordType.COMPILER_EXPERIMENT and field == "interpretation":
+        return {"const": "observation_only_not_assurance_or_conformance"}
+    if record_type is RecordType.COMPILER_EXPERIMENT and field == "compilation_status":
+        return {"enum": ["completed", "completed_with_unresolved_obligations", "failed"]}
     if field == "protocol_request_identity" and record_type in {
         RecordType.WORKFLOW_ACTION,
         RecordType.WORKFLOW_RESULT,

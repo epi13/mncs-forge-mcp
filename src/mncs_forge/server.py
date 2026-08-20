@@ -164,6 +164,13 @@ def build_server(forge: Forge) -> FastMCP:
             resource("operations.inventory", "mncs-forge://operations"), sort_keys=True
         )
 
+    @server.resource("mncs-forge://compiler/experiments")
+    def compiler_experiments() -> str:
+        return json.dumps(
+            resource("compiler.experiments.list", "mncs-forge://compiler/experiments"),
+            sort_keys=True,
+        )
+
     @server.resource("mncs-forge://guide/usage")
     def usage_guide() -> str:
         return (

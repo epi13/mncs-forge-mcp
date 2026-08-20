@@ -6,10 +6,14 @@ import pytest
 
 from mncs_forge.compiler_evolution import (
     LANGUAGE_COMPILATION_STUDY_RESULT_CONTRACT_ID,
+    OBSERVATION_ONLY_INTERPRETATION,
     CompilerExperimentObservation,
     compare_compiler_experiments,
 )
+from mncs_forge.config import ForgeConfig
+from mncs_forge.engine import Forge
 from mncs_forge.errors import ForgeError
+from mncs_forge.records import RecordType, new_record
 
 
 def language_result() -> dict[str, object]:
@@ -25,7 +29,14 @@ def language_result() -> dict[str, object]:
         "target_identity": None,
         "compilation_status": "completed_with_unresolved_obligations",
         "stage_fingerprints": {
+            "source": "source-fingerprint",
+            "lexical_tokens": "lexical-fingerprint",
+            "concrete_syntax_tree": "cst-fingerprint",
+            "abstract_syntax_tree": "ast-fingerprint",
             "semantic": "semantic-fingerprint",
+            "semantic_graph": "graph-fingerprint",
+            "identity_map": "identity-fingerprint",
+            "validation": "validation-fingerprint",
             "hir": "hir-fingerprint",
             "ssa": "ssa-fingerprint",
         },
@@ -111,3 +122,63 @@ def test_rejects_observation_laundering_into_a_stronger_interpretation() -> None
     with pytest.raises(ForgeError, match="observation-only boundary") as error:
         CompilerExperimentObservation.from_language_record(record)
     assert error.value.code == "COMPILER_CONTRACT_MISMATCH"
+
+
+def test_persists_lists_and_compares_language_owned_experiments(config: ForgeConfig) -> None:
+    forge = Forge(config)
+    left_record = forge.compiler_experiment_record(language_result())
+    changed = copy.deepcopy(language_result())
+    changed["identity"] = "mncs:compiler:compilation-study-result:right"
+    changed["run_identity"] = "mncs:compiler:study-run:right"
+    assert isinstance(changed["stage_fingerprints"], dict)
+    changed["stage_fingerprints"]["semantic_graph"] = "changed-graph-fingerprint"
+    right_record = forge.compiler_experiment_record(changed)
+
+    listing = forge.compiler_experiments_list()
+    assert len(listing["experiments"]) == 2
+    assert listing["assurance_status"] is None
+    comparison = forge.compiler_experiments_compare(
+        str(left_record["experiment_id"]),
+        str(right_record["experiment_id"]),
+    )
+    assert comparison["earliest_observed_difference"] == "semantic_graph"
+    assert comparison["assurance_status"] is None
+    assert comparison["conformance_status"] is None
+    assert forge.ledger.verify()["ok"] is True
+
+
+def test_recording_the_same_compiler_experiment_is_idempotent(config: ForgeConfig) -> None:
+    forge = Forge(config)
+    first = forge.compiler_experiment_record(language_result())
+    second = forge.compiler_experiment_record(language_result())
+
+    assert second == first
+    assert forge.ledger.verify()["entries"] == 1
+    assert len(forge.compiler_experiments_list()["experiments"]) == 1
+
+
+def test_persisted_compiler_record_rejects_verdict_laundering() -> None:
+    observation = CompilerExperimentObservation.from_language_record(language_result())
+    fields = {
+        "language_contract_id": observation.contract_id,
+        "language_record_identity": observation.language_record_identity,
+        "run_identity": observation.run_identity,
+        "compiler_identity": observation.compiler_identity,
+        "pipeline_identity": observation.pipeline_identity,
+        "compilation_status": observation.compilation_status,
+        "language_record": language_result(),
+        "observation": observation.to_json(),
+        "recorded_at": "2026-08-20T00:00:00+00:00",
+        "interpretation": OBSERVATION_ONLY_INTERPRETATION,
+        "assurance_status": "PASS",
+        "conformance_status": None,
+    }
+    with pytest.raises(ForgeError, match="cannot claim assurance") as error:
+        new_record(RecordType.COMPILER_EXPERIMENT, fields)
+    assert error.value.code == "RECORD_AUTHORITY"
+
+    fields["assurance_status"] = None
+    fields["language_contract_id"] = "forge:competing-compiler-contract:1"
+    with pytest.raises(ForgeError, match="unsupported language contract") as error:
+        new_record(RecordType.COMPILER_EXPERIMENT, fields)
+    assert error.value.code == "RECORD_CONTRACT"
