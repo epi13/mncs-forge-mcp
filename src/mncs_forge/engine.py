@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .adapters import LocalProcessRunner, LocalProjectObserver
 from .application.candidates import CandidateService
+from .application.compiler_studies import CompilerEvolutionService
 from .application.evaluation import EvaluationService
 from .application.evidence import EvidenceService
 from .application.execution_receipts import get_binding, list_bindings
@@ -127,6 +128,10 @@ class Forge:
             lifecycle=self._lifecycle,
             providers=self._provider_service,
             verifiers=self._verifier_service,
+        )
+        self._compiler_evolution_service = CompilerEvolutionService(
+            records=self.ledger,
+            record_store=self.record_store,
         )
 
     # Compatibility observation helpers. Implementations live in typed collaborators.
@@ -400,3 +405,19 @@ class Forge:
 
     def execution_receipts_get(self, binding_id: str) -> dict[str, object]:
         return get_binding(self.ledger, binding_id)
+
+    def compiler_experiment_record(
+        self, language_record: Mapping[str, object]
+    ) -> dict[str, object]:
+        return self._compiler_evolution_service.record(language_record)
+
+    def compiler_experiments_list(self) -> dict[str, object]:
+        return self._compiler_evolution_service.list()
+
+    def compiler_experiments_compare(
+        self, left_experiment_id: str, right_experiment_id: str
+    ) -> dict[str, object]:
+        return self._compiler_evolution_service.compare(
+            left_experiment_id,
+            right_experiment_id,
+        )

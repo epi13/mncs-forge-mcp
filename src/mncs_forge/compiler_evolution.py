@@ -15,7 +15,14 @@ from .errors import ForgeError
 LANGUAGE_COMPILATION_STUDY_RESULT_CONTRACT_ID = "mncs:language:compilation-study-result:0.1"
 OBSERVATION_ONLY_INTERPRETATION = "observation_only_not_assurance_or_conformance"
 STAGE_ORDER = (
+    "source",
+    "lexical_tokens",
+    "concrete_syntax_tree",
+    "abstract_syntax_tree",
     "semantic",
+    "semantic_graph",
+    "identity_map",
+    "validation",
     "hir",
     "ssa",
     "selected_ssa",

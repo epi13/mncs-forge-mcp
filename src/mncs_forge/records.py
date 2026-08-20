@@ -20,7 +20,7 @@ from .serialization import local_json_identity, read_json
 CURRENT_SCHEMA_VERSION = "1"
 LEGACY_SCHEMA_VERSION = "0.1-unversioned"
 
-JsonScalar: TypeAlias = None | bool | int | float | str
+JsonScalar: TypeAlias = bool | int | float | str | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 JsonObject: TypeAlias = dict[str, JsonValue]
 FrozenJsonValue: TypeAlias = (
@@ -42,6 +42,7 @@ class RecordType(StrEnum):
     FINAL_EVALUATION = "final_evaluation"
     RECONCILIATION = "reconciliation"
     BUNDLE = "bundle"
+    COMPILER_EXPERIMENT = "compiler_experiment"
     LEDGER_ENTRY = "ledger_entry"
 
 
@@ -374,6 +375,28 @@ RECORD_SPECS: dict[RecordType, RecordSpec] = {
         identity_prefix="forge-json-sha256-v1:",
         status_field="status",
     ),
+    RecordType.COMPILER_EXPERIMENT: RecordSpec(
+        required=frozenset(
+            {
+                "language_contract_id",
+                "language_record_identity",
+                "run_identity",
+                "compiler_identity",
+                "pipeline_identity",
+                "compilation_status",
+                "language_record",
+                "observation",
+                "recorded_at",
+                "interpretation",
+                "assurance_status",
+                "conformance_status",
+                "experiment_id",
+            }
+        ),
+        identity_field="experiment_id",
+        identity_prefix="compiler-experiment:",
+        identity_exclusions=frozenset({"recorded_at"}),
+    ),
 }
 
 LEDGER_REQUIRED = frozenset(
@@ -393,6 +416,7 @@ LEDGER_KIND_TYPES: dict[str, RecordType] = {
     "freeze": RecordType.FREEZE,
     "evaluation": RecordType.FINAL_EVALUATION,
     "bundle": RecordType.BUNDLE,
+    "compiler_experiment": RecordType.COMPILER_EXPERIMENT,
 }
 
 RECORD_GROUP_TYPES: dict[str, RecordType] = {
@@ -408,6 +432,7 @@ RECORD_GROUP_TYPES: dict[str, RecordType] = {
     "freezes": RecordType.FREEZE,
     "evaluations": RecordType.FINAL_EVALUATION,
     "bundles": RecordType.BUNDLE,
+    "compiler-experiments": RecordType.COMPILER_EXPERIMENT,
 }
 
 
@@ -458,6 +483,12 @@ PERSISTED_RECORD_CONTEXTS: dict[str, PersistedRecordContext] = {
         "evaluations", "evaluation", RecordType.FINAL_EVALUATION, "output_identity"
     ),
     "bundle": PersistedRecordContext("bundles", "bundle", RecordType.BUNDLE, "output_identity"),
+    "compiler_experiment": PersistedRecordContext(
+        "compiler-experiments",
+        "compiler_experiment",
+        RecordType.COMPILER_EXPERIMENT,
+        "experiment_id",
+    ),
 }
 
 
@@ -673,6 +704,19 @@ REQUIRED_STRING_FIELDS: dict[RecordType, frozenset[str]] = {
             "output_identity",
         }
     ),
+    RecordType.COMPILER_EXPERIMENT: frozenset(
+        {
+            "language_contract_id",
+            "language_record_identity",
+            "run_identity",
+            "compiler_identity",
+            "pipeline_identity",
+            "compilation_status",
+            "recorded_at",
+            "interpretation",
+            "experiment_id",
+        }
+    ),
 }
 
 REQUIRED_OBJECT_FIELDS: dict[RecordType, frozenset[str]] = {
@@ -686,6 +730,7 @@ REQUIRED_OBJECT_FIELDS: dict[RecordType, frozenset[str]] = {
     RecordType.FINAL_EVALUATION: frozenset({"environment"}),
     RecordType.RECONCILIATION: frozenset({"categories"}),
     RecordType.BUNDLE: frozenset({"environment"}),
+    RecordType.COMPILER_EXPERIMENT: frozenset({"language_record", "observation"}),
 }
 
 
@@ -853,6 +898,11 @@ class BundleRecord(ForgeRecord):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class CompilerExperimentRecord(ForgeRecord):
+    pass
+
+
 MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.EPOCH: EpochRecord,
     RecordType.CANDIDATE: CandidateRecord,
@@ -867,6 +917,7 @@ MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.FINAL_EVALUATION: FinalEvaluationRecord,
     RecordType.RECONCILIATION: ReconciliationRecord,
     RecordType.BUNDLE: BundleRecord,
+    RecordType.COMPILER_EXPERIMENT: CompilerExperimentRecord,
 }
 
 
@@ -942,6 +993,22 @@ def _validate_fields(record_type: RecordType, fields: JsonObject) -> None:
         )
     if record_type is RecordType.EXECUTION_RECEIPT_BINDING:
         _validate_execution_receipt_binding(fields)
+    if record_type is RecordType.COMPILER_EXPERIMENT:
+        if fields["language_contract_id"] != "mncs:language:compilation-study-result:0.1":
+            raise ForgeError(
+                "RECORD_CONTRACT",
+                "compiler experiment record uses an unsupported language contract",
+            )
+        if fields["interpretation"] != "observation_only_not_assurance_or_conformance":
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler experiment records must remain observation-only",
+            )
+        if fields["assurance_status"] is not None or fields["conformance_status"] is not None:
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler experiment records cannot claim assurance or conformance",
+            )
 
 
 RECEIPT_COMPLETENESS = frozenset(

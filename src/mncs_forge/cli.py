@@ -184,6 +184,24 @@ def _common_parser() -> argparse.ArgumentParser:
     )
     receipt_get.add_argument("binding_id")
 
+    compiler = commands.add_parser(_cli_command("compiler.experiments.list", 0))
+    compiler_commands = compiler.add_subparsers(dest="compiler_command", required=True)
+    compiler_record = _register(
+        compiler_commands.add_parser(_cli_command("compiler.experiments.record")),
+        "compiler.experiments.record",
+    )
+    compiler_record.add_argument("record", help="language compiler-study JSON object")
+    _register(
+        compiler_commands.add_parser(_cli_command("compiler.experiments.list")),
+        "compiler.experiments.list",
+    )
+    compiler_compare = _register(
+        compiler_commands.add_parser(_cli_command("compiler.experiments.compare")),
+        "compiler.experiments.compare",
+    )
+    compiler_compare.add_argument("left")
+    compiler_compare.add_argument("right")
+
     ledger = commands.add_parser(_cli_command("ledger.verify", 0))
     ledger_commands = ledger.add_subparsers(dest="ledger_command", required=True)
     _register(ledger_commands.add_parser(_cli_command("ledger.verify")), "ledger.verify")

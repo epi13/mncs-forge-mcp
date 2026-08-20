@@ -206,6 +206,82 @@
       ],
       "type": "object"
     },
+    "compiler_experiment": {
+      "additionalProperties": false,
+      "properties": {
+        "assurance_status": {
+          "type": "null"
+        },
+        "compilation_status": {
+          "enum": [
+            "completed",
+            "completed_with_unresolved_obligations",
+            "failed"
+          ]
+        },
+        "compiler_identity": {
+          "type": "string"
+        },
+        "conformance_status": {
+          "type": "null"
+        },
+        "experiment_id": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "interpretation": {
+          "const": "observation_only_not_assurance_or_conformance"
+        },
+        "language_contract_id": {
+          "const": "mncs:language:compilation-study-result:0.1"
+        },
+        "language_record": {
+          "type": "object"
+        },
+        "language_record_identity": {
+          "type": "string"
+        },
+        "observation": {
+          "type": "object"
+        },
+        "pipeline_identity": {
+          "type": "string"
+        },
+        "record_type": {
+          "const": "compiler_experiment"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "run_identity": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "assurance_status",
+        "compilation_status",
+        "compiler_identity",
+        "conformance_status",
+        "experiment_id",
+        "interpretation",
+        "language_contract_id",
+        "language_record",
+        "language_record_identity",
+        "observation",
+        "pipeline_identity",
+        "recorded_at",
+        "run_identity"
+      ],
+      "type": "object"
+    },
     "epoch": {
       "additionalProperties": false,
       "properties": {
@@ -643,6 +719,25 @@
           "if": {
             "properties": {
               "kind": {
+                "const": "compiler_experiment"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/compiler_experiment"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
                 "const": "disposition"
               }
             },
@@ -839,6 +934,7 @@
           "enum": [
             "bundle",
             "candidate",
+            "compiler_experiment",
             "disposition",
             "epoch",
             "evaluation",
@@ -861,6 +957,9 @@
             },
             {
               "$ref": "#/$defs/candidate_disposition"
+            },
+            {
+              "$ref": "#/$defs/compiler_experiment"
             },
             {
               "$ref": "#/$defs/epoch"
@@ -1501,6 +1600,9 @@
     },
     {
       "$ref": "#/$defs/bundle"
+    },
+    {
+      "$ref": "#/$defs/compiler_experiment"
     },
     {
       "$ref": "#/$defs/ledger_entry"

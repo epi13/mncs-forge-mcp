@@ -124,6 +124,26 @@
         }
       ],
       "claims.status": [],
+      "compiler.experiments.compare": [
+        {
+          "decoder": "value",
+          "input": "left_experiment_id",
+          "namespace": "left"
+        },
+        {
+          "decoder": "value",
+          "input": "right_experiment_id",
+          "namespace": "right"
+        }
+      ],
+      "compiler.experiments.list": [],
+      "compiler.experiments.record": [
+        {
+          "decoder": "json-object",
+          "input": "language_record",
+          "namespace": "record"
+        }
+      ],
       "config.validate": [],
       "development.checks.run": [
         {
@@ -579,6 +599,41 @@
           }
         ],
         "operation_id": "development.checks.run"
+      },
+      "compiler compare": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "left",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "right",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.experiments.compare"
+      },
+      "compiler list": {
+        "arguments": [],
+        "operation_id": "compiler.experiments.list"
+      },
+      "compiler record": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "record",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.experiments.record"
       },
       "config validate": {
         "arguments": [],
@@ -1169,6 +1224,10 @@
         },
         {
           "mime_type": "text/plain",
+          "uri": "mncs-forge://compiler/experiments"
+        },
+        {
+          "mime_type": "text/plain",
           "uri": "mncs-forge://evidence/latest-summary"
         },
         {
@@ -1318,6 +1377,34 @@
           "required_inputs": []
         },
         "mncs_forge_claim_status": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_compiler_experiment_record": {
+          "input_properties": [
+            "language_record"
+          ],
+          "input_schema_sha256": "8ccb8fdc7f85509e96e44d68878e0c993178b9fe45c463165e6716d0faba7956",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "language_record"
+          ]
+        },
+        "mncs_forge_compiler_experiments_compare": {
+          "input_properties": [
+            "left_experiment_id",
+            "right_experiment_id"
+          ],
+          "input_schema_sha256": "684bca3ccbac4c6e00d9a77c9b616b5416f0a99a7c6c038d75034ba91656c855",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "left_experiment_id",
+            "right_experiment_id"
+          ]
+        },
+        "mncs_forge_compiler_experiments_list": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
@@ -1500,6 +1587,10 @@
         },
         {
           "mime_type": "text/plain",
+          "uri": "mncs-forge://compiler/experiments"
+        },
+        {
+          "mime_type": "text/plain",
           "uri": "mncs-forge://evidence/latest-summary"
         },
         {
@@ -1649,6 +1740,24 @@
           "required_inputs": []
         },
         "mncs_forge_claim_status": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_compiler_experiments_compare": {
+          "input_properties": [
+            "left_experiment_id",
+            "right_experiment_id"
+          ],
+          "input_schema_sha256": "684bca3ccbac4c6e00d9a77c9b616b5416f0a99a7c6c038d75034ba91656c855",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "left_experiment_id",
+            "right_experiment_id"
+          ]
+        },
+        "mncs_forge_compiler_experiments_list": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
@@ -1845,6 +1954,9 @@
       "candidates.select",
       "claims.blockers",
       "claims.status",
+      "compiler.experiments.compare",
+      "compiler.experiments.list",
+      "compiler.experiments.record",
       "config.validate",
       "development.checks.run",
       "development.failure.explain",
@@ -1869,7 +1981,7 @@
       "verifiers.run"
     ],
     "schema_version": "1",
-    "semantic_sha256": "871d98caef0907f76b65f1468ee1c32c0fa859136a7e4448f3fd4f361330734e"
+    "semantic_sha256": "d262e5241b81ed330e8bf0bdfa83c51854575f18930ca04753da535e436a3438"
   },
   "packaging": {
     "dependencies": [
@@ -1899,6 +2011,9 @@
       "capability_blockers": "(self, required_capabilities: 'list[str] | None' = None) -> 'dict[str, object]'",
       "claim_blockers": "(self, requested_claim: 'str') -> 'dict[str, object]'",
       "claim_status": "(self) -> 'dict[str, object]'",
+      "compiler_experiment_record": "(self, language_record: 'Mapping[str, object]') -> 'dict[str, object]'",
+      "compiler_experiments_compare": "(self, left_experiment_id: 'str', right_experiment_id: 'str') -> 'dict[str, object]'",
+      "compiler_experiments_list": "(self) -> 'dict[str, object]'",
       "config_validate": "(self) -> 'dict[str, object]'",
       "development_checks_run": "(self, workflow_names: 'list[str]', candidate_id: 'str | None' = None) -> 'dict[str, object]'",
       "doctor": "(self) -> 'dict[str, object]'",
@@ -2030,6 +2145,43 @@
           "schema_version",
           "selection_policy_identity",
           "selection_rule"
+        ]
+      },
+      "compiler_experiment": {
+        "properties": [
+          "assurance_status",
+          "compilation_status",
+          "compiler_identity",
+          "conformance_status",
+          "experiment_id",
+          "extensions",
+          "interpretation",
+          "language_contract_id",
+          "language_record",
+          "language_record_identity",
+          "observation",
+          "pipeline_identity",
+          "record_type",
+          "recorded_at",
+          "run_identity",
+          "schema_version"
+        ],
+        "required": [
+          "assurance_status",
+          "compilation_status",
+          "compiler_identity",
+          "conformance_status",
+          "experiment_id",
+          "interpretation",
+          "language_contract_id",
+          "language_record",
+          "language_record_identity",
+          "observation",
+          "pipeline_identity",
+          "record_type",
+          "recorded_at",
+          "run_identity",
+          "schema_version"
         ]
       },
       "epoch": {
@@ -2546,7 +2698,7 @@
     },
     "root_properties": [],
     "root_required": [],
-    "semantic_sha256": "2988066ab8dd0b0ef467f7049b6602f66001f308273a703336cc6ec1ca09b5fc"
+    "semantic_sha256": "c95b1ffaf22aa3e84f31c5dec26ea1b48cc331549898c6399d4208a6f4cb51f7"
   },
   "snapshot_schema": "1"
 }
