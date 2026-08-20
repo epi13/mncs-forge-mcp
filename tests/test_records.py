@@ -80,6 +80,10 @@ def _sample_fields(record_type: RecordType) -> dict[str, object]:
         fields["mncs_receipt"] = None
         fields["receipt_identity"] = None
         fields["receipt_schema_version"] = None
+    if record_type is RecordType.COMPILER_EXPERIMENT:
+        fields["language_contract_id"] = "mncs:language:compilation-study-result:0.1"
+        fields["interpretation"] = "observation_only_not_assurance_or_conformance"
+        fields["compilation_status"] = "completed"
     return fields
 
 
@@ -227,3 +231,18 @@ def test_new_lifecycle_records_and_files_expose_metadata(config: ForgeConfig) ->
 
 def test_schema_snapshot_is_valid_draft_2020_12() -> None:
     Draft202012Validator.check_schema(_schema())
+
+
+def test_compiler_experiment_schema_requires_null_verdict_fields() -> None:
+    definitions = cast(dict[str, object], _schema()["$defs"])
+    experiment = cast(dict[str, object], definitions[RecordType.COMPILER_EXPERIMENT.value])
+    properties = cast(dict[str, object], experiment["properties"])
+
+    assert properties["assurance_status"] == {"type": "null"}
+    assert properties["conformance_status"] == {"type": "null"}
+    assert properties["language_contract_id"] == {
+        "const": "mncs:language:compilation-study-result:0.1"
+    }
+    assert properties["interpretation"] == {
+        "const": "observation_only_not_assurance_or_conformance"
+    }

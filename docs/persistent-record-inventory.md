@@ -50,3 +50,11 @@ fixtures:
 The binding stores Forge linkage and completeness. The optional `mncs_receipt` object is excluded
 from the binding identity and is verified against `receipt_identity` on read. Binding `status`
 cannot be `PASS`. Historical state remains readable without these records.
+
+## Compiler experiment persistence
+
+The compiler-evolution increment adds `compiler_experiment` in
+`records/compiler-experiments`. Its `experiment_id` is record-derived from the exact
+language-owned study and normalized observation; `recorded_at` is non-material for idempotent
+retries. Required `null` assurance and conformance fields prevent the persistence envelope from
+laundering pass-local observations into stronger claims.

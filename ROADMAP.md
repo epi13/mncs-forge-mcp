@@ -148,15 +148,16 @@ and runner tasks.
 Goal: make compiler experiments comparable and evidence-addressable without allowing Forge to
 define language legality or conformance.
 
-The first observation-only consumer for
+The observation-only consumer and persistent control-plane path for
 `mncs:language:compilation-study-result:0.1` is implemented. It preserves language-owned compiler,
 pipeline, host, target, stage, pass, and obligation identities; localizes the earliest observed IR
-difference; and returns no assurance or conformance verdict.
+difference; records the exact language artifact through the versioned record store and ledger; and
+returns no assurance or conformance verdict. Record/list/compare are exposed through the shared
+CLI/MCP operation registry, with a read-only experiment resource.
 
 Planned work:
 
-- project-scoped persistence of compiler study observations through existing Forge records;
-- compiler/pass/IR version comparisons and regression gates;
+- policy-driven compiler/pass/IR regression gates backed by separate verifier results;
 - separate translation-validation verifier results and assurance policy;
 - language feature/profile compatibility matrices keyed by language-owned identities;
 - pass-order, optimization, and backend tournaments whose candidates cannot self-authorize;
@@ -165,7 +166,8 @@ Planned work:
   target, and run identities.
 
 See [compiler evolution observations](docs/compiler-evolution.md) and
-[ADR 0013](docs/adr/0013-language-owned-compiler-experiment-observations.md).
+[ADR 0013](docs/adr/0013-language-owned-compiler-experiment-observations.md) plus
+[ADR 0014](docs/adr/0014-persistent-compiler-experiment-records.md).
 
 ## `0.3.x` — intent-aware security verification
 

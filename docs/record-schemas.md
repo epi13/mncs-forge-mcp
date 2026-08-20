@@ -24,12 +24,15 @@ current hash projection includes ledger metadata and the versioned payload.
 | ledger `freeze`; `records/freezes` | `freeze` |
 | ledger `evaluation`; `records/evaluations` | `final_evaluation` |
 | ledger `bundle`; `records/bundles` | `bundle` |
+| ledger `compiler_experiment`; `records/compiler-experiments` | `compiler_experiment` |
 | ledger line | `ledger_entry` |
 
 The public typed vocabulary also includes `reconciliation`. In historical `0.1` Forge, workflow
 actions were transient requests and reconciliation was a derived interface object. Task 7B-2 now
 persists `workflow_action` and `execution_receipt_binding` as new current-schema records. Historical
 fixtures remain readable without those events. Reconciliation remains a derived interface object.
+
+Compiler experiments are new current-schema observation records. They embed an exact language-owned compilation-study record plus a bounded Forge projection. Forge validates the pinned language contract and fixed observation-only authority fields, but does not define the embedded compiler schema or infer assurance/conformance from it.
 
 ## Legacy migration
 

@@ -261,6 +261,17 @@ class ExecutionReceiptGetInput(OperationInput):
     binding_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class CompilerExperimentRecordInput(OperationInput):
+    language_record: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerExperimentCompareInput(OperationInput):
+    left_experiment_id: str
+    right_experiment_id: str
+
+
 class ForgeOperationTarget(Protocol):
     """Facade surface consumed by registry handlers without importing the concrete facade."""
 
@@ -361,6 +372,11 @@ class ForgeOperationTarget(Protocol):
         action_identity: str | None = None,
     ) -> JsonObject: ...
     def execution_receipts_get(self, binding_id: str) -> JsonObject: ...
+    def compiler_experiment_record(self, language_record: Mapping[str, object]) -> JsonObject: ...
+    def compiler_experiments_list(self) -> JsonObject: ...
+    def compiler_experiments_compare(
+        self, left_experiment_id: str, right_experiment_id: str
+    ) -> JsonObject: ...
     def ledger_verify(self) -> JsonObject: ...
     def config_validate(self) -> JsonObject: ...
 
@@ -624,6 +640,24 @@ def _execution_receipts_list(forge: ForgeOperationTarget, value: OperationInput)
 def _execution_receipts_get(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
     request = _typed(value, ExecutionReceiptGetInput)
     return forge.execution_receipts_get(request.binding_id)
+
+
+def _compiler_experiment_record(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerExperimentRecordInput)
+    return forge.compiler_experiment_record(request.language_record)
+
+
+def _compiler_experiments_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    _no_input(value)
+    return forge.compiler_experiments_list()
+
+
+def _compiler_experiments_compare(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerExperimentCompareInput)
+    return forge.compiler_experiments_compare(
+        request.left_experiment_id,
+        request.right_experiment_id,
+    )
 
 
 def _ledger_verify(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
@@ -1121,6 +1155,59 @@ _OPERATIONS = (
             ),
         ),
         mcp=_mcp("mncs_forge_bundle_build"),
+    ),
+    _operation(
+        "compiler.experiments.record",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=CompilerExperimentRecordInput,
+        output=OutputContract.RECORD,
+        handler=_compiler_experiment_record,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Persist one language-owned compiler study as observation-only evolution evidence."
+        ),
+        cli=_cli(
+            "compiler",
+            "record",
+            bindings=(_binding("language_record", "record", CliDecoder.JSON_OBJECT),),
+        ),
+        mcp=_mcp("mncs_forge_compiler_experiment_record", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "compiler.experiments.list",
+        input_model=NoInput,
+        output=OutputContract.INVENTORY,
+        handler=_compiler_experiments_list,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="List persisted compiler-study observations without creating a verdict.",
+        cli=_cli("compiler", "list"),
+        mcp=_mcp("mncs_forge_compiler_experiments_list"),
+        resources=(ResourceExposure("mncs-forge://compiler/experiments"),),
+    ),
+    _operation(
+        "compiler.experiments.compare",
+        input_model=CompilerExperimentCompareInput,
+        output=OutputContract.RESULT_SET,
+        handler=_compiler_experiments_compare,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Compare persisted compiler stages and localize the earliest observed difference."
+        ),
+        cli=_cli(
+            "compiler",
+            "compare",
+            bindings=(
+                _binding("left_experiment_id", "left"),
+                _binding("right_experiment_id", "right"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_compiler_experiments_compare"),
     ),
     _operation(
         "execution.receipts.list",
