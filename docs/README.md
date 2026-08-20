@@ -35,6 +35,8 @@ development planning. The root README remains a short project entrypoint.
   pilots, proof-strength separation, overlapping verification, and the Fabric placement boundary.
 - [Query-driven micro-debugging](micro-debugging.md)
 - [Forge and provider transition](provider-transition.md)
+- [Compiler evolution observations](compiler-evolution.md) — language-owned compiler study
+  projection, IR comparison, pass records, and observation/assurance/conformance separation.
 - [EdgeStream integration](edgestream.md)
 - [Codex installation details](codex-cli.md)
 
@@ -67,6 +69,8 @@ development planning. The root README remains a short project entrypoint.
   pinned contract, dogfood scope, raw observations, adapter boundary, and validation classification.
 - [Task 7B-2 execution-receipt integration](development-evidence/task-7b2-execution-receipt-integration.md) —
   identity-bound persistence, incomplete observations, and the Forge/Fabric adapter seam.
+- [Compiler evolution observation validation](development-evidence/compiler-evolution-observation-2026-08.md) —
+  full quality gate and comparative Joern evidence for the language-owned compiler consumer.
 
 ## Documentation rules
 
