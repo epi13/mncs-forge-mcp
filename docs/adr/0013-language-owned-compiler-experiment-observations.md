@@ -21,7 +21,7 @@ The projection:
 - reports the earliest observed difference and pass-status changes; and
 - returns no assurance or conformance status.
 
-Forge will not add a compiler record type or compiler schema to `forge-records-1.schema.json`. Existing workflow/verifier records may reference language records through identities or carry them in non-normative `extensions`.
+This initial decision did not add a compiler record type. [ADR 0014](0014-persistent-compiler-experiment-records.md) supersedes only that persistence deferral: Forge now has a generic observation envelope that stores the exact language-owned record without redefining its compiler schema.
 
 ## Consequences
 
@@ -38,7 +38,7 @@ Costs and limits:
 - the consumer is pinned to one language contract ID;
 - a new language contract requires an explicit consumer update;
 - comparison is structural observation, not semantic equivalence; and
-- experiment persistence and operation-registry integration remain follow-on work.
+- persistence must continue to enforce this observation-only authority boundary.
 
 ## Evidence
 

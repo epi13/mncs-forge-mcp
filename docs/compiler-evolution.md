@@ -19,7 +19,7 @@ The current comparison answers:
 - which exact pass identities changed recorded status; and
 - which unresolved obligation identities were retained by each study.
 
-Additional language-owned stage names are preserved and compared after the canonical stage order.
+The canonical order now includes source, lexical tokens, CST, AST, semantic graph, identity map, and validation before HIR/SSA. Additional language-owned stage names are preserved and compared after that order.
 
 ## Authority boundary
 
@@ -49,19 +49,29 @@ comparison = compare_compiler_experiments(baseline, candidate)
 print(comparison.to_json())
 ```
 
-The caller may store the original language record or the projection under an existing Forge workflow result `extensions` object. Extensions remain non-normative: Forge persistence does not convert them into lifecycle authority, independent evidence, or conformance.
+## Persistent experiment operations
+
+Forge persists the exact language record plus its normalized observation as a version-1 `compiler_experiment` record. It does not copy the language schema into Forge or reinterpret pass-local status.
+
+```bash
+mncs-forge --config mncs-forge.toml compiler record "$(mncs source-study identity.mncs)"
+mncs-forge --config mncs-forge.toml compiler list
+mncs-forge --config mncs-forge.toml compiler compare EXPERIMENT_A EXPERIMENT_B
+```
+
+The equivalent MCP tools are `mncs_forge_compiler_experiment_record`, `mncs_forge_compiler_experiments_list`, and `mncs_forge_compiler_experiments_compare`. The list projection is also available at `mncs-forge://compiler/experiments`.
+
+Record identity binds the language contract ID, language record identity, compiler/pipeline/run identities, exact language record, and normalized observation. `recorded_at` is excluded so retrying the same experiment is idempotent. The record schema requires `assurance_status` and `conformance_status` to remain `null` and rejects any interpretation other than observation-only.
 
 ## Planned control-plane capabilities
 
 The next integration increments should:
 
-1. register language compilation studies as project-scoped workflow observations;
-2. bind compiler experiment inputs, language profile, compiler/pipeline, target, and environment identities;
-3. persist language-owned pass records and comparison outputs in extensions without schema duplication;
-4. attach separate verifier results for translation validation and regression gates;
-5. add feature/profile compatibility matrices keyed by language-owned feature identities;
-6. retain benchmark observations separately from semantic assurance;
-7. run distributed studies through Fabric while preserving compiler-host, build-host, target, and run-environment distinctions; and
-8. require an explicit conformance operation before any MNCS conformance claim.
+1. bind explicit experiment input-set and language-profile identities once the language record exposes them;
+2. attach separate verifier results for translation validation and regression gates;
+3. add feature/profile compatibility matrices keyed by language-owned feature identities;
+4. retain benchmark observations separately from semantic assurance;
+5. run distributed studies through Fabric while preserving compiler-host, build-host, target, and run-environment distinctions; and
+6. require an explicit conformance operation before any MNCS conformance claim.
 
 Forge may later search pass orderings, optimization candidates, backend realizations, or validation strategies. The language compiler must still derive obligations and authorize or reject each candidate under language-owned contracts.
