@@ -63,15 +63,40 @@ The equivalent MCP tools are `mncs_forge_compiler_experiment_record`, `mncs_forg
 
 Record identity binds the language contract ID, language record identity, compiler/pipeline/run identities, exact language record, and normalized observation. `recorded_at` is excluded so retrying the same experiment is idempotent. The record schema requires `assurance_status` and `conformance_status` to remain `null` and rejects any interpretation other than observation-only.
 
+## Compiler candidate search
+
+Forge can now persist isolated compiler-search candidates without becoming the language authority.
+
+```text
+baseline artifact
+   → generator/search identity
+   → isolated candidate artifact
+   → language/compiler obligations
+   → independent validator PASS / FAIL / UNKNOWN
+   → explicit policy
+   → accept / reject / retain unresolved
+```
+
+Operations:
+
+```bash
+mncs-forge compiler candidate-register ...
+mncs-forge compiler candidate-list
+mncs-forge compiler candidate-compare LEFT RIGHT
+mncs-forge compiler candidate-attach CANDIDATE VALIDATOR JUDGEMENT RELATION
+mncs-forge compiler tournament CANDIDATE...
+mncs-forge compiler candidate-select CANDIDATE --policy explicit-protected-property-policy
+mncs-forge compiler candidate-inspect CANDIDATE
+```
+
+A generator cannot certify its own candidate. Benchmark observations are stored separately and cannot authorize a FAIL or required-UNKNOWN candidate. Target envelopes remain explicit; a Linux-only candidate is not globally valid.
+
 ## Planned control-plane capabilities
 
 The next integration increments should:
 
 1. bind explicit experiment input-set and language-profile identities once the language record exposes them;
-2. attach separate verifier results for translation validation and regression gates;
+2. attach language-owned translation-validation records as first-class freshness-bound evidence rather than copied JSON;
 3. add feature/profile compatibility matrices keyed by language-owned feature identities;
-4. retain benchmark observations separately from semantic assurance;
-5. run distributed studies through Fabric while preserving compiler-host, build-host, target, and run-environment distinctions; and
-6. require an explicit conformance operation before any MNCS conformance claim.
-
-Forge may later search pass orderings, optimization candidates, backend realizations, or validation strategies. The language compiler must still derive obligations and authorize or reject each candidate under language-owned contracts.
+4. run distributed studies through Fabric while preserving compiler-host, build-host, target, and run-environment distinctions; and
+5. require an explicit conformance operation before any MNCS conformance claim.

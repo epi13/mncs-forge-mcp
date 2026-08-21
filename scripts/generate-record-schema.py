@@ -81,6 +81,34 @@ def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
         return {"const": "observation_only_not_assurance_or_conformance"}
     if record_type is RecordType.COMPILER_EXPERIMENT and field == "compilation_status":
         return {"enum": ["completed", "completed_with_unresolved_obligations", "failed"]}
+    if record_type is RecordType.COMPILER_CANDIDATE and field in {
+        "assurance_status",
+        "conformance_status",
+        "benchmark_observation",
+        "validation",
+    }:
+        return (
+            {"type": ["object", "null"]}
+            if field
+            in {
+                "benchmark_observation",
+                "validation",
+            }
+            else {"type": "null"}
+        )
+    if record_type is RecordType.COMPILER_CANDIDATE and field == "interpretation":
+        return {"const": "search_observation_not_language_correctness"}
+    if record_type is RecordType.COMPILER_CANDIDATE and field == "semantic_status":
+        return {"enum": ["UNVALIDATED", "PASS", "FAIL", "UNKNOWN"]}
+    if record_type is RecordType.COMPILER_CANDIDATE and field == "policy_disposition":
+        return {"enum": ["accept", "reject", "retain_unresolved"]}
+    if record_type is RecordType.COMPILER_CANDIDATE and field == "protected_properties":
+        return {"type": "array", "items": {"type": "string"}}
+    if record_type is RecordType.COMPILER_CANDIDATE and field in {
+        "isolated",
+        "generator_certified",
+    }:
+        return {"type": "boolean"}
     if field == "protocol_request_identity" and record_type in {
         RecordType.WORKFLOW_ACTION,
         RecordType.WORKFLOW_RESULT,

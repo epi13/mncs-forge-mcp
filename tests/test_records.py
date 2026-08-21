@@ -49,6 +49,10 @@ def _sample_fields(record_type: RecordType) -> dict[str, object]:
             fields[field] = "fixture"
         elif property_value.get("type") == "object":
             fields[field] = {}
+        elif property_value.get("type") == "boolean":
+            fields[field] = False
+        elif property_value.get("type") == "array":
+            fields[field] = []
         else:
             fields[field] = None
     if record_type is RecordType.CANDIDATE:
@@ -84,6 +88,15 @@ def _sample_fields(record_type: RecordType) -> dict[str, object]:
         fields["language_contract_id"] = "mncs:language:compilation-study-result:0.1"
         fields["interpretation"] = "observation_only_not_assurance_or_conformance"
         fields["compilation_status"] = "completed"
+    if record_type is RecordType.COMPILER_CANDIDATE:
+        fields["isolated"] = True
+        fields["generator_certified"] = False
+        fields["baseline_artifact_identity"] = "ssa:baseline"
+        fields["candidate_artifact_identity"] = "ssa:candidate"
+        fields["interpretation"] = "search_observation_not_language_correctness"
+        fields["semantic_status"] = "UNVALIDATED"
+        fields["policy_disposition"] = "retain_unresolved"
+        fields["protected_properties"] = ["return_value"]
     return fields
 
 

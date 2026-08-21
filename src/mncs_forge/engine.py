@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .adapters import LocalProcessRunner, LocalProjectObserver
 from .application.candidates import CandidateService
+from .application.compiler_candidates import CompilerCandidateService
 from .application.compiler_studies import CompilerEvolutionService
 from .application.evaluation import EvaluationService
 from .application.evidence import EvidenceService
@@ -130,6 +131,10 @@ class Forge:
             verifiers=self._verifier_service,
         )
         self._compiler_evolution_service = CompilerEvolutionService(
+            records=self.ledger,
+            record_store=self.record_store,
+        )
+        self._compiler_candidate_service = CompilerCandidateService(
             records=self.ledger,
             record_store=self.record_store,
         )
@@ -421,3 +426,66 @@ class Forge:
             left_experiment_id,
             right_experiment_id,
         )
+
+    def compiler_candidate_register(
+        self,
+        *,
+        baseline_artifact_identity: str,
+        candidate_artifact_identity: str,
+        generator_identity: str,
+        declared_transformation: str,
+        claimed_relation: str,
+        expected_benefit: str,
+        protected_properties: list[str] | None = None,
+        target_envelope: str = "unspecified",
+        required_validation: str = "translation-validation",
+    ) -> dict[str, object]:
+        return self._compiler_candidate_service.register(
+            baseline_artifact_identity=baseline_artifact_identity,
+            candidate_artifact_identity=candidate_artifact_identity,
+            generator_identity=generator_identity,
+            declared_transformation=declared_transformation,
+            claimed_relation=claimed_relation,
+            expected_benefit=expected_benefit,
+            protected_properties=protected_properties or [],
+            target_envelope=target_envelope,
+            required_validation=required_validation,
+        )
+
+    def compiler_candidates_list(self) -> dict[str, object]:
+        return self._compiler_candidate_service.inventory()
+
+    def compiler_candidates_compare(
+        self, left_candidate_id: str, right_candidate_id: str
+    ) -> dict[str, object]:
+        return self._compiler_candidate_service.compare(left_candidate_id, right_candidate_id)
+
+    def compiler_candidate_attach_validation(
+        self,
+        candidate_id: str,
+        *,
+        validator_identity: str,
+        judgement: str,
+        claimed_relation: str,
+        counterexample: dict[str, object] | None = None,
+        limitations: list[str] | None = None,
+        stale: bool = False,
+    ) -> dict[str, object]:
+        return self._compiler_candidate_service.attach_validation(
+            candidate_id,
+            validator_identity=validator_identity,
+            judgement=judgement,
+            claimed_relation=claimed_relation,
+            counterexample=counterexample,
+            limitations=limitations,
+            stale=stale,
+        )
+
+    def compiler_tournament(self, candidate_ids: list[str]) -> dict[str, object]:
+        return self._compiler_candidate_service.tournament(candidate_ids)
+
+    def compiler_candidate_select(self, candidate_id: str, policy: str) -> dict[str, object]:
+        return self._compiler_candidate_service.select(candidate_id, policy=policy)
+
+    def compiler_candidate_inspect(self, candidate_id: str) -> dict[str, object]:
+        return self._compiler_candidate_service.inspect_unresolved(candidate_id)

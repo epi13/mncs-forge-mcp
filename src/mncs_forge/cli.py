@@ -201,6 +201,63 @@ def _common_parser() -> argparse.ArgumentParser:
     )
     compiler_compare.add_argument("left")
     compiler_compare.add_argument("right")
+    compiler_candidate_register = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.register")),
+        "compiler.candidates.register",
+    )
+    compiler_candidate_register.add_argument("baseline")
+    compiler_candidate_register.add_argument("candidate_artifact")
+    compiler_candidate_register.add_argument("generator")
+    compiler_candidate_register.add_argument("transformation")
+    compiler_candidate_register.add_argument("relation")
+    compiler_candidate_register.add_argument("benefit")
+    compiler_candidate_register.add_argument("--protected", action="append", default=[])
+    compiler_candidate_register.add_argument("--target", default="unspecified")
+    compiler_candidate_register.add_argument(
+        "--required-validation",
+        dest="required_validation",
+        default="translation-validation",
+    )
+    _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.list")),
+        "compiler.candidates.list",
+    )
+    compiler_candidate_compare = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.compare")),
+        "compiler.candidates.compare",
+    )
+    compiler_candidate_compare.add_argument("left")
+    compiler_candidate_compare.add_argument("right")
+    compiler_candidate_attach = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.attach-validation")),
+        "compiler.candidates.attach-validation",
+    )
+    compiler_candidate_attach.add_argument("candidate_id")
+    compiler_candidate_attach.add_argument("validator")
+    compiler_candidate_attach.add_argument("judgement")
+    compiler_candidate_attach.add_argument("relation")
+    compiler_candidate_attach.add_argument("--counterexample")
+    compiler_candidate_attach.add_argument("--limitations", action="append", default=[])
+    compiler_candidate_attach.add_argument("--stale", action="store_true")
+    compiler_tournament = _register(
+        compiler_commands.add_parser(_cli_command("compiler.tournament.run")),
+        "compiler.tournament.run",
+    )
+    compiler_tournament.add_argument("candidates", nargs="+")
+    compiler_candidate_select = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.select")),
+        "compiler.candidates.select",
+    )
+    compiler_candidate_select.add_argument("candidate_id")
+    compiler_candidate_select.add_argument(
+        "--policy",
+        default="explicit-protected-property-policy",
+    )
+    compiler_candidate_inspect = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.inspect")),
+        "compiler.candidates.inspect",
+    )
+    compiler_candidate_inspect.add_argument("candidate_id")
 
     ledger = commands.add_parser(_cli_command("ledger.verify", 0))
     ledger_commands = ledger.add_subparsers(dest="ledger_command", required=True)
