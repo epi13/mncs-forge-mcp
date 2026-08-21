@@ -22,6 +22,7 @@ requirements.
 - [ADR 0011: Forge/Fabric execution and evidence boundary](0011-forge-fabric-execution-boundary.md)
 - [ADR 0013: Consume language-owned compiler experiment observations](0013-language-owned-compiler-experiment-observations.md)
 - [ADR 0014: Persist language-owned compiler experiments](0014-persistent-compiler-experiment-records.md)
+- [ADR 0015: Compiler candidate search without correctness authority](0015-compiler-candidate-search-without-correctness-authority.md)
 
 ## Proposed decisions
 

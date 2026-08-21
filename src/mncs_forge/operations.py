@@ -272,6 +272,52 @@ class CompilerExperimentCompareInput(OperationInput):
     right_experiment_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateRegisterInput(OperationInput):
+    baseline_artifact_identity: str
+    candidate_artifact_identity: str
+    generator_identity: str
+    declared_transformation: str
+    claimed_relation: str
+    expected_benefit: str
+    protected_properties: list[str] | None = None
+    target_envelope: str = "unspecified"
+    required_validation: str = "translation-validation"
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateCompareInput(OperationInput):
+    left_candidate_id: str
+    right_candidate_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateAttachInput(OperationInput):
+    candidate_id: str
+    validator_identity: str
+    judgement: str
+    claimed_relation: str
+    counterexample: dict[str, object] | None = None
+    limitations: list[str] | None = None
+    stale: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerTournamentInput(OperationInput):
+    candidate_ids: list[str]
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateSelectInput(OperationInput):
+    candidate_id: str
+    policy: str = "explicit-protected-property-policy"
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateInspectInput(OperationInput):
+    candidate_id: str
+
+
 class ForgeOperationTarget(Protocol):
     """Facade surface consumed by registry handlers without importing the concrete facade."""
 
@@ -377,6 +423,37 @@ class ForgeOperationTarget(Protocol):
     def compiler_experiments_compare(
         self, left_experiment_id: str, right_experiment_id: str
     ) -> JsonObject: ...
+    def compiler_candidate_register(
+        self,
+        *,
+        baseline_artifact_identity: str,
+        candidate_artifact_identity: str,
+        generator_identity: str,
+        declared_transformation: str,
+        claimed_relation: str,
+        expected_benefit: str,
+        protected_properties: list[str] | None = None,
+        target_envelope: str = "unspecified",
+        required_validation: str = "translation-validation",
+    ) -> JsonObject: ...
+    def compiler_candidates_list(self) -> JsonObject: ...
+    def compiler_candidates_compare(
+        self, left_candidate_id: str, right_candidate_id: str
+    ) -> JsonObject: ...
+    def compiler_candidate_attach_validation(
+        self,
+        candidate_id: str,
+        *,
+        validator_identity: str,
+        judgement: str,
+        claimed_relation: str,
+        counterexample: dict[str, object] | None = None,
+        limitations: list[str] | None = None,
+        stale: bool = False,
+    ) -> JsonObject: ...
+    def compiler_tournament(self, candidate_ids: list[str]) -> JsonObject: ...
+    def compiler_candidate_select(self, candidate_id: str, policy: str) -> JsonObject: ...
+    def compiler_candidate_inspect(self, candidate_id: str) -> JsonObject: ...
     def ledger_verify(self) -> JsonObject: ...
     def config_validate(self) -> JsonObject: ...
 
@@ -658,6 +735,59 @@ def _compiler_experiments_compare(forge: ForgeOperationTarget, value: OperationI
         request.left_experiment_id,
         request.right_experiment_id,
     )
+
+
+def _compiler_candidate_register(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateRegisterInput)
+    return forge.compiler_candidate_register(
+        baseline_artifact_identity=request.baseline_artifact_identity,
+        candidate_artifact_identity=request.candidate_artifact_identity,
+        generator_identity=request.generator_identity,
+        declared_transformation=request.declared_transformation,
+        claimed_relation=request.claimed_relation,
+        expected_benefit=request.expected_benefit,
+        protected_properties=request.protected_properties,
+        target_envelope=request.target_envelope,
+        required_validation=request.required_validation,
+    )
+
+
+def _compiler_candidates_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    _no_input(value)
+    return forge.compiler_candidates_list()
+
+
+def _compiler_candidates_compare(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateCompareInput)
+    return forge.compiler_candidates_compare(request.left_candidate_id, request.right_candidate_id)
+
+
+def _compiler_candidate_attach(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateAttachInput)
+    return forge.compiler_candidate_attach_validation(
+        request.candidate_id,
+        validator_identity=request.validator_identity,
+        judgement=request.judgement,
+        claimed_relation=request.claimed_relation,
+        counterexample=request.counterexample,
+        limitations=request.limitations,
+        stale=request.stale,
+    )
+
+
+def _compiler_tournament(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerTournamentInput)
+    return forge.compiler_tournament(request.candidate_ids)
+
+
+def _compiler_candidate_select(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateSelectInput)
+    return forge.compiler_candidate_select(request.candidate_id, request.policy)
+
+
+def _compiler_candidate_inspect(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateInspectInput)
+    return forge.compiler_candidate_inspect(request.candidate_id)
 
 
 def _ledger_verify(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
@@ -1208,6 +1338,148 @@ _OPERATIONS = (
             ),
         ),
         mcp=_mcp("mncs_forge_compiler_experiments_compare"),
+    ),
+    _operation(
+        "compiler.candidates.register",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=CompilerCandidateRegisterInput,
+        output=OutputContract.RECORD,
+        handler=_compiler_candidate_register,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Register an isolated compiler-search candidate without treating "
+            "generation as validity."
+        ),
+        cli=_cli(
+            "compiler",
+            "candidate-register",
+            bindings=(
+                _binding("baseline_artifact_identity", "baseline"),
+                _binding("candidate_artifact_identity", "candidate_artifact"),
+                _binding("generator_identity", "generator"),
+                _binding("declared_transformation", "transformation"),
+                _binding("claimed_relation", "relation"),
+                _binding("expected_benefit", "benefit"),
+                _binding("protected_properties", "protected"),
+                _binding("target_envelope", "target"),
+                _binding("required_validation", "required_validation"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidate_register", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "compiler.candidates.list",
+        input_model=NoInput,
+        output=OutputContract.INVENTORY,
+        handler=_compiler_candidates_list,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="List isolated compiler-search candidates without creating a verdict.",
+        cli=_cli("compiler", "candidate-list"),
+        mcp=_mcp("mncs_forge_compiler_candidates_list"),
+        resources=(ResourceExposure("mncs-forge://compiler/candidates"),),
+    ),
+    _operation(
+        "compiler.candidates.compare",
+        input_model=CompilerCandidateCompareInput,
+        output=OutputContract.RESULT_SET,
+        handler=_compiler_candidates_compare,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="Compare two compiler-search candidates without promoting either.",
+        cli=_cli(
+            "compiler",
+            "candidate-compare",
+            bindings=(
+                _binding("left_candidate_id", "left"),
+                _binding("right_candidate_id", "right"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidates_compare"),
+    ),
+    _operation(
+        "compiler.candidates.attach-validation",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=CompilerCandidateAttachInput,
+        output=OutputContract.RECORD,
+        handler=_compiler_candidate_attach,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=("Attach an independent PASS/FAIL/UNKNOWN validation to a compiler candidate."),
+        cli=_cli(
+            "compiler",
+            "candidate-attach",
+            bindings=(
+                _binding("candidate_id"),
+                _binding("validator_identity", "validator"),
+                _binding("judgement"),
+                _binding("claimed_relation", "relation"),
+                _binding("counterexample", "counterexample", CliDecoder.JSON_OBJECT),
+                _binding("limitations"),
+                _binding("stale"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidate_attach", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "compiler.tournament.run",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.READ_ONLY,
+        input_model=CompilerTournamentInput,
+        output=OutputContract.RESULT_SET,
+        handler=_compiler_tournament,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Rank isolated compiler candidates; FAIL loses and UNKNOWN cannot be promoted."
+        ),
+        cli=_cli(
+            "compiler",
+            "tournament",
+            bindings=(_binding("candidate_ids", "candidates"),),
+        ),
+        mcp=_mcp("mncs_forge_compiler_tournament", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "compiler.candidates.select",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.READ_ONLY,
+        input_model=CompilerCandidateSelectInput,
+        output=OutputContract.RESULT_SET,
+        handler=_compiler_candidate_select,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="Select a compiler candidate only under an explicit protected-property policy.",
+        cli=_cli(
+            "compiler",
+            "candidate-select",
+            bindings=(
+                _binding("candidate_id"),
+                _binding("policy"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidate_select", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "compiler.candidates.inspect",
+        input_model=CompilerCandidateInspectInput,
+        output=OutputContract.RECORD,
+        handler=_compiler_candidate_inspect,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="Inspect unresolved compiler-candidate validation obligations.",
+        cli=_cli(
+            "compiler",
+            "candidate-inspect",
+            bindings=(_binding("candidate_id"),),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidate_inspect"),
     ),
     _operation(
         "execution.receipts.list",

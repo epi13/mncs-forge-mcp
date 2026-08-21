@@ -43,6 +43,7 @@ class RecordType(StrEnum):
     RECONCILIATION = "reconciliation"
     BUNDLE = "bundle"
     COMPILER_EXPERIMENT = "compiler_experiment"
+    COMPILER_CANDIDATE = "compiler_candidate"
     LEDGER_ENTRY = "ledger_entry"
 
 
@@ -397,6 +398,35 @@ RECORD_SPECS: dict[RecordType, RecordSpec] = {
         identity_prefix="compiler-experiment:",
         identity_exclusions=frozenset({"recorded_at"}),
     ),
+    RecordType.COMPILER_CANDIDATE: RecordSpec(
+        required=frozenset(
+            {
+                "baseline_artifact_identity",
+                "candidate_artifact_identity",
+                "generator_identity",
+                "declared_transformation",
+                "claimed_relation",
+                "expected_benefit",
+                "protected_properties",
+                "target_envelope",
+                "required_validation",
+                "semantic_status",
+                "benchmark_observation",
+                "validation",
+                "policy_disposition",
+                "isolated",
+                "generator_certified",
+                "interpretation",
+                "assurance_status",
+                "conformance_status",
+                "recorded_at",
+                "candidate_id",
+            }
+        ),
+        identity_field="candidate_id",
+        identity_prefix="compiler-candidate:",
+        identity_exclusions=frozenset({"recorded_at"}),
+    ),
 }
 
 LEDGER_REQUIRED = frozenset(
@@ -417,6 +447,7 @@ LEDGER_KIND_TYPES: dict[str, RecordType] = {
     "evaluation": RecordType.FINAL_EVALUATION,
     "bundle": RecordType.BUNDLE,
     "compiler_experiment": RecordType.COMPILER_EXPERIMENT,
+    "compiler_candidate": RecordType.COMPILER_CANDIDATE,
 }
 
 RECORD_GROUP_TYPES: dict[str, RecordType] = {
@@ -433,6 +464,7 @@ RECORD_GROUP_TYPES: dict[str, RecordType] = {
     "evaluations": RecordType.FINAL_EVALUATION,
     "bundles": RecordType.BUNDLE,
     "compiler-experiments": RecordType.COMPILER_EXPERIMENT,
+    "compiler-candidates": RecordType.COMPILER_CANDIDATE,
 }
 
 
@@ -488,6 +520,12 @@ PERSISTED_RECORD_CONTEXTS: dict[str, PersistedRecordContext] = {
         "compiler_experiment",
         RecordType.COMPILER_EXPERIMENT,
         "experiment_id",
+    ),
+    "compiler_candidate": PersistedRecordContext(
+        "compiler-candidates",
+        "compiler_candidate",
+        RecordType.COMPILER_CANDIDATE,
+        "candidate_id",
     ),
 }
 
@@ -717,6 +755,23 @@ REQUIRED_STRING_FIELDS: dict[RecordType, frozenset[str]] = {
             "experiment_id",
         }
     ),
+    RecordType.COMPILER_CANDIDATE: frozenset(
+        {
+            "baseline_artifact_identity",
+            "candidate_artifact_identity",
+            "generator_identity",
+            "declared_transformation",
+            "claimed_relation",
+            "expected_benefit",
+            "target_envelope",
+            "required_validation",
+            "semantic_status",
+            "policy_disposition",
+            "interpretation",
+            "recorded_at",
+            "candidate_id",
+        }
+    ),
 }
 
 REQUIRED_OBJECT_FIELDS: dict[RecordType, frozenset[str]] = {
@@ -903,6 +958,11 @@ class CompilerExperimentRecord(ForgeRecord):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateRecord(ForgeRecord):
+    pass
+
+
 MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.EPOCH: EpochRecord,
     RecordType.CANDIDATE: CandidateRecord,
@@ -918,6 +978,7 @@ MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.RECONCILIATION: ReconciliationRecord,
     RecordType.BUNDLE: BundleRecord,
     RecordType.COMPILER_EXPERIMENT: CompilerExperimentRecord,
+    RecordType.COMPILER_CANDIDATE: CompilerCandidateRecord,
 }
 
 
@@ -1008,6 +1069,37 @@ def _validate_fields(record_type: RecordType, fields: JsonObject) -> None:
             raise ForgeError(
                 "RECORD_AUTHORITY",
                 "compiler experiment records cannot claim assurance or conformance",
+            )
+    if record_type is RecordType.COMPILER_CANDIDATE:
+        if fields["interpretation"] != "search_observation_not_language_correctness":
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler candidate records must remain search observations",
+            )
+        if fields["assurance_status"] is not None or fields["conformance_status"] is not None:
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler candidate records cannot claim assurance or conformance",
+            )
+        if fields["isolated"] is not True or fields["generator_certified"] is not False:
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler candidates must stay isolated and uncertified by their generator",
+            )
+        if fields["baseline_artifact_identity"] == fields["candidate_artifact_identity"]:
+            raise ForgeError(
+                "COMPILER_CANDIDATE_NOT_ISOLATED",
+                "a compiler candidate cannot share the trusted baseline artifact identity",
+            )
+        if fields["semantic_status"] not in {"UNVALIDATED", "PASS", "FAIL", "UNKNOWN"}:
+            raise ForgeError(
+                "RECORD_STATUS",
+                "compiler candidate semantic_status must be UNVALIDATED, PASS, FAIL, or UNKNOWN",
+            )
+        if fields["policy_disposition"] not in {"accept", "reject", "retain_unresolved"}:
+            raise ForgeError(
+                "RECORD_MALFORMED",
+                "compiler candidate policy_disposition is invalid",
             )
 
 

@@ -171,6 +171,13 @@ def build_server(forge: Forge) -> FastMCP:
             sort_keys=True,
         )
 
+    @server.resource("mncs-forge://compiler/candidates")
+    def compiler_candidates() -> str:
+        return json.dumps(
+            resource("compiler.candidates.list", "mncs-forge://compiler/candidates"),
+            sort_keys=True,
+        )
+
     @server.resource("mncs-forge://guide/usage")
     def usage_guide() -> str:
         return (

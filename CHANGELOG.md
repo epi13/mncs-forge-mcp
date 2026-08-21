@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add an isolated compiler-candidate search protocol. Forge can register, list,
+  compare, attach independent PASS/FAIL/UNKNOWN validation, run a bounded
+  tournament, and select only under an explicit protected-property policy.
+  Candidate generation is not validity. A faster FAIL candidate loses. UNKNOWN
+  does not promote when validation is required. Search records cannot claim
+  assurance or conformance. Companion language work owns backend lowering and
+  translation validation.
+
 - Add Task 7B-2 identity-bound persistent execution-receipt integration. Declared workflow
   execution now persists `workflow_action` and `execution_receipt_binding` records that reference
   the experimental MNCS `mncs-execution-receipt` envelope without forking it. Incomplete
