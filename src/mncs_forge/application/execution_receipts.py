@@ -366,6 +366,9 @@ def persist_workflow_execution(
 
 
 def summarize_binding(record: Mapping[str, object]) -> dict[str, object]:
+    established = record.get("established_properties")
+    if isinstance(established, Mapping):
+        established = dict(established)
     return {
         "binding_id": record.get("binding_id"),
         "action_identity": record.get("action_identity"),
@@ -376,7 +379,7 @@ def summarize_binding(record: Mapping[str, object]) -> dict[str, object]:
         "termination_category": record.get("termination_category"),
         "runner_kind": record.get("runner_kind"),
         "execution_scope": record.get("execution_scope"),
-        "established_properties": record.get("established_properties"),
+        "established_properties": established,
     }
 
 
