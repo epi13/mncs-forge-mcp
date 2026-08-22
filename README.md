@@ -87,4 +87,9 @@ backends remain ordered follow-up work. Query-driven micro-debugging now also ha
 versioned reference vocabulary, and a separate implementation queue; runtime sessions and reusable
 analyzer snapshots remain future work after the core typed-record and service boundaries stabilize.
 
+Compiler experiment persistence accepts both the original language compilation-study record and the
+new language-owned bounded experiment result. Forge can compare realization requests, backend and
+typed artifact identities, and copied validator observations while leaving experiment status,
+semantic legality, assurance, and conformance under their declared owners.
+
 Licensed under Apache-2.0.

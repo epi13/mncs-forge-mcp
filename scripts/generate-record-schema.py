@@ -76,7 +76,12 @@ def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
     }:
         return {"type": "null"}
     if record_type is RecordType.COMPILER_EXPERIMENT and field == "language_contract_id":
-        return {"const": "mncs:language:compilation-study-result:0.1"}
+        return {
+            "enum": [
+                "mncs:language:compilation-study-result:0.1",
+                "mncs:language:experiment-result:0.1",
+            ]
+        }
     if record_type is RecordType.COMPILER_EXPERIMENT and field == "interpretation":
         return {"const": "observation_only_not_assurance_or_conformance"}
     if record_type is RecordType.COMPILER_EXPERIMENT and field == "compilation_status":

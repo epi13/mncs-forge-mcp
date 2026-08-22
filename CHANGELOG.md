@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Accept and persist the language-owned `mncs:language:experiment-result:0.1` contract alongside
+  the earlier compilation-study record. Forge projects backend, realization-request/plan, typed
+  artifact, experiment-status, and validator observations for listing and comparison while
+  retaining the exact language record. These are bounded observations, not Forge assurance,
+  conformance, or compiler-legality verdicts.
+
 - Add an isolated compiler-candidate search protocol. Forge can register, list,
   compare, attach independent PASS/FAIL/UNKNOWN validation, run a bounded
   tournament, and select only under an explicit protected-property policy.

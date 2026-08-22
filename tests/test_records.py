@@ -254,7 +254,10 @@ def test_compiler_experiment_schema_requires_null_verdict_fields() -> None:
     assert properties["assurance_status"] == {"type": "null"}
     assert properties["conformance_status"] == {"type": "null"}
     assert properties["language_contract_id"] == {
-        "const": "mncs:language:compilation-study-result:0.1"
+        "enum": [
+            "mncs:language:compilation-study-result:0.1",
+            "mncs:language:experiment-result:0.1",
+        ]
     }
     assert properties["interpretation"] == {
         "const": "observation_only_not_assurance_or_conformance"

@@ -6,6 +6,7 @@ import pytest
 
 from mncs_forge.compiler_evolution import (
     LANGUAGE_COMPILATION_STUDY_RESULT_CONTRACT_ID,
+    LANGUAGE_EXPERIMENT_RESULT_CONTRACT_ID,
     OBSERVATION_ONLY_INTERPRETATION,
     CompilerExperimentObservation,
     compare_compiler_experiments,
@@ -52,6 +53,32 @@ def language_result() -> dict[str, object]:
         ],
         "unresolved_obligations": ["mncs:obligation:contract-evidence"],
         "interpretation": "observation_only_not_assurance_or_conformance",
+    }
+
+
+def language_experiment(backend: str = "mncs-portable-wasm-mvp") -> dict[str, object]:
+    study = language_result()
+    study["target_identity"] = "mncs:compiler:target:portable"
+    study["backend_identity"] = f"mncs:compiler:backend:{backend}"
+    study["realization_plan_identity"] = f"mncs:compiler:plan:{backend}"
+    study["backend_artifact_identity"] = f"mncs:compiler:artifact:{backend}"
+    return {
+        "schema_version": "0.1",
+        "contract_id": LANGUAGE_EXPERIMENT_RESULT_CONTRACT_ID,
+        "identity": f"mncs:language:experiment:result:{backend}",
+        "definition": {"realization": {"identity": "mncs:compiler:realization-request:shared"}},
+        "compiler_study": study,
+        "backend": {"identity": f"mncs:compiler:backend:{backend}"},
+        "realization_plan": {"identity": f"mncs:compiler:plan:{backend}"},
+        "artifact": {
+            "identity": f"mncs:compiler:artifact:{backend}",
+            "artifact_kind": "wasm_module"
+            if backend == "mncs-portable-wasm-mvp"
+            else "research_bytecode",
+        },
+        "translation_validations": [{"judgement": "PASS"}],
+        "status": "UNKNOWN",
+        "interpretation": ("bounded_language_observation_not_universal_equivalence_or_conformance"),
     }
 
 
@@ -124,6 +151,21 @@ def test_rejects_observation_laundering_into_a_stronger_interpretation() -> None
     assert error.value.code == "COMPILER_CONTRACT_MISMATCH"
 
 
+def test_rejects_language_experiment_or_nested_study_authority_laundering() -> None:
+    experiment = language_experiment()
+    experiment["interpretation"] = "universal-equivalence"
+    with pytest.raises(ForgeError, match="bounded-observation boundary") as outer:
+        CompilerExperimentObservation.from_language_record(experiment)
+    assert outer.value.code == "COMPILER_CONTRACT_MISMATCH"
+
+    nested = language_experiment()
+    assert isinstance(nested["compiler_study"], dict)
+    nested["compiler_study"]["interpretation"] = "assured"
+    with pytest.raises(ForgeError, match="observation-only boundary") as inner:
+        CompilerExperimentObservation.from_language_record(nested)
+    assert inner.value.code == "COMPILER_CONTRACT_MISMATCH"
+
+
 def test_persists_lists_and_compares_language_owned_experiments(config: ForgeConfig) -> None:
     forge = Forge(config)
     left_record = forge.compiler_experiment_record(language_result())
@@ -145,6 +187,32 @@ def test_persists_lists_and_compares_language_owned_experiments(config: ForgeCon
     assert comparison["assurance_status"] is None
     assert comparison["conformance_status"] is None
     assert forge.ledger.verify()["ok"] is True
+
+
+def test_projects_backend_plural_language_experiments_without_choosing_legality(
+    config: ForgeConfig,
+) -> None:
+    forge = Forge(config)
+    wasm = forge.compiler_experiment_record(language_experiment())
+    bytecode = forge.compiler_experiment_record(language_experiment("mncs-research-bytecode"))
+    listing = forge.compiler_experiments_list()
+    assert {item["backend_artifact_kind"] for item in listing["experiments"]} == {
+        "wasm_module",
+        "research_bytecode",
+    }
+    comparison = forge.compiler_experiments_compare(
+        str(wasm["experiment_id"]), str(bytecode["experiment_id"])
+    )
+    assert comparison["earliest_observed_difference"] is None
+    assert comparison["same_realization_request"] is True
+    assert comparison["same_backend"] is False
+    assert comparison["same_backend_artifact"] is False
+    assert comparison["validation_statuses"] == {
+        "left": ["PASS"],
+        "right": ["PASS"],
+    }
+    assert comparison["assurance_status"] is None
+    assert comparison["conformance_status"] is None
 
 
 def test_recording_the_same_compiler_experiment_is_idempotent(config: ForgeConfig) -> None:
