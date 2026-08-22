@@ -354,7 +354,10 @@
           "const": "observation_only_not_assurance_or_conformance"
         },
         "language_contract_id": {
-          "const": "mncs:language:compilation-study-result:0.1"
+          "enum": [
+            "mncs:language:compilation-study-result:0.1",
+            "mncs:language:experiment-result:0.1"
+          ]
         },
         "language_record": {
           "type": "object"

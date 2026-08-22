@@ -1055,7 +1055,10 @@ def _validate_fields(record_type: RecordType, fields: JsonObject) -> None:
     if record_type is RecordType.EXECUTION_RECEIPT_BINDING:
         _validate_execution_receipt_binding(fields)
     if record_type is RecordType.COMPILER_EXPERIMENT:
-        if fields["language_contract_id"] != "mncs:language:compilation-study-result:0.1":
+        if fields["language_contract_id"] not in {
+            "mncs:language:compilation-study-result:0.1",
+            "mncs:language:experiment-result:0.1",
+        }:
             raise ForgeError(
                 "RECORD_CONTRACT",
                 "compiler experiment record uses an unsupported language contract",

@@ -13,6 +13,10 @@ from dataclasses import dataclass
 from .errors import ForgeError
 
 LANGUAGE_COMPILATION_STUDY_RESULT_CONTRACT_ID = "mncs:language:compilation-study-result:0.1"
+LANGUAGE_EXPERIMENT_RESULT_CONTRACT_ID = "mncs:language:experiment-result:0.1"
+LANGUAGE_EXPERIMENT_INTERPRETATION = (
+    "bounded_language_observation_not_universal_equivalence_or_conformance"
+)
 OBSERVATION_ONLY_INTERPRETATION = "observation_only_not_assurance_or_conformance"
 STAGE_ORDER = (
     "source",
@@ -131,22 +135,46 @@ class CompilerExperimentObservation:
     pass_executions: tuple[CompilerPassObservation, ...]
     unresolved_obligations: tuple[str, ...]
     interpretation: str
+    backend_identity: str | None = None
+    realization_request_identity: str | None = None
+    realization_plan_identity: str | None = None
+    backend_artifact_identity: str | None = None
+    backend_artifact_kind: str | None = None
+    experiment_status: str | None = None
+    validation_judgements: tuple[str, ...] = ()
 
     @classmethod
     def from_language_record(cls, record: Mapping[str, object]) -> CompilerExperimentObservation:
         contract_id = _text(record, "contract_id")
-        if contract_id != LANGUAGE_COMPILATION_STUDY_RESULT_CONTRACT_ID:
+        experiment_record: Mapping[str, object] | None = None
+        study_record = record
+        if contract_id == LANGUAGE_EXPERIMENT_RESULT_CONTRACT_ID:
+            experiment_record = record
+            interpretation = _text(record, "interpretation")
+            if interpretation != LANGUAGE_EXPERIMENT_INTERPRETATION:
+                raise ForgeError(
+                    "COMPILER_CONTRACT_MISMATCH",
+                    "language experiment did not preserve its bounded-observation boundary",
+                )
+            study_record = _mapping(record, "compiler_study")
+        elif contract_id != LANGUAGE_COMPILATION_STUDY_RESULT_CONTRACT_ID:
             raise ForgeError(
                 "COMPILER_CONTRACT_MISMATCH",
                 f"unsupported MNCS Language compiler contract: {contract_id}",
             )
-        interpretation = _text(record, "interpretation")
-        if interpretation != OBSERVATION_ONLY_INTERPRETATION:
+        study_contract = _text(study_record, "contract_id")
+        if study_contract != LANGUAGE_COMPILATION_STUDY_RESULT_CONTRACT_ID:
+            raise ForgeError(
+                "COMPILER_CONTRACT_MISMATCH",
+                "language experiment does not contain the supported compiler study contract",
+            )
+        study_interpretation = _text(study_record, "interpretation")
+        if study_interpretation != OBSERVATION_ONLY_INTERPRETATION:
             raise ForgeError(
                 "COMPILER_CONTRACT_MISMATCH",
                 "compiler study contract did not preserve the observation-only boundary",
             )
-        compilation_status = _text(record, "compilation_status")
+        compilation_status = _text(study_record, "compilation_status")
         if compilation_status not in {
             "completed",
             "completed_with_unresolved_obligations",
@@ -157,7 +185,7 @@ class CompilerExperimentObservation:
                 f"unsupported compiler completion status: {compilation_status}",
             )
 
-        raw_fingerprints = _mapping(record, "stage_fingerprints")
+        raw_fingerprints = _mapping(study_record, "stage_fingerprints")
         stage_fingerprints: list[tuple[str, str]] = []
         for stage, fingerprint in raw_fingerprints.items():
             if not isinstance(fingerprint, str) or not fingerprint:
@@ -169,7 +197,7 @@ class CompilerExperimentObservation:
         stage_fingerprints.sort()
 
         pass_executions: list[CompilerPassObservation] = []
-        for item in _sequence(record, "pass_executions"):
+        for item in _sequence(study_record, "pass_executions"):
             if not isinstance(item, Mapping):
                 raise ForgeError(
                     "COMPILER_OBSERVATION_MALFORMED",
@@ -178,7 +206,7 @@ class CompilerExperimentObservation:
             pass_executions.append(CompilerPassObservation.from_language_record(item))
 
         unresolved: list[str] = []
-        for item in _sequence(record, "unresolved_obligations"):
+        for item in _sequence(study_record, "unresolved_obligations"):
             if not isinstance(item, str) or not item:
                 raise ForgeError(
                     "COMPILER_OBSERVATION_MALFORMED",
@@ -186,21 +214,67 @@ class CompilerExperimentObservation:
                 )
             unresolved.append(item)
 
+        backend_identity = None
+        realization_request_identity = None
+        realization_plan_identity = None
+        backend_artifact_identity = None
+        backend_artifact_kind = None
+        experiment_status = None
+        validation_judgements: tuple[str, ...] = ()
+        if experiment_record is not None:
+            backend_identity = _text(_mapping(experiment_record, "backend"), "identity")
+            definition = _mapping(experiment_record, "definition")
+            realization_request_identity = _text(_mapping(definition, "realization"), "identity")
+            realization_plan_identity = _text(
+                _mapping(experiment_record, "realization_plan"), "identity"
+            )
+            artifact = _mapping(experiment_record, "artifact")
+            backend_artifact_identity = _text(artifact, "identity")
+            backend_artifact_kind = _text(artifact, "artifact_kind")
+            experiment_status = _text(experiment_record, "status")
+            if experiment_status not in {"PASS", "FAIL", "UNKNOWN"}:
+                raise ForgeError(
+                    "COMPILER_OBSERVATION_MALFORMED",
+                    "language experiment status must be PASS, FAIL, or UNKNOWN",
+                )
+            judgements: list[str] = []
+            for validation in _sequence(experiment_record, "translation_validations"):
+                if not isinstance(validation, Mapping):
+                    raise ForgeError(
+                        "COMPILER_OBSERVATION_MALFORMED",
+                        "translation validation must be an object",
+                    )
+                judgement = _text(validation, "judgement")
+                if judgement not in {"PASS", "FAIL", "UNKNOWN"}:
+                    raise ForgeError(
+                        "COMPILER_OBSERVATION_MALFORMED",
+                        "translation validation judgement must be PASS, FAIL, or UNKNOWN",
+                    )
+                judgements.append(judgement)
+            validation_judgements = tuple(judgements)
+
         return cls(
             contract_id=contract_id,
             schema_version=_text(record, "schema_version"),
             language_record_identity=_text(record, "identity"),
-            run_identity=_text(record, "run_identity"),
-            compiler_identity=_text(record, "compiler_identity"),
-            pipeline_identity=_text(record, "pipeline_identity"),
-            compiler_host_identity=_text(record, "compiler_host_identity"),
-            build_host_identity=_text(record, "build_host_identity"),
-            target_identity=_optional_text(record, "target_identity"),
+            run_identity=_text(study_record, "run_identity"),
+            compiler_identity=_text(study_record, "compiler_identity"),
+            pipeline_identity=_text(study_record, "pipeline_identity"),
+            compiler_host_identity=_text(study_record, "compiler_host_identity"),
+            build_host_identity=_text(study_record, "build_host_identity"),
+            target_identity=_optional_text(study_record, "target_identity"),
             compilation_status=compilation_status,
             stage_fingerprints=tuple(stage_fingerprints),
             pass_executions=tuple(pass_executions),
             unresolved_obligations=tuple(sorted(set(unresolved))),
-            interpretation=interpretation,
+            interpretation=OBSERVATION_ONLY_INTERPRETATION,
+            backend_identity=backend_identity,
+            realization_request_identity=realization_request_identity,
+            realization_plan_identity=realization_plan_identity,
+            backend_artifact_identity=backend_artifact_identity,
+            backend_artifact_kind=backend_artifact_kind,
+            experiment_status=experiment_status,
+            validation_judgements=validation_judgements,
         )
 
     def fingerprint_map(self) -> dict[str, str]:
@@ -222,6 +296,13 @@ class CompilerExperimentObservation:
             "pass_executions": [item.to_json() for item in self.pass_executions],
             "unresolved_obligations": list(self.unresolved_obligations),
             "interpretation": self.interpretation,
+            "backend_identity": self.backend_identity,
+            "realization_request_identity": self.realization_request_identity,
+            "realization_plan_identity": self.realization_plan_identity,
+            "backend_artifact_identity": self.backend_artifact_identity,
+            "backend_artifact_kind": self.backend_artifact_kind,
+            "experiment_status": self.experiment_status,
+            "validation_judgements": list(self.validation_judgements),
         }
 
 
@@ -248,6 +329,10 @@ class CompilerExperimentComparison:
     stages: tuple[StageFingerprintComparison, ...]
     earliest_observed_difference: str | None
     pass_status_changes: tuple[tuple[str, str | None, str | None], ...]
+    same_realization_request: bool | None = None
+    same_backend: bool | None = None
+    same_backend_artifact: bool | None = None
+    validation_statuses: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
     interpretation: str = OBSERVATION_ONLY_INTERPRETATION
     assurance_status: None = None
     conformance_status: None = None
@@ -262,6 +347,13 @@ class CompilerExperimentComparison:
                 {"pass_identity": identity, "left": left, "right": right}
                 for identity, left, right in self.pass_status_changes
             ],
+            "same_realization_request": self.same_realization_request,
+            "same_backend": self.same_backend,
+            "same_backend_artifact": self.same_backend_artifact,
+            "validation_statuses": {
+                "left": list(self.validation_statuses[0]),
+                "right": list(self.validation_statuses[1]),
+            },
             "interpretation": self.interpretation,
             "assurance_status": self.assurance_status,
             "conformance_status": self.conformance_status,
@@ -305,4 +397,18 @@ def compare_compiler_experiments(
         stages=tuple(stages),
         earliest_observed_difference=earliest,
         pass_status_changes=pass_status_changes,
+        same_realization_request=_optional_equal(
+            left.realization_request_identity, right.realization_request_identity
+        ),
+        same_backend=_optional_equal(left.backend_identity, right.backend_identity),
+        same_backend_artifact=_optional_equal(
+            left.backend_artifact_identity, right.backend_artifact_identity
+        ),
+        validation_statuses=(left.validation_judgements, right.validation_judgements),
     )
+
+
+def _optional_equal(left: str | None, right: str | None) -> bool | None:
+    if left is None and right is None:
+        return None
+    return left == right
