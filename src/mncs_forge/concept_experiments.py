@@ -43,9 +43,7 @@ def build_concept_evaluation(
     """Build a bounded Forge-native result without candidate self-certification."""
 
     if status not in {"PASS", "FAIL", "UNKNOWN"}:
-        raise ForgeError(
-            "CONCEPT_EVALUATION_STATUS", "status must preserve PASS, FAIL, or UNKNOWN"
-        )
+        raise ForgeError("CONCEPT_EVALUATION_STATUS", "status must preserve PASS, FAIL, or UNKNOWN")
     verifier_identity = _text(verifier_identity, "verifier_identity")
     if generator_identity is not None and verifier_identity == generator_identity:
         raise ForgeError(
@@ -55,9 +53,7 @@ def build_concept_evaluation(
     material: dict[str, Any] = {
         "schema_version": CONCEPT_EVALUATION_SCHEMA,
         "producer": "mncs-forge",
-        "concept_experiment_id": _text(
-            concept_experiment_id, "concept_experiment_id", 256
-        ),
+        "concept_experiment_id": _text(concept_experiment_id, "concept_experiment_id", 256),
         "candidate_identity": _text(candidate_identity, "candidate_identity"),
         "language_profile": _text(language_profile, "language_profile"),
         "compiler_identity": _text(compiler_identity, "compiler_identity"),
