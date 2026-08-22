@@ -32,7 +32,12 @@ actions were transient requests and reconciliation was a derived interface objec
 persists `workflow_action` and `execution_receipt_binding` as new current-schema records. Historical
 fixtures remain readable without those events. Reconciliation remains a derived interface object.
 
-Compiler experiments are new current-schema observation records. They embed an exact language-owned compilation-study record plus a bounded Forge projection. Forge validates the pinned language contract and fixed observation-only authority fields, but does not define the embedded compiler schema or infer assurance/conformance from it.
+Compiler experiments are current-schema observation records. They embed either an exact
+language-owned compilation-study record or `mncs:language:experiment-result:0.1`, plus a bounded
+Forge projection. The latter adds backend, realization-request/plan, typed artifact, experiment
+status, and validator observations. Forge validates the pinned language contract and fixed
+observation-only authority fields, but does not define the embedded compiler schema or infer
+assurance/conformance from it.
 
 ## Legacy migration
 
