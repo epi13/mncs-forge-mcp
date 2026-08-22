@@ -1,6 +1,15 @@
 # Forge Evaluation for Concept Reconstruction Experiments
 
-Status: architecture proposal / non-normative
+Status: bootstrap evaluation binding implemented / non-normative authority
+
+## Implemented Family Record evaluation binding
+
+`build_concept_evaluation` emits `mncs-forge.concept-evaluation.v0.1`, binding an exact Concept
+Experiment, candidate, language profile, compiler, backend, executions, verifier/version,
+obligation, evidence, unresolved obligations, generator, and evaluator policy. `PASS`, `FAIL`, and
+`UNKNOWN` are preserved literally and apply only to the named Forge evaluator scope. A candidate
+generator cannot be used as its own verifier, and record construction never implies candidate
+self-certification or MNCS conformance.
 
 ## Purpose
 
