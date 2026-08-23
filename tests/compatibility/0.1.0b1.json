@@ -267,6 +267,21 @@
           "namespace": "candidates"
         }
       ],
+      "concept.evaluations.get": [
+        {
+          "decoder": "value",
+          "input": "evaluation_id",
+          "namespace": "id"
+        }
+      ],
+      "concept.evaluations.list": [],
+      "concept.evaluations.record": [
+        {
+          "decoder": "json-object",
+          "input": "evaluation",
+          "namespace": "evaluation"
+        }
+      ],
       "config.validate": [],
       "development.checks.run": [
         {
@@ -1021,6 +1036,34 @@
           }
         ],
         "operation_id": "evaluation.final.run"
+      },
+      "evaluations get": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "concept.evaluations.get"
+      },
+      "evaluations list": {
+        "arguments": [],
+        "operation_id": "concept.evaluations.list"
+      },
+      "evaluations record": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "evaluation",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "concept.evaluations.record"
       },
       "explain": {
         "arguments": [
@@ -1831,6 +1874,32 @@
             "candidate_ids"
           ]
         },
+        "mncs_forge_concept_evaluation_get": {
+          "input_properties": [
+            "evaluation_id"
+          ],
+          "input_schema_sha256": "50ed8603fc181528696da7257a755402ff4b9d7e877ba36c04113c2a69b13abc",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluation_id"
+          ]
+        },
+        "mncs_forge_concept_evaluation_record": {
+          "input_properties": [
+            "evaluation"
+          ],
+          "input_schema_sha256": "0f10f29002d91c4d19675f0a5dc47b784f68a79864622aa0d026ef1ade9405e5",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluation"
+          ]
+        },
+        "mncs_forge_concept_evaluations_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_development_checks_run": {
           "input_properties": [
             "candidate_identity",
@@ -2216,6 +2285,22 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_concept_evaluation_get": {
+          "input_properties": [
+            "evaluation_id"
+          ],
+          "input_schema_sha256": "50ed8603fc181528696da7257a755402ff4b9d7e877ba36c04113c2a69b13abc",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluation_id"
+          ]
+        },
+        "mncs_forge_concept_evaluations_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_development_checks_run": {
           "input_properties": [
             "candidate_identity",
@@ -2417,6 +2502,9 @@
       "compiler.experiments.list",
       "compiler.experiments.record",
       "compiler.tournament.run",
+      "concept.evaluations.get",
+      "concept.evaluations.list",
+      "concept.evaluations.record",
       "config.validate",
       "development.checks.run",
       "development.failure.explain",
@@ -2441,7 +2529,7 @@
       "verifiers.run"
     ],
     "schema_version": "1",
-    "semantic_sha256": "d42f7a390f7814ea24f898c466e7d4cc5cea64767c4019a09f7375af00ba4742"
+    "semantic_sha256": "8cec3f07cb3a2f34fa8fd8c1356f4d8e4aee10d9d88cbc516f3de3f849da29d2"
   },
   "packaging": {
     "dependencies": [
@@ -2481,6 +2569,9 @@
       "compiler_experiments_compare": "(self, left_experiment_id: 'str', right_experiment_id: 'str') -> 'dict[str, object]'",
       "compiler_experiments_list": "(self) -> 'dict[str, object]'",
       "compiler_tournament": "(self, candidate_ids: 'list[str]') -> 'dict[str, object]'",
+      "concept_evaluation_get": "(self, evaluation_id: 'str') -> 'dict[str, object]'",
+      "concept_evaluation_record": "(self, evaluation: 'Mapping[str, object]') -> 'dict[str, object]'",
+      "concept_evaluations_list": "(self) -> 'dict[str, object]'",
       "config_validate": "(self) -> 'dict[str, object]'",
       "development_checks_run": "(self, workflow_names: 'list[str]', candidate_id: 'str | None' = None) -> 'dict[str, object]'",
       "doctor": "(self) -> 'dict[str, object]'",
@@ -2700,6 +2791,63 @@
           "recorded_at",
           "run_identity",
           "schema_version"
+        ]
+      },
+      "concept_evaluation": {
+        "properties": [
+          "assurance_status",
+          "backend_identity",
+          "candidate_identity",
+          "compiler_identity",
+          "concept_experiment_id",
+          "conformance_status",
+          "content_digest",
+          "evaluation_id",
+          "evaluation_material",
+          "evaluator_policy_identity",
+          "evidence_identities",
+          "execution_identities",
+          "extensions",
+          "generator_certified",
+          "generator_identity",
+          "interpretation",
+          "language_profile",
+          "obligation",
+          "record_type",
+          "recorded_at",
+          "schema_version",
+          "stable_id",
+          "status",
+          "unresolved_obligations",
+          "verifier_identity",
+          "verifier_version"
+        ],
+        "required": [
+          "assurance_status",
+          "backend_identity",
+          "candidate_identity",
+          "compiler_identity",
+          "concept_experiment_id",
+          "conformance_status",
+          "content_digest",
+          "evaluation_id",
+          "evaluation_material",
+          "evaluator_policy_identity",
+          "evidence_identities",
+          "execution_identities",
+          "generator_certified",
+          "generator_identity",
+          "interpretation",
+          "language_profile",
+          "obligation",
+          "record_type",
+          "recorded_at",
+          "schema_version",
+          "stable_id",
+          "status",
+          "unresolved_obligations",
+          "verifier_identity",
+          "verifier_version"
         ]
       },
       "epoch": {
@@ -3216,7 +3364,7 @@
     },
     "root_properties": [],
     "root_required": [],
-    "semantic_sha256": "26efe5822fa860d4833ea231a6f494cc7172bb16190a693560c8da92072b81b8"
+    "semantic_sha256": "2882a962160138a8ce2b00e2791b727ee15e9c03089ec209b5b36e37a7b81fc3"
   },
   "snapshot_schema": "1"
 }

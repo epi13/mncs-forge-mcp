@@ -14,6 +14,7 @@ from typing import Any, TypeAlias, cast
 
 import rfc8785
 
+from .concept_experiments import CONCEPT_EVALUATION_INTERPRETATION
 from .errors import ForgeError
 from .serialization import local_json_identity, read_json
 
@@ -44,6 +45,7 @@ class RecordType(StrEnum):
     BUNDLE = "bundle"
     COMPILER_EXPERIMENT = "compiler_experiment"
     COMPILER_CANDIDATE = "compiler_candidate"
+    CONCEPT_EVALUATION = "concept_evaluation"
     LEDGER_ENTRY = "ledger_entry"
 
 
@@ -427,6 +429,38 @@ RECORD_SPECS: dict[RecordType, RecordSpec] = {
         identity_prefix="compiler-candidate:",
         identity_exclusions=frozenset({"recorded_at"}),
     ),
+    RecordType.CONCEPT_EVALUATION: RecordSpec(
+        required=frozenset(
+            {
+                "concept_experiment_id",
+                "candidate_identity",
+                "language_profile",
+                "compiler_identity",
+                "backend_identity",
+                "execution_identities",
+                "verifier_identity",
+                "verifier_version",
+                "obligation",
+                "evidence_identities",
+                "status",
+                "unresolved_obligations",
+                "generator_identity",
+                "evaluator_policy_identity",
+                "generator_certified",
+                "evaluation_material",
+                "stable_id",
+                "content_digest",
+                "interpretation",
+                "assurance_status",
+                "conformance_status",
+                "recorded_at",
+                "evaluation_id",
+            }
+        ),
+        identity_field="evaluation_id",
+        identity_prefix="concept-evaluation:",
+        identity_exclusions=frozenset({"recorded_at"}),
+    ),
 }
 
 LEDGER_REQUIRED = frozenset(
@@ -448,6 +482,7 @@ LEDGER_KIND_TYPES: dict[str, RecordType] = {
     "bundle": RecordType.BUNDLE,
     "compiler_experiment": RecordType.COMPILER_EXPERIMENT,
     "compiler_candidate": RecordType.COMPILER_CANDIDATE,
+    "concept_evaluation": RecordType.CONCEPT_EVALUATION,
 }
 
 RECORD_GROUP_TYPES: dict[str, RecordType] = {
@@ -464,6 +499,7 @@ RECORD_GROUP_TYPES: dict[str, RecordType] = {
     "evaluations": RecordType.FINAL_EVALUATION,
     "bundles": RecordType.BUNDLE,
     "compiler-experiments": RecordType.COMPILER_EXPERIMENT,
+    "concept-evaluations": RecordType.CONCEPT_EVALUATION,
     "compiler-candidates": RecordType.COMPILER_CANDIDATE,
 }
 
@@ -526,6 +562,12 @@ PERSISTED_RECORD_CONTEXTS: dict[str, PersistedRecordContext] = {
         "compiler_candidate",
         RecordType.COMPILER_CANDIDATE,
         "candidate_id",
+    ),
+    "concept_evaluation": PersistedRecordContext(
+        "concept-evaluations",
+        "concept_evaluation",
+        RecordType.CONCEPT_EVALUATION,
+        "evaluation_id",
     ),
 }
 
@@ -755,6 +797,23 @@ REQUIRED_STRING_FIELDS: dict[RecordType, frozenset[str]] = {
             "experiment_id",
         }
     ),
+    RecordType.CONCEPT_EVALUATION: frozenset(
+        {
+            "concept_experiment_id",
+            "candidate_identity",
+            "language_profile",
+            "compiler_identity",
+            "backend_identity",
+            "verifier_identity",
+            "verifier_version",
+            "obligation",
+            "stable_id",
+            "content_digest",
+            "recorded_at",
+            "interpretation",
+            "evaluation_id",
+        }
+    ),
     RecordType.COMPILER_CANDIDATE: frozenset(
         {
             "baseline_artifact_identity",
@@ -786,6 +845,7 @@ REQUIRED_OBJECT_FIELDS: dict[RecordType, frozenset[str]] = {
     RecordType.RECONCILIATION: frozenset({"categories"}),
     RecordType.BUNDLE: frozenset({"environment"}),
     RecordType.COMPILER_EXPERIMENT: frozenset({"language_record", "observation"}),
+    RecordType.CONCEPT_EVALUATION: frozenset({"evaluation_material"}),
 }
 
 
@@ -963,6 +1023,11 @@ class CompilerCandidateRecord(ForgeRecord):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class ConceptEvaluationRecord(ForgeRecord):
+    pass
+
+
 MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.EPOCH: EpochRecord,
     RecordType.CANDIDATE: CandidateRecord,
@@ -979,6 +1044,7 @@ MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.BUNDLE: BundleRecord,
     RecordType.COMPILER_EXPERIMENT: CompilerExperimentRecord,
     RecordType.COMPILER_CANDIDATE: CompilerCandidateRecord,
+    RecordType.CONCEPT_EVALUATION: ConceptEvaluationRecord,
 }
 
 
@@ -1103,6 +1169,49 @@ def _validate_fields(record_type: RecordType, fields: JsonObject) -> None:
             raise ForgeError(
                 "RECORD_MALFORMED",
                 "compiler candidate policy_disposition is invalid",
+            )
+    if record_type is RecordType.CONCEPT_EVALUATION:
+        material = fields["evaluation_material"]
+        if not isinstance(material, Mapping):
+            raise ForgeError(
+                "RECORD_MALFORMED",
+                "concept evaluation evaluation_material must be an object",
+            )
+        if material.get("schema_version") != "mncs-forge.concept-evaluation.v0.1":
+            raise ForgeError(
+                "RECORD_CONTRACT",
+                "concept evaluation records use an unsupported evaluation contract",
+            )
+        if fields["status"] not in {"PASS", "FAIL", "UNKNOWN"}:
+            raise ForgeError(
+                "RECORD_STATUS",
+                "concept evaluation status must be PASS, FAIL, or UNKNOWN",
+            )
+        if (
+            fields["interpretation"] != CONCEPT_EVALUATION_INTERPRETATION
+            or fields["assurance_status"] is not None
+            or fields["conformance_status"] is not None
+        ):
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "concept evaluations cannot claim assurance, conformance, or universal truth",
+            )
+        if fields["generator_certified"] is not False:
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "concept evaluations must stay uncertified by their generator",
+            )
+        digest = fields["content_digest"]
+        stable_id = fields["stable_id"]
+        if not isinstance(digest, str) or not digest.startswith("sha256:") or len(digest) != 71:
+            raise ForgeError(
+                "RECORD_IDENTITY",
+                "concept evaluation content_digest must be a sha256 identity",
+            )
+        if stable_id != f"mncs-forge://evaluation/{digest[7:]}":
+            raise ForgeError(
+                "RECORD_IDENTITY",
+                "concept evaluation stable id must match its content digest",
             )
 
 

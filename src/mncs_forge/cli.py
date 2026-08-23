@@ -259,6 +259,23 @@ def _common_parser() -> argparse.ArgumentParser:
     )
     compiler_candidate_inspect.add_argument("candidate_id")
 
+    evaluations = commands.add_parser(_cli_command("concept.evaluations.list", 0))
+    evaluations_commands = evaluations.add_subparsers(dest="evaluations_command", required=True)
+    evaluations_record = _register(
+        evaluations_commands.add_parser(_cli_command("concept.evaluations.record")),
+        "concept.evaluations.record",
+    )
+    evaluations_record.add_argument("evaluation", help="built Forge concept-evaluation JSON object")
+    _register(
+        evaluations_commands.add_parser(_cli_command("concept.evaluations.list")),
+        "concept.evaluations.list",
+    )
+    evaluations_get = _register(
+        evaluations_commands.add_parser(_cli_command("concept.evaluations.get")),
+        "concept.evaluations.get",
+    )
+    evaluations_get.add_argument("id")
+
     ledger = commands.add_parser(_cli_command("ledger.verify", 0))
     ledger_commands = ledger.add_subparsers(dest="ledger_command", required=True)
     _register(ledger_commands.add_parser(_cli_command("ledger.verify")), "ledger.verify")

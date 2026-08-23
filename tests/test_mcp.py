@@ -20,6 +20,7 @@ def test_mcp_tool_names_modes_and_schemas_come_from_registry(project: Path) -> N
         set(development_by_name)
         - {
             "mncs_forge_compiler_experiment_record",
+            "mncs_forge_concept_evaluation_record",
             "mncs_forge_compiler_candidate_register",
             "mncs_forge_compiler_candidate_attach",
             "mncs_forge_compiler_tournament",

@@ -273,6 +273,16 @@ class CompilerExperimentCompareInput(OperationInput):
 
 
 @dataclass(frozen=True, slots=True)
+class ConceptEvaluationRecordInput(OperationInput):
+    evaluation: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class ConceptEvaluationGetInput(OperationInput):
+    evaluation_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class CompilerCandidateRegisterInput(OperationInput):
     baseline_artifact_identity: str
     candidate_artifact_identity: str
@@ -423,6 +433,9 @@ class ForgeOperationTarget(Protocol):
     def compiler_experiments_compare(
         self, left_experiment_id: str, right_experiment_id: str
     ) -> JsonObject: ...
+    def concept_evaluation_record(self, evaluation: Mapping[str, object]) -> JsonObject: ...
+    def concept_evaluations_list(self) -> JsonObject: ...
+    def concept_evaluation_get(self, evaluation_id: str) -> JsonObject: ...
     def compiler_candidate_register(
         self,
         *,
@@ -735,6 +748,21 @@ def _compiler_experiments_compare(forge: ForgeOperationTarget, value: OperationI
         request.left_experiment_id,
         request.right_experiment_id,
     )
+
+
+def _concept_evaluation_record(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, ConceptEvaluationRecordInput)
+    return forge.concept_evaluation_record(request.evaluation)
+
+
+def _concept_evaluations_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    _no_input(value)
+    return forge.concept_evaluations_list()
+
+
+def _concept_evaluation_get(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, ConceptEvaluationGetInput)
+    return forge.concept_evaluation_get(request.evaluation_id)
 
 
 def _compiler_candidate_register(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
@@ -1338,6 +1366,55 @@ _OPERATIONS = (
             ),
         ),
         mcp=_mcp("mncs_forge_compiler_experiments_compare"),
+    ),
+    _operation(
+        "concept.evaluations.record",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=ConceptEvaluationRecordInput,
+        output=OutputContract.RECORD,
+        handler=_concept_evaluation_record,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Persist one bounded Forge concept evaluation for a Concept Experiment "
+            "without candidate self-certification or conformance authority."
+        ),
+        cli=_cli(
+            "evaluations",
+            "record",
+            bindings=(_binding("evaluation", "evaluation", CliDecoder.JSON_OBJECT),),
+        ),
+        mcp=_mcp("mncs_forge_concept_evaluation_record", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "concept.evaluations.list",
+        input_model=NoInput,
+        output=OutputContract.INVENTORY,
+        handler=_concept_evaluations_list,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="List persisted concept evaluations without strengthening any status.",
+        cli=_cli("evaluations", "list"),
+        mcp=_mcp("mncs_forge_concept_evaluations_list"),
+        resources=(ResourceExposure("mncs-forge://concept/evaluations"),),
+    ),
+    _operation(
+        "concept.evaluations.get",
+        input_model=ConceptEvaluationGetInput,
+        output=OutputContract.RECORD,
+        handler=_concept_evaluation_get,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="Fetch one persisted concept evaluation by record id, digest, or stable id.",
+        cli=_cli(
+            "evaluations",
+            "get",
+            bindings=(_binding("evaluation_id", "id"),),
+        ),
+        mcp=_mcp("mncs_forge_concept_evaluation_get"),
     ),
     _operation(
         "compiler.candidates.register",
