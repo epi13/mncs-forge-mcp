@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Persist bounded concept evaluations for Concept Experiments
+  (`concept.evaluations.record` / `.list` / `.get`). Each record re-derives its
+  `content_digest` and stable id from the stored evaluation material, keeps
+  `generator_certified` pinned to `false`, and cannot claim assurance,
+  conformance, or universal truth. Registry grows 41 → 44 operations.
+
 - Accept and persist the language-owned `mncs:language:experiment-result:0.1` contract alongside
   the earlier compilation-study record. Forge projects backend, realization-request/plan, typed
   artifact, experiment-status, and validator observations for listing and comparison while

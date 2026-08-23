@@ -403,6 +403,116 @@
       ],
       "type": "object"
     },
+    "concept_evaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "assurance_status": {
+          "type": "null"
+        },
+        "backend_identity": {
+          "type": "string"
+        },
+        "candidate_identity": {
+          "type": "string"
+        },
+        "compiler_identity": {
+          "type": "string"
+        },
+        "concept_experiment_id": {
+          "type": "string"
+        },
+        "conformance_status": {
+          "type": "null"
+        },
+        "content_digest": {
+          "type": "string"
+        },
+        "evaluation_id": {
+          "type": "string"
+        },
+        "evaluation_material": {
+          "type": "object"
+        },
+        "evaluator_policy_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_identities": {},
+        "execution_identities": {},
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "generator_certified": {},
+        "generator_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "interpretation": {
+          "type": "string"
+        },
+        "language_profile": {
+          "type": "string"
+        },
+        "obligation": {
+          "type": "string"
+        },
+        "record_type": {
+          "const": "concept_evaluation"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "stable_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "unresolved_obligations": {},
+        "verifier_identity": {
+          "type": "string"
+        },
+        "verifier_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "assurance_status",
+        "backend_identity",
+        "candidate_identity",
+        "compiler_identity",
+        "concept_experiment_id",
+        "conformance_status",
+        "content_digest",
+        "evaluation_id",
+        "evaluation_material",
+        "evaluator_policy_identity",
+        "evidence_identities",
+        "execution_identities",
+        "generator_certified",
+        "generator_identity",
+        "interpretation",
+        "language_profile",
+        "obligation",
+        "recorded_at",
+        "stable_id",
+        "status",
+        "unresolved_obligations",
+        "verifier_identity",
+        "verifier_version"
+      ],
+      "type": "object"
+    },
     "epoch": {
       "additionalProperties": false,
       "properties": {
@@ -878,6 +988,25 @@
           "if": {
             "properties": {
               "kind": {
+                "const": "concept_evaluation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/concept_evaluation"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
                 "const": "disposition"
               }
             },
@@ -1076,6 +1205,7 @@
             "candidate",
             "compiler_candidate",
             "compiler_experiment",
+            "concept_evaluation",
             "disposition",
             "epoch",
             "evaluation",
@@ -1104,6 +1234,9 @@
             },
             {
               "$ref": "#/$defs/compiler_experiment"
+            },
+            {
+              "$ref": "#/$defs/concept_evaluation"
             },
             {
               "$ref": "#/$defs/epoch"
@@ -1750,6 +1883,9 @@
     },
     {
       "$ref": "#/$defs/compiler_candidate"
+    },
+    {
+      "$ref": "#/$defs/concept_evaluation"
     },
     {
       "$ref": "#/$defs/ledger_entry"

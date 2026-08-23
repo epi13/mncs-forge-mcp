@@ -9,6 +9,7 @@ from .adapters import LocalProcessRunner, LocalProjectObserver
 from .application.candidates import CandidateService
 from .application.compiler_candidates import CompilerCandidateService
 from .application.compiler_studies import CompilerEvolutionService
+from .application.concept_evaluations import ConceptEvaluationService
 from .application.evaluation import EvaluationService
 from .application.evidence import EvidenceService
 from .application.execution_receipts import get_binding, list_bindings
@@ -135,6 +136,10 @@ class Forge:
             record_store=self.record_store,
         )
         self._compiler_candidate_service = CompilerCandidateService(
+            records=self.ledger,
+            record_store=self.record_store,
+        )
+        self._concept_evaluation_service = ConceptEvaluationService(
             records=self.ledger,
             record_store=self.record_store,
         )
@@ -426,6 +431,15 @@ class Forge:
             left_experiment_id,
             right_experiment_id,
         )
+
+    def concept_evaluation_record(self, evaluation: Mapping[str, object]) -> dict[str, object]:
+        return self._concept_evaluation_service.record(evaluation)
+
+    def concept_evaluations_list(self) -> dict[str, object]:
+        return self._concept_evaluation_service.list()
+
+    def concept_evaluation_get(self, evaluation_id: str) -> dict[str, object]:
+        return self._concept_evaluation_service.get(evaluation_id)
 
     def compiler_candidate_register(
         self,

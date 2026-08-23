@@ -97,6 +97,35 @@ def _sample_fields(record_type: RecordType) -> dict[str, object]:
         fields["semantic_status"] = "UNVALIDATED"
         fields["policy_disposition"] = "retain_unresolved"
         fields["protected_properties"] = ["return_value"]
+    if record_type is RecordType.CONCEPT_EVALUATION:
+        from mncs_forge.concept_experiments import build_concept_evaluation
+
+        evaluation = build_concept_evaluation(
+            concept_experiment_id="cre-tristate-sample",
+            candidate_identity="candidate:sample",
+            language_profile="mncs-language:source-profile:0.2",
+            compiler_identity="mncs:compiler:sample",
+            backend_identity="mncs:compiler:backend:sample",
+            execution_identities=["mncs-fabric://execution/sample/attempt/1"],
+            verifier_identity="forge:verifier:sample",
+            verifier_version="0.1",
+            obligation="bounded observation",
+            evidence_identities=["sha256:" + "a" * 64],
+            status="UNKNOWN",
+            unresolved_obligations=["independent-backend-reproduction"],
+        )
+        fields.update(
+            {
+                key: value
+                for key, value in evaluation.items()
+                if key not in {"schema_version", "producer", "claim_boundary"}
+            }
+        )
+        fields["evaluation_material"] = dict(evaluation)
+        fields["recorded_at"] = "2026-08-23T00:00:00Z"
+        fields["interpretation"] = "bounded_forge_evaluation_not_mncs_conformance"
+        fields["assurance_status"] = None
+        fields["conformance_status"] = None
     return fields
 
 

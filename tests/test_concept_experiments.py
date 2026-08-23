@@ -48,3 +48,114 @@ def test_generator_cannot_be_the_named_evaluator() -> None:
             status="UNKNOWN",
             generator_identity="same:identity",
         )
+
+
+def _replication_evaluation(baseline_digest_suffix: str = "a" * 64) -> dict[str, object]:
+    return build_concept_evaluation(
+        concept_experiment_id="cre-tristate-a",
+        candidate_identity="mncs:language:experiment:result:" + baseline_digest_suffix,
+        language_profile="mncs-language:source-profile:0.2",
+        compiler_identity="mncs:compiler:fixture",
+        backend_identity="mncs:language:backend:reference-interpreter",
+        execution_identities=[
+            "mncs-fabric://execution/worker/attempt/1",
+            "mncs-fabric://execution/worker/attempt/2",
+        ],
+        verifier_identity="forge:verifier:tri-state",
+        verifier_version="0.1",
+        obligation="bounded replication agreement for one frozen realization",
+        evidence_identities=["sha256:" + "b" * 64],
+        status="UNKNOWN",
+        unresolved_obligations=["independent-backend-reproduction"],
+        generator_identity="mncs-language",
+        evaluator_policy_identity="forge:policy:tri-state",
+    )
+
+
+def test_persists_lists_and_fetches_replication_evaluations(config) -> None:
+    from mncs_forge.engine import Forge
+
+    forge = Forge(config)
+    record = forge.concept_evaluation_record(_replication_evaluation())
+    assert record["status"] == "UNKNOWN"
+    assert record["generator_certified"] is False
+    assert record["interpretation"] == "bounded_forge_evaluation_not_mncs_conformance"
+    assert record["assurance_status"] is None
+    assert record["conformance_status"] is None
+    assert str(record["evaluation_id"]).startswith("concept-evaluation:")
+
+    # Idempotent re-record of the identical evaluation.
+    duplicate = forge.concept_evaluation_record(_replication_evaluation())
+    assert duplicate["evaluation_id"] == record["evaluation_id"]
+
+    listing = forge.concept_evaluations_list()
+    assert len(listing["evaluations"]) == 1
+    assert listing["assurance_status"] is None
+
+    fetched = forge.concept_evaluation_get(str(record["evaluation_id"]))
+    assert fetched["content_digest"] == record["content_digest"]
+    by_digest = forge.concept_evaluation_get(str(record["content_digest"]))
+    assert by_digest["stable_id"] == record["stable_id"]
+    by_stable = forge.concept_evaluation_get(str(record["stable_id"]))
+    assert by_stable["evaluation_id"] == record["evaluation_id"]
+    assert forge.ledger.verify()["ok"] is True
+
+
+def test_tampered_evaluations_are_rejected_at_record_time(config) -> None:
+    from mncs_forge.engine import Forge
+
+    forge = Forge(config)
+    evaluation = _replication_evaluation()
+    mutated = dict(evaluation)
+    mutated["status"] = "PASS"  # strengthen UNKNOWN into PASS
+    with pytest.raises(ForgeError, match="does not reproduce"):
+        forge.concept_evaluation_record(mutated)
+
+    relabeled = dict(evaluation)
+    relabeled["stable_id"] = "mncs-forge://evaluation/" + "f" * 64
+    with pytest.raises(ForgeError, match="does not reproduce"):
+        forge.concept_evaluation_record(relabeled)
+
+
+def test_unknown_cannot_be_upgraded_through_persistence(config) -> None:
+    import hashlib
+    import json as json_module
+
+    from mncs_forge.engine import Forge
+
+    forge = Forge(config)
+    evaluation = _replication_evaluation()
+    original = forge.concept_evaluation_record(evaluation)
+    assert original["status"] == "UNKNOWN"
+
+    # A tampered copy that relabels UNKNOWN into PASS must not overwrite the
+    # persisted record; its digest differs, so it can only ever be a new record.
+    material = {
+        key: value
+        for key, value in evaluation.items()
+        if key not in {"stable_id", "content_digest"}
+    }
+    material["status"] = "PASS"
+    forged = {
+        **material,
+        "content_digest": "sha256:"
+        + hashlib.sha256(
+            json_module.dumps(material, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+    }
+    forged["stable_id"] = f"mncs-forge://evaluation/{forged['content_digest'][7:]}"
+    record = forge.concept_evaluation_record(forged)
+    assert record["status"] == "PASS"
+    assert record["evaluation_id"] != original["evaluation_id"]
+    listing = forge.concept_evaluations_list()
+    assert len(listing["evaluations"]) == 2
+    still_original = forge.concept_evaluation_get(str(original["evaluation_id"]))
+    assert still_original["status"] == "UNKNOWN"
+
+
+def test_missing_evaluations_report_not_found(config) -> None:
+    from mncs_forge.engine import Forge
+
+    forge = Forge(config)
+    with pytest.raises(ForgeError, match="unknown concept evaluation"):
+        forge.concept_evaluation_get("concept-evaluation:" + "0" * 64)

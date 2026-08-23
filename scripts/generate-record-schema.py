@@ -75,6 +75,15 @@ def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
         "conformance_status",
     }:
         return {"type": "null"}
+    if record_type is RecordType.CONCEPT_EVALUATION and field in {
+        "generator_identity",
+        "evaluator_policy_identity",
+        "assurance_status",
+        "conformance_status",
+    }:
+        if field in {"generator_identity", "evaluator_policy_identity"}:
+            return {"type": ["string", "null"]}
+        return {"type": "null"}
     if record_type is RecordType.COMPILER_EXPERIMENT and field == "language_contract_id":
         return {
             "enum": [
