@@ -564,6 +564,7 @@ class Forge:
         counterexample: dict[str, object] | None = None,
         limitations: list[str] | None = None,
         stale: bool = False,
+        expected_artifact_identity: str | None = None,
     ) -> dict[str, object]:
         return self._compiler_candidate_service.attach_validation(
             candidate_id,
@@ -573,6 +574,7 @@ class Forge:
             counterexample=counterexample,
             limitations=limitations,
             stale=stale,
+            expected_artifact_identity=expected_artifact_identity,
         )
 
     def compiler_tournament(self, candidate_ids: list[str]) -> dict[str, object]:

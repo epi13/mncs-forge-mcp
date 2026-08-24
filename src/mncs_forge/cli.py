@@ -271,6 +271,7 @@ def _common_parser() -> argparse.ArgumentParser:
     compiler_candidate_attach.add_argument("--counterexample")
     compiler_candidate_attach.add_argument("--limitations", action="append", default=[])
     compiler_candidate_attach.add_argument("--stale", action="store_true")
+    compiler_candidate_attach.add_argument("--expected-artifact", dest="expected_artifact_identity")
     compiler_tournament = _register(
         compiler_commands.add_parser(_cli_command("compiler.tournament.run")),
         "compiler.tournament.run",

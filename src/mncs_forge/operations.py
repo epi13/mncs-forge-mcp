@@ -310,6 +310,7 @@ class CompilerCandidateAttachInput(OperationInput):
     counterexample: dict[str, object] | None = None
     limitations: list[str] | None = None
     stale: bool = False
+    expected_artifact_identity: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -508,6 +509,7 @@ class ForgeOperationTarget(Protocol):
         counterexample: dict[str, object] | None = None,
         limitations: list[str] | None = None,
         stale: bool = False,
+        expected_artifact_identity: str | None = None,
     ) -> JsonObject: ...
     def compiler_tournament(self, candidate_ids: list[str]) -> JsonObject: ...
     def compiler_candidate_select(self, candidate_id: str, policy: str) -> JsonObject: ...
@@ -876,6 +878,7 @@ def _compiler_candidate_attach(forge: ForgeOperationTarget, value: OperationInpu
         counterexample=request.counterexample,
         limitations=request.limitations,
         stale=request.stale,
+        expected_artifact_identity=request.expected_artifact_identity,
     )
 
 
@@ -1575,6 +1578,7 @@ _OPERATIONS = (
                 _binding("counterexample", "counterexample", CliDecoder.JSON_OBJECT),
                 _binding("limitations"),
                 _binding("stale"),
+                _binding("expected_artifact_identity", "expected_artifact"),
             ),
         ),
         mcp=_mcp("mncs_forge_compiler_candidate_attach", DEVELOPMENT_ONLY),
