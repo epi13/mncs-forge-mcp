@@ -310,6 +310,7 @@ class CompilerCandidateAttachInput(OperationInput):
     counterexample: dict[str, object] | None = None
     limitations: list[str] | None = None
     stale: bool = False
+    expected_artifact_identity: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -326,6 +327,32 @@ class CompilerCandidateSelectInput(OperationInput):
 @dataclass(frozen=True, slots=True)
 class CompilerCandidateInspectInput(OperationInput):
     candidate_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AssuranceAssessInput(OperationInput):
+    binding_id: str
+    requested_properties: list[str]
+    policy_identity: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AssuranceListInput(OperationInput):
+    binding_identity: str | None = None
+    candidate_identity: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CellDocumentValidateInput(OperationInput):
+    kind: str
+    document: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class CellExecutionAssessInput(OperationInput):
+    policy: dict[str, object]
+    record: dict[str, object]
+    expected_nonce: str | None = None
 
 
 class ForgeOperationTarget(Protocol):
@@ -428,6 +455,25 @@ class ForgeOperationTarget(Protocol):
         action_identity: str | None = None,
     ) -> JsonObject: ...
     def execution_receipts_get(self, binding_id: str) -> JsonObject: ...
+    def execution_assurance_assess(
+        self,
+        *,
+        binding_id: str,
+        requested_properties: list[str],
+        policy_identity: str | None = None,
+    ) -> JsonObject: ...
+    def execution_assurance_list(
+        self,
+        binding_identity: str | None = None,
+        candidate_identity: str | None = None,
+    ) -> JsonObject: ...
+    def cell_document_validate(self, kind: str, document: Mapping[str, object]) -> JsonObject: ...
+    def cell_execution_assess(
+        self,
+        policy: Mapping[str, object],
+        record: Mapping[str, object],
+        expected_nonce: str | None = None,
+    ) -> JsonObject: ...
     def compiler_experiment_record(self, language_record: Mapping[str, object]) -> JsonObject: ...
     def compiler_experiments_list(self) -> JsonObject: ...
     def compiler_experiments_compare(
@@ -463,6 +509,7 @@ class ForgeOperationTarget(Protocol):
         counterexample: dict[str, object] | None = None,
         limitations: list[str] | None = None,
         stale: bool = False,
+        expected_artifact_identity: str | None = None,
     ) -> JsonObject: ...
     def compiler_tournament(self, candidate_ids: list[str]) -> JsonObject: ...
     def compiler_candidate_select(self, candidate_id: str, policy: str) -> JsonObject: ...
@@ -732,6 +779,37 @@ def _execution_receipts_get(forge: ForgeOperationTarget, value: OperationInput) 
     return forge.execution_receipts_get(request.binding_id)
 
 
+def _execution_assurance_assess(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, AssuranceAssessInput)
+    return forge.execution_assurance_assess(
+        binding_id=request.binding_id,
+        requested_properties=request.requested_properties,
+        policy_identity=request.policy_identity,
+    )
+
+
+def _execution_assurance_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, AssuranceListInput)
+    return forge.execution_assurance_list(
+        binding_identity=request.binding_identity,
+        candidate_identity=request.candidate_identity,
+    )
+
+
+def _cell_document_validate(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CellDocumentValidateInput)
+    return forge.cell_document_validate(request.kind, request.document)
+
+
+def _cell_execution_assess(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CellExecutionAssessInput)
+    return forge.cell_execution_assess(
+        request.policy,
+        request.record,
+        expected_nonce=request.expected_nonce,
+    )
+
+
 def _compiler_experiment_record(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
     request = _typed(value, CompilerExperimentRecordInput)
     return forge.compiler_experiment_record(request.language_record)
@@ -800,6 +878,7 @@ def _compiler_candidate_attach(forge: ForgeOperationTarget, value: OperationInpu
         counterexample=request.counterexample,
         limitations=request.limitations,
         stale=request.stale,
+        expected_artifact_identity=request.expected_artifact_identity,
     )
 
 
@@ -1499,6 +1578,7 @@ _OPERATIONS = (
                 _binding("counterexample", "counterexample", CliDecoder.JSON_OBJECT),
                 _binding("limitations"),
                 _binding("stale"),
+                _binding("expected_artifact_identity", "expected_artifact"),
             ),
         ),
         mcp=_mcp("mncs_forge_compiler_candidate_attach", DEVELOPMENT_ONLY),
@@ -1595,6 +1675,97 @@ _OPERATIONS = (
             bindings=(_binding("binding_id"),),
         ),
         mcp=_mcp("mncs_forge_execution_receipts_get"),
+    ),
+    _operation(
+        "execution.assurance.assess",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=AssuranceAssessInput,
+        output=OutputContract.RECORD,
+        handler=_execution_assurance_assess,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Assess requested execution-assurance properties for one receipt binding "
+            "fail-closed; a functional result never implies assurance."
+        ),
+        cli=_cli(
+            "assessments",
+            "request",
+            bindings=(
+                _binding("binding_id", "binding"),
+                _binding("requested_properties", "requested"),
+                _binding("policy_identity", "policy"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_execution_assurance_assess", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "execution.assurance.list",
+        input_model=AssuranceListInput,
+        output=OutputContract.INVENTORY,
+        handler=_execution_assurance_list,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        description=(
+            "List persisted execution-assurance assessments with explicit disagreement retention."
+        ),
+        cli=_cli(
+            "assessments",
+            "list",
+            bindings=(
+                _binding("binding_identity", "binding"),
+                _binding("candidate_identity", "candidate"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_execution_assurance_list"),
+        resources=(ResourceExposure("mncs-forge://execution/assessments"),),
+    ),
+    _operation(
+        "cell.documents.validate",
+        input_model=CellDocumentValidateInput,
+        output=OutputContract.DIAGNOSTIC,
+        handler=_cell_document_validate,
+        authority=AuthorityRequirement.NONE,
+        lifecycle=LifecycleRequirement.NONE,
+        disclosure=DisclosureClass.PUBLIC_METADATA,
+        description=(
+            "Validate an inline Forge Cell policy, test-bundle, or execution-record "
+            "document against its packaged schema without executing anything."
+        ),
+        cli=_cli(
+            "cell",
+            "validate",
+            bindings=(
+                _binding("kind"),
+                _binding("document", CliDecoder.JSON_OBJECT),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_cell_document_validate"),
+    ),
+    _operation(
+        "cell.execution.assess",
+        input_model=CellExecutionAssessInput,
+        output=OutputContract.RECORD,
+        handler=_cell_execution_assess,
+        authority=AuthorityRequirement.NONE,
+        lifecycle=LifecycleRequirement.NONE,
+        disclosure=DisclosureClass.PUBLIC_METADATA,
+        description=(
+            "Assess one inline Forge Cell execution record against one inline policy "
+            "fail-closed, keeping assurance separate from any test result."
+        ),
+        cli=_cli(
+            "cell",
+            "assess",
+            bindings=(
+                _binding("policy", CliDecoder.JSON_OBJECT),
+                _binding("record", CliDecoder.JSON_OBJECT),
+                _binding("expected_nonce", "nonce"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_cell_execution_assess"),
     ),
     _operation(
         "ledger.verify",

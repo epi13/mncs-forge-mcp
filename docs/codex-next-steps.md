@@ -435,9 +435,12 @@ is Task 7; none of its runner or isolation work is part of the compatibility clo
 **Target:** `0.2.x`  
 **Depends on:** Tasks 4 through 6
 
-**Status:** Task 7A, Task 7B-1, and Task 7B-2 are complete. Task 7 remains incomplete: Podman and
-other sandbox-capable adapters, verifier-action receipt wiring, and stronger execution-assurance
-semantics are still outstanding.
+**Status:** Task 7A, Task 7B-1, 7B-2, and 7C are complete. Remaining optional follow-ups are
+Docker/SSH adapters and an adversarial study of the Podman runner path (Cell Task 5 scope applied
+to the new adapter). Verifier-action receipt wiring is complete: verifier provider execution
+persists identity-bound `execution_receipt_binding` records with `action_kind="verifier_action"`.
+Typed execution-assurance assessments over bindings are implemented per ADR 0017
+(`execution.assurance.assess` / `.list`).
 
 ### Task 7A — Extract and harden the local runner
 
@@ -517,6 +520,26 @@ Run the full suite plus adapter-specific tests. Container tests must skip explic
 runtime is unavailable and must not silently pass as though sandboxing was tested.
 
 ---
+
+### Task 7C — Rootless Podman runner (complete)
+
+`PodmanRunner` executes declared argv inside a rootless container with
+`--network=none`, `--read-only`, `--cap-drop=all`, a read-only workspace mount,
+declared writable mounts (`rw,Z`), and optional resource bounds. Availability
+probes fail closed with `RUNNER_UNAVAILABLE`; image digests come from
+`podman image inspect` and tags alone are never immutable identities. Runner
+selection is additive through the optional `[runner]` configuration section
+(default `local-process`). See ADR 0016. Container tests use a fake podman
+harness plus a real-podman integration test that verifies read-only rootfs,
+blocked networking, and persisted writable mounts.
+
+### Task 7D — Execution-assurance assessments (complete)
+
+Typed `execution_assurance` records assess receipt bindings against a fixed
+requestable property vocabulary, fail closed (ADR 0017), and are exposed as
+`execution.assurance.assess` / `.list` with an MCP resource. Forge Cell document
+validation is available read-only through `cell.documents.validate` and
+`cell.execution.assess`.
 
 ## Task 8 — Add ledger checkpoints and optional external anchoring
 

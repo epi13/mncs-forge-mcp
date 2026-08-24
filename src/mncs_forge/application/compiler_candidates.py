@@ -18,6 +18,10 @@ UNKNOWN = "UNKNOWN"
 ACCEPT = "accept"
 REJECT = "reject"
 RETAIN_UNRESOLVED = "retain_unresolved"
+FRESH_CURRENT = "current"
+FRESH_STALE = "stale"
+FRESH_UNVALIDATED = "unvalidated"
+FRESH_SUBSTITUTED = "stale-artifact-mismatch"
 
 
 class CompilerCandidateService:
@@ -120,6 +124,7 @@ class CompilerCandidateService:
         counterexample: dict[str, object] | None = None,
         limitations: list[str] | None = None,
         stale: bool = False,
+        expected_artifact_identity: str | None = None,
     ) -> dict[str, object]:
         if judgement not in {PASS, FAIL, UNKNOWN}:
             raise ForgeError(
@@ -132,6 +137,13 @@ class CompilerCandidateService:
                 "RECORD_AUTHORITY",
                 "a generator cannot certify its own compiler candidate",
             )
+        bound_artifact = str(current["candidate_artifact_identity"])
+        if expected_artifact_identity is not None and expected_artifact_identity != bound_artifact:
+            raise ForgeError(
+                "COMPILER_VALIDATION_ARTIFACT_MISMATCH",
+                "validation was declared for a different candidate artifact identity; "
+                f"candidate {candidate_id} carries {bound_artifact}",
+            )
         semantic_status = UNKNOWN if stale else judgement
         if stale:
             judgement = UNKNOWN
@@ -141,42 +153,17 @@ class CompilerCandidateService:
             "claimed_relation": claimed_relation,
             "counterexample": counterexample,
             "limitations": limitations or [],
-            "freshness": "stale" if stale else "current",
+            "freshness": FRESH_STALE if stale else FRESH_CURRENT,
+            "validated_artifact_identity": bound_artifact,
             "independent_of_generator": True,
         }
-        disposition = self._disposition(
-            semantic_status,
-            str(current["required_validation"]),
-            current["benchmark_observation"],
-        )
-        record = new_record(
-            RecordType.COMPILER_CANDIDATE,
-            {
-                **{
-                    key: current[key]
-                    for key in (
-                        "baseline_artifact_identity",
-                        "candidate_artifact_identity",
-                        "generator_identity",
-                        "declared_transformation",
-                        "claimed_relation",
-                        "expected_benefit",
-                        "protected_properties",
-                        "target_envelope",
-                        "required_validation",
-                        "isolated",
-                        "generator_certified",
-                        "interpretation",
-                        "assurance_status",
-                        "conformance_status",
-                    )
-                },
-                "semantic_status": semantic_status,
-                "benchmark_observation": current["benchmark_observation"],
-                "validation": validation,
-                "policy_disposition": disposition,
-                "recorded_at": now(),
-            },
+        disposition = self._disposition(semantic_status, str(current["required_validation"]))
+        record = self._successor(
+            current,
+            semantic_status=semantic_status,
+            benchmark_observation=current["benchmark_observation"],
+            validation=validation,
+            policy_disposition=disposition,
         )
         self.record_store.commit("compiler-candidates", "compiler_candidate", record)
         return record.to_object_dict()
@@ -185,38 +172,19 @@ class CompilerCandidateService:
         self, candidate_id: str, observation: Mapping[str, object]
     ) -> dict[str, object]:
         current = self._get(candidate_id)
-        record = new_record(
-            RecordType.COMPILER_CANDIDATE,
-            {
-                "baseline_artifact_identity": current["baseline_artifact_identity"],
-                "candidate_artifact_identity": current["candidate_artifact_identity"],
-                "generator_identity": current["generator_identity"],
-                "declared_transformation": current["declared_transformation"],
-                "claimed_relation": current["claimed_relation"],
-                "expected_benefit": current["expected_benefit"],
-                "protected_properties": CompilerCandidateService._string_list(
-                    current["protected_properties"]
-                ),
-                "target_envelope": current["target_envelope"],
-                "required_validation": current["required_validation"],
-                "semantic_status": current["semantic_status"],
-                "benchmark_observation": dict(observation),
-                "validation": current["validation"],
-                "policy_disposition": self._disposition(
-                    str(current["semantic_status"]),
-                    str(current["required_validation"]),
-                    dict(observation),
-                ),
-                "isolated": True,
-                "generator_certified": False,
-                "interpretation": SEARCH_ONLY_INTERPRETATION,
-                "assurance_status": None,
-                "conformance_status": None,
-                "recorded_at": now(),
-            },
+        effective_status = self._effective_semantic_status(current)
+        record = self._successor(
+            current,
+            semantic_status=effective_status,
+            benchmark_observation=dict(observation),
+            validation=current["validation"],
+            policy_disposition=self._disposition(
+                effective_status,
+                str(current["required_validation"]),
+            ),
         )
         self.record_store.commit("compiler-candidates", "compiler_candidate", record)
-        return record.to_object_dict()
+        return record.to_dict() if hasattr(record, "to_dict") else record.to_object_dict()
 
     def tournament(self, candidate_ids: list[str]) -> dict[str, object]:
         ranked = [self._get(candidate_id) for candidate_id in candidate_ids]
@@ -224,13 +192,15 @@ class CompilerCandidateService:
         rejected: list[dict[str, object]] = []
         unresolved: list[dict[str, object]] = []
         for record in ranked:
+            effective_status = self._effective_semantic_status(record)
             disposition = self._disposition(
-                str(record["semantic_status"]),
+                effective_status,
                 str(record["required_validation"]),
-                record["benchmark_observation"],
             )
             summary = self._summary(record)
             summary["policy_disposition"] = disposition
+            summary["effective_semantic_status"] = effective_status
+            summary["validation_freshness"] = self._validation_freshness(record)[0]
             if disposition == ACCEPT:
                 winners.append(summary)
             elif disposition == REJECT:
@@ -242,18 +212,18 @@ class CompilerCandidateService:
             "rejected": rejected,
             "unresolved": unresolved,
             "interpretation": SEARCH_ONLY_INTERPRETATION,
-            "note": "a faster candidate with FAIL or required-UNKNOWN semantic status cannot win",
+            "note": (
+                "a faster candidate with FAIL or required-UNKNOWN semantic status cannot "
+                "win, and validation bound to a different artifact identity cannot promote"
+            ),
             "assurance_status": None,
             "conformance_status": None,
         }
 
     def select(self, candidate_id: str, *, policy: str) -> dict[str, object]:
         record = self._get(candidate_id)
-        disposition = self._disposition(
-            str(record["semantic_status"]),
-            str(record["required_validation"]),
-            record["benchmark_observation"],
-        )
+        effective_status = self._effective_semantic_status(record)
+        disposition = self._disposition(effective_status, str(record["required_validation"]))
         if policy != "explicit-protected-property-policy":
             raise ForgeError(
                 "COMPILER_CANDIDATE_POLICY",
@@ -267,7 +237,8 @@ class CompilerCandidateService:
         return {
             "candidate_id": candidate_id,
             "policy_disposition": disposition,
-            "semantic_status": record["semantic_status"],
+            "semantic_status": effective_status,
+            "validation_freshness": self._validation_freshness(record)[0],
             "interpretation": SEARCH_ONLY_INTERPRETATION,
             "assurance_status": None,
             "conformance_status": None,
@@ -275,11 +246,21 @@ class CompilerCandidateService:
 
     def inspect_unresolved(self, candidate_id: str) -> dict[str, object]:
         record = self._get(candidate_id)
+        freshness, notes = self._validation_freshness(record)
+        validation = record.get("validation")
         return {
             "candidate_id": candidate_id,
             "semantic_status": record["semantic_status"],
+            "effective_semantic_status": self._effective_semantic_status(record),
             "required_validation": record["required_validation"],
-            "validation": record["validation"],
+            "validation_freshness": freshness,
+            "freshness_notes": notes,
+            "validated_artifact_identity": (
+                validation.get("validated_artifact_identity")
+                if isinstance(validation, Mapping)
+                else None
+            ),
+            "candidate_artifact_identity": record["candidate_artifact_identity"],
             "policy_disposition": record["policy_disposition"],
             "interpretation": SEARCH_ONLY_INTERPRETATION,
         }
@@ -297,13 +278,73 @@ class CompilerCandidateService:
             )
         return matches[-1]
 
-    @staticmethod
-    def _disposition(
+    def _successor(
+        self,
+        current: ForgeRecord,
+        *,
         semantic_status: str,
-        required_validation: str,
-        benchmark: object,
-    ) -> str:
-        del benchmark  # measurement is never a promotion input
+        benchmark_observation: object,
+        validation: object,
+        policy_disposition: str,
+    ) -> ForgeRecord:
+        return new_record(
+            RecordType.COMPILER_CANDIDATE,
+            {
+                "baseline_artifact_identity": current["baseline_artifact_identity"],
+                "candidate_artifact_identity": current["candidate_artifact_identity"],
+                "generator_identity": current["generator_identity"],
+                "declared_transformation": current["declared_transformation"],
+                "claimed_relation": current["claimed_relation"],
+                "expected_benefit": current["expected_benefit"],
+                "protected_properties": self._string_list(current["protected_properties"]),
+                "target_envelope": current["target_envelope"],
+                "required_validation": current["required_validation"],
+                "semantic_status": semantic_status,
+                "benchmark_observation": benchmark_observation,
+                "validation": validation,
+                "policy_disposition": policy_disposition,
+                "isolated": True,
+                "generator_certified": False,
+                "interpretation": SEARCH_ONLY_INTERPRETATION,
+                "assurance_status": None,
+                "conformance_status": None,
+                "recorded_at": now(),
+            },
+        )
+
+    def _validation_freshness(self, record: ForgeRecord) -> tuple[str, list[str]]:
+        """Compute freshness from bound identities, not caller declarations.
+
+        Validation attached before ``validated_artifact_identity`` existed keeps
+        its declared freshness. A validation bound to one artifact identity but
+        carried by a candidate record with a different artifact identity is
+        substituted evidence and can never promote.
+        """
+
+        validation = record.get("validation")
+        if not isinstance(validation, Mapping):
+            return FRESH_UNVALIDATED, []
+        declared = str(validation.get("freshness") or FRESH_CURRENT)
+        bound = validation.get("validated_artifact_identity")
+        if bound is None:
+            return (FRESH_STALE if declared == FRESH_STALE else FRESH_CURRENT), []
+        artifact = str(record.get("candidate_artifact_identity"))
+        if str(bound) != artifact:
+            note = (
+                f"validation is bound to artifact {bound} but the candidate carries "
+                f"{artifact}; the copied observation cannot promote this candidate"
+            )
+            return FRESH_SUBSTITUTED, [note]
+        return (FRESH_STALE if declared == FRESH_STALE else FRESH_CURRENT), []
+
+    def _effective_semantic_status(self, record: ForgeRecord) -> str:
+        freshness, _notes = self._validation_freshness(record)
+        if freshness in {FRESH_STALE, FRESH_SUBSTITUTED}:
+            return UNKNOWN
+        return str(record["semantic_status"])
+
+    @staticmethod
+    def _disposition(semantic_status: str, required_validation: str) -> str:
         if semantic_status == FAIL:
             return REJECT
         if semantic_status == PASS and required_validation in {

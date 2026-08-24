@@ -573,6 +573,102 @@
       ],
       "type": "object"
     },
+    "execution_assurance": {
+      "additionalProperties": false,
+      "properties": {
+        "action_identity": {
+          "type": "string"
+        },
+        "action_kind": {
+          "enum": [
+            "workflow_action",
+            "verifier_action"
+          ]
+        },
+        "assessed_at": {
+          "type": "string"
+        },
+        "assessment_id": {
+          "type": "string"
+        },
+        "assurance_status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "binding_identity": {
+          "type": "string"
+        },
+        "candidate_identity": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "policy_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project_identity": {
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "record_type": {
+          "const": "execution_assurance"
+        },
+        "requested_properties": {
+          "items": {
+            "enum": [
+              "containerization",
+              "filesystem_isolation",
+              "network_isolation",
+              "runner_capability",
+              "same_operator_execution"
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "unmet_properties": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "action_identity",
+        "action_kind",
+        "assessed_at",
+        "assessment_id",
+        "assurance_status",
+        "binding_identity",
+        "candidate_identity",
+        "policy_identity",
+        "project_identity",
+        "reasons",
+        "requested_properties",
+        "unmet_properties"
+      ],
+      "type": "object"
+    },
     "execution_receipt_binding": {
       "additionalProperties": false,
       "properties": {
@@ -1064,6 +1160,25 @@
           "if": {
             "properties": {
               "kind": {
+                "const": "execution_assurance"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/execution_assurance"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
                 "const": "execution_receipt_binding"
               }
             },
@@ -1209,6 +1324,7 @@
             "disposition",
             "epoch",
             "evaluation",
+            "execution_assurance",
             "execution_receipt_binding",
             "freeze",
             "provider_probe",
@@ -1240,6 +1356,9 @@
             },
             {
               "$ref": "#/$defs/epoch"
+            },
+            {
+              "$ref": "#/$defs/execution_assurance"
             },
             {
               "$ref": "#/$defs/execution_receipt_binding"
@@ -1886,6 +2005,9 @@
     },
     {
       "$ref": "#/$defs/concept_evaluation"
+    },
+    {
+      "$ref": "#/$defs/execution_assurance"
     },
     {
       "$ref": "#/$defs/ledger_entry"

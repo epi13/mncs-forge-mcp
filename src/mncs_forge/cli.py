@@ -184,6 +184,38 @@ def _common_parser() -> argparse.ArgumentParser:
     )
     receipt_get.add_argument("binding_id")
 
+    assessments = commands.add_parser(_cli_command("execution.assurance.list", 0))
+    assessment_commands = assessments.add_subparsers(dest="assessment_command", required=True)
+    assessment_request = _register(
+        assessment_commands.add_parser(_cli_command("execution.assurance.assess")),
+        "execution.assurance.assess",
+    )
+    assessment_request.add_argument("binding")
+    assessment_request.add_argument("--requested", action="append", default=[], required=True)
+    assessment_request.add_argument("--policy", default=None)
+    assessment_list = _register(
+        assessment_commands.add_parser(_cli_command("execution.assurance.list")),
+        "execution.assurance.list",
+    )
+    assessment_list.add_argument("--binding", dest="binding_identity")
+    assessment_list.add_argument("--candidate", dest="candidate_identity")
+
+    cell = commands.add_parser(_cli_command("cell.documents.validate", 0))
+    cell_commands = cell.add_subparsers(dest="cell_command", required=True)
+    cell_validate = _register(
+        cell_commands.add_parser(_cli_command("cell.documents.validate")),
+        "cell.documents.validate",
+    )
+    cell_validate.add_argument("kind", choices=["policy", "test-bundle", "execution-record"])
+    cell_validate.add_argument("document", help="Forge Cell document JSON object")
+    cell_assess = _register(
+        cell_commands.add_parser(_cli_command("cell.execution.assess")),
+        "cell.execution.assess",
+    )
+    cell_assess.add_argument("policy", help="Forge Cell policy JSON object")
+    cell_assess.add_argument("record", help="Forge Cell execution-record JSON object")
+    cell_assess.add_argument("--nonce", dest="expected_nonce", default=None)
+
     compiler = commands.add_parser(_cli_command("compiler.experiments.list", 0))
     compiler_commands = compiler.add_subparsers(dest="compiler_command", required=True)
     compiler_record = _register(
@@ -239,6 +271,7 @@ def _common_parser() -> argparse.ArgumentParser:
     compiler_candidate_attach.add_argument("--counterexample")
     compiler_candidate_attach.add_argument("--limitations", action="append", default=[])
     compiler_candidate_attach.add_argument("--stale", action="store_true")
+    compiler_candidate_attach.add_argument("--expected-artifact", dest="expected_artifact_identity")
     compiler_tournament = _register(
         compiler_commands.add_parser(_cli_command("compiler.tournament.run")),
         "compiler.tournament.run",

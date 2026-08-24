@@ -35,6 +35,7 @@ class RecordType(StrEnum):
     PROVIDER_PROBE = "provider_probe"
     WORKFLOW_ACTION = "workflow_action"
     EXECUTION_RECEIPT_BINDING = "execution_receipt_binding"
+    EXECUTION_ASSURANCE = "execution_assurance"
     WORKFLOW_RESULT = "workflow_result"
     VERIFIER_ACTION = "verifier_action"
     VERIFIER_RESULT = "verifier_result"
@@ -461,6 +462,27 @@ RECORD_SPECS: dict[RecordType, RecordSpec] = {
         identity_prefix="concept-evaluation:",
         identity_exclusions=frozenset({"recorded_at"}),
     ),
+    RecordType.EXECUTION_ASSURANCE: RecordSpec(
+        required=frozenset(
+            {
+                "project_identity",
+                "candidate_identity",
+                "binding_identity",
+                "action_kind",
+                "action_identity",
+                "requested_properties",
+                "unmet_properties",
+                "reasons",
+                "assurance_status",
+                "policy_identity",
+                "assessed_at",
+                "assessment_id",
+            }
+        ),
+        identity_field="assessment_id",
+        identity_prefix="execution-assurance:",
+        status_field="assurance_status",
+    ),
 }
 
 LEDGER_REQUIRED = frozenset(
@@ -473,6 +495,7 @@ LEDGER_KIND_TYPES: dict[str, RecordType] = {
     "provider_probe": RecordType.PROVIDER_PROBE,
     "workflow_action": RecordType.WORKFLOW_ACTION,
     "execution_receipt_binding": RecordType.EXECUTION_RECEIPT_BINDING,
+    "execution_assurance": RecordType.EXECUTION_ASSURANCE,
     "result": RecordType.WORKFLOW_RESULT,
     "verifier_action": RecordType.VERIFIER_ACTION,
     "verifier_result": RecordType.VERIFIER_RESULT,
@@ -491,6 +514,7 @@ RECORD_GROUP_TYPES: dict[str, RecordType] = {
     "provider-probes": RecordType.PROVIDER_PROBE,
     "workflow-actions": RecordType.WORKFLOW_ACTION,
     "execution-receipt-bindings": RecordType.EXECUTION_RECEIPT_BINDING,
+    "assessments": RecordType.EXECUTION_ASSURANCE,
     "results": RecordType.WORKFLOW_RESULT,
     "verifier-actions": RecordType.VERIFIER_ACTION,
     "verifier-results": RecordType.VERIFIER_RESULT,
@@ -530,6 +554,12 @@ PERSISTED_RECORD_CONTEXTS: dict[str, PersistedRecordContext] = {
         "execution_receipt_binding",
         RecordType.EXECUTION_RECEIPT_BINDING,
         "binding_id",
+    ),
+    "execution_assurance": PersistedRecordContext(
+        "assessments",
+        "execution_assurance",
+        RecordType.EXECUTION_ASSURANCE,
+        "assessment_id",
     ),
     "result": PersistedRecordContext(
         "results", "result", RecordType.WORKFLOW_RESULT, "output_identity"
@@ -663,6 +693,18 @@ REQUIRED_STRING_FIELDS: dict[RecordType, frozenset[str]] = {
             "status",
             "recorded_at",
             "binding_id",
+        }
+    ),
+    RecordType.EXECUTION_ASSURANCE: frozenset(
+        {
+            "project_identity",
+            "candidate_identity",
+            "binding_identity",
+            "action_kind",
+            "action_identity",
+            "assurance_status",
+            "assessed_at",
+            "assessment_id",
         }
     ),
     RecordType.WORKFLOW_RESULT: frozenset(
@@ -1028,12 +1070,18 @@ class ConceptEvaluationRecord(ForgeRecord):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class ExecutionAssuranceRecord(ForgeRecord):
+    pass
+
+
 MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.EPOCH: EpochRecord,
     RecordType.CANDIDATE: CandidateRecord,
     RecordType.PROVIDER_PROBE: ProviderProbeRecord,
     RecordType.WORKFLOW_ACTION: WorkflowActionRecord,
     RecordType.EXECUTION_RECEIPT_BINDING: ExecutionReceiptBindingRecord,
+    RecordType.EXECUTION_ASSURANCE: ExecutionAssuranceRecord,
     RecordType.WORKFLOW_RESULT: WorkflowResultRecord,
     RecordType.VERIFIER_ACTION: VerifierActionRecord,
     RecordType.VERIFIER_RESULT: VerifierResultRecord,
@@ -1120,6 +1168,8 @@ def _validate_fields(record_type: RecordType, fields: JsonObject) -> None:
         )
     if record_type is RecordType.EXECUTION_RECEIPT_BINDING:
         _validate_execution_receipt_binding(fields)
+    if record_type is RecordType.EXECUTION_ASSURANCE:
+        _validate_execution_assurance(fields)
     if record_type is RecordType.COMPILER_EXPERIMENT:
         if fields["language_contract_id"] not in {
             "mncs:language:compilation-study-result:0.1",
@@ -1234,6 +1284,58 @@ ESTABLISHED_PROPERTY_KEYS = (
     "evaluator_independence",
     "governance_certification",
 )
+
+ASSURANCE_REQUEST_PROPERTIES = frozenset(
+    {
+        "runner_capability",
+        "filesystem_isolation",
+        "network_isolation",
+        "containerization",
+        "same_operator_execution",
+    }
+)
+
+
+def _validate_execution_assurance(fields: JsonObject) -> None:
+    if fields["action_kind"] not in RECEIPT_ACTION_KINDS:
+        raise ForgeError("RECORD_MALFORMED", "execution assurance action_kind is invalid")
+    requested = fields["requested_properties"]
+    if (
+        not isinstance(requested, list)
+        or not requested
+        or not all(isinstance(item, str) and item for item in requested)
+        or len(set(requested)) != len(requested)
+    ):
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            "execution assurance requires unique non-empty requested properties",
+        )
+    requested_keys = {str(item) for item in requested}
+    outside = sorted(requested_keys - ASSURANCE_REQUEST_PROPERTIES)
+    if outside:
+        raise ForgeError(
+            "RECORD_AUTHORITY",
+            "requested execution-assurance properties are outside the declared vocabulary: "
+            + ", ".join(outside),
+        )
+    unmet = fields["unmet_properties"]
+    if not isinstance(unmet, list) or not all(isinstance(item, str) for item in unmet):
+        raise ForgeError("RECORD_MALFORMED", "execution assurance unmet properties are invalid")
+    if not set(unmet) <= set(requested):
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            "unmet execution-assurance properties must be a subset of requested properties",
+        )
+    reasons = fields["reasons"]
+    if not isinstance(reasons, list) or not all(isinstance(item, str) and item for item in reasons):
+        raise ForgeError("RECORD_MALFORMED", "execution assurance reasons must be text")
+    if fields["assurance_status"] == "PASS" and (unmet or reasons):
+        raise ForgeError(
+            "RECORD_AUTHORITY",
+            "execution assurance PASS cannot carry unmet properties or reasons",
+        )
+    if fields["assurance_status"] == "FAIL" and not reasons:
+        raise ForgeError("RECORD_MALFORMED", "execution assurance FAIL requires recorded reasons")
 
 
 def _validate_execution_receipt_binding(fields: JsonObject) -> None:

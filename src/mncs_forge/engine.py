@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from .adapters import LocalProcessRunner, LocalProjectObserver
+from .adapters import LocalProjectObserver, build_runner
+from .application.assurance import assess_execution_receipt, list_assessments
 from .application.candidates import CandidateService
 from .application.compiler_candidates import CompilerCandidateService
 from .application.compiler_studies import CompilerEvolutionService
@@ -22,6 +23,13 @@ from .application.support import now, redact
 from .application.workflows import DevelopmentWorkflowService, WorkflowExecutor
 from .config import ForgeConfig, Provider
 from .errors import ForgeError
+from .forge_cell import (
+    ForgeCellValidationError,
+    validate_forge_cell_document,
+)
+from .forge_cell import (
+    assess_execution_assurance as assess_cell_execution_assurance,
+)
 from .ledger import Ledger
 from .micro_verifiers import MicroVerifierService
 from .record_store import LocalRecordStore, RecordStore
@@ -57,7 +65,7 @@ class Forge:
         self.ledger = Ledger(config.state_dir)
         self.record_store = record_store or LocalRecordStore(config.state_dir, self.ledger)
 
-        self._executor = LocalProcessRunner()
+        self._executor = build_runner(config)
         self._observer = LocalProjectObserver(config)
         self._lifecycle = LifecycleContext(
             mode=mode,
@@ -416,6 +424,78 @@ class Forge:
     def execution_receipts_get(self, binding_id: str) -> dict[str, object]:
         return get_binding(self.ledger, binding_id)
 
+    def execution_assurance_assess(
+        self,
+        *,
+        binding_id: str,
+        requested_properties: list[str],
+        policy_identity: str | None = None,
+    ) -> dict[str, object]:
+        return assess_execution_receipt(
+            config=self.config,
+            records=self.ledger,
+            record_store=self.record_store,
+            binding_id=binding_id,
+            requested_properties=requested_properties,
+            policy_identity=policy_identity,
+        )
+
+    def execution_assurance_list(
+        self,
+        binding_identity: str | None = None,
+        candidate_identity: str | None = None,
+    ) -> dict[str, object]:
+        return list_assessments(
+            self.ledger,
+            binding_identity=binding_identity,
+            candidate_identity=candidate_identity,
+        )
+
+    def cell_document_validate(
+        self, kind: str, document: Mapping[str, object]
+    ) -> dict[str, object]:
+        try:
+            validate_forge_cell_document(kind, document)  # type: ignore[arg-type]
+        except ForgeCellValidationError as exc:
+            return {
+                "ok": False,
+                "kind": kind,
+                "code": exc.code,
+                "message": str(exc),
+                "note": "Forge Cell validation is offline schema checking; it executes nothing.",
+            }
+        return {
+            "ok": True,
+            "kind": kind,
+            "schema_version": "0.1",
+            "note": "The document satisfies its packaged Forge Cell 0.1 schema.",
+        }
+
+    def cell_execution_assess(
+        self,
+        policy: Mapping[str, object],
+        record: Mapping[str, object],
+        expected_nonce: str | None = None,
+    ) -> dict[str, object]:
+        try:
+            assessment = assess_cell_execution_assurance(
+                dict(policy), dict(record), expected_nonce=expected_nonce
+            )
+        except ForgeCellValidationError as exc:
+            raise ForgeError("CELL_DOCUMENT_INVALID", f"{exc.code}: {exc}") from exc
+        return {
+            "assurance_status": assessment.status,
+            "reasons": list(assessment.reasons),
+            "requested": list(assessment.requested),
+            "enforced": list(assessment.enforced),
+            "unmet": list(assessment.unmet),
+            "dominance": "FAIL > UNKNOWN > PASS",
+            "note": (
+                "Assurance is assessed separately from any test result; a test PASS "
+                "cannot establish isolation or custody properties."
+            ),
+        }
+
     def compiler_experiment_record(
         self, language_record: Mapping[str, object]
     ) -> dict[str, object]:
@@ -484,6 +564,7 @@ class Forge:
         counterexample: dict[str, object] | None = None,
         limitations: list[str] | None = None,
         stale: bool = False,
+        expected_artifact_identity: str | None = None,
     ) -> dict[str, object]:
         return self._compiler_candidate_service.attach_validation(
             candidate_id,
@@ -493,6 +574,7 @@ class Forge:
             counterexample=counterexample,
             limitations=limitations,
             stale=stale,
+            expected_artifact_identity=expected_artifact_identity,
         )
 
     def compiler_tournament(self, candidate_ids: list[str]) -> dict[str, object]:

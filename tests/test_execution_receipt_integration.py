@@ -270,3 +270,79 @@ def test_canonical_binding_bytes_round_trip(config: ForgeConfig) -> None:
     encoded = canonical_bytes(binding.to_json())
     parsed = parse_record(json.loads(encoded), expected_type=RecordType.EXECUTION_RECEIPT_BINDING)
     assert parsed.to_json() == binding.to_json()
+
+
+def test_verifier_run_persists_verifier_action_receipt_binding(
+    config: ForgeConfig,
+) -> None:
+    forge = Forge(config)
+    begin(forge)
+    candidate = register(forge)
+
+    result = forge.verifier_run(
+        "verify-pass",
+        changed_paths=["candidate/main.py"],
+        scope="file",
+    )
+
+    assert result["status"] == "PASS"
+    summary = result["execution_receipt"]
+    assert isinstance(summary, dict)
+    assert summary["receipt_completeness"] == "complete"
+    assert summary["status"] == "UNKNOWN"
+    assert summary["termination_category"] == "completed"
+    assert summary["result_identity"] == result["output_identity"]
+    bindings = forge.ledger.records("execution_receipt_binding")
+    assert len(bindings) == 1
+    binding = bindings[0].payload
+    assert binding["action_kind"] == "verifier_action"
+    assert binding["workflow_or_verifier"] == "verify-pass"
+    assert binding["candidate_identity"] == candidate["candidate_id"]
+    assert binding["result_identity"] == result["output_identity"]
+    assert isinstance(binding["mncs_receipt"], Mapping)
+    assert forge.ledger.verify()["ok"] is True
+    listed = forge.execution_receipts_list()
+    assert listed["count"] == 1
+
+
+def test_timeout_verifier_run_persists_incomplete_binding(config: ForgeConfig) -> None:
+    forge = Forge(config)
+    begin(forge)
+    register(forge)
+
+    result = forge.verifier_run(
+        "verify-timeout",
+        changed_paths=["candidate/main.py"],
+        scope="file",
+    )
+
+    assert result["status"] == "UNKNOWN"
+    summary = result.get("execution_receipt")
+    assert isinstance(summary, dict)
+    assert summary["receipt_completeness"] == "incomplete"
+    assert summary["termination_category"] == "timeout"
+    assert summary["status"] == "UNKNOWN"
+    properties = summary["established_properties"]
+    assert isinstance(properties, Mapping)
+    assert properties["execution_completed"] == "unknown"
+
+
+def test_tampered_verifier_binding_fails_closed(config: ForgeConfig) -> None:
+    forge = Forge(config)
+    begin(forge)
+    register(forge)
+    forge.verifier_run(
+        "verify-pass",
+        changed_paths=["candidate/main.py"],
+        scope="file",
+    )
+    binding = forge.ledger.records("execution_receipt_binding")[0].payload
+    tampered = binding.to_object_dict()
+    receipt = tampered["mncs_receipt"]
+    assert isinstance(receipt, dict)
+    process = receipt["process"]
+    if isinstance(process, dict):
+        process["harness_status"] = "PASS"  # type: ignore[index]
+    with pytest.raises(ForgeError) as issue:
+        parse_record(tampered, expected_type=RecordType.EXECUTION_RECEIPT_BINDING)
+    assert issue.value.code == "RECORD_IDENTITY"
