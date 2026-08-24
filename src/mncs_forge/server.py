@@ -178,6 +178,16 @@ def build_server(forge: Forge) -> FastMCP:
             sort_keys=True,
         )
 
+    @server.resource("mncs-forge://execution/assessments")
+    def execution_assessments() -> str:
+        return json.dumps(
+            resource(
+                "execution.assurance.list",
+                "mncs-forge://execution/assessments",
+            ),
+            sort_keys=True,
+        )
+
     @server.resource("mncs-forge://guide/usage")
     def usage_guide() -> str:
         return (

@@ -25,6 +25,7 @@ def test_mcp_tool_names_modes_and_schemas_come_from_registry(project: Path) -> N
             "mncs_forge_compiler_candidate_attach",
             "mncs_forge_compiler_tournament",
             "mncs_forge_compiler_candidate_select",
+            "mncs_forge_execution_assurance_assess",
         }
         | {"mncs_forge_final_evaluation_run"}
     )
