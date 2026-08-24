@@ -138,10 +138,7 @@ class CompilerCandidateService:
                 "a generator cannot certify its own compiler candidate",
             )
         bound_artifact = str(current["candidate_artifact_identity"])
-        if (
-            expected_artifact_identity is not None
-            and expected_artifact_identity != bound_artifact
-        ):
+        if expected_artifact_identity is not None and expected_artifact_identity != bound_artifact:
             raise ForgeError(
                 "COMPILER_VALIDATION_ARTIFACT_MISMATCH",
                 "validation was declared for a different candidate artifact identity; "
