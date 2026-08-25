@@ -62,6 +62,7 @@ EXPECTED_CLI = {
     "explain",
     "inspect",
     "ledger verify",
+    "license-evidence scan",
     "operations",
     "providers blockers",
     "providers list",
@@ -81,6 +82,7 @@ EXPECTED_CLI = {
 
 EXPECTED_DEVELOPMENT_MCP = {
     "mncs_forge_bundle_build",
+    "mncs_forge_license_evidence_scan",
     "mncs_forge_candidate_compare",
     "mncs_forge_candidate_freeze",
     "mncs_forge_candidate_register",
@@ -145,7 +147,7 @@ def semantic_snapshot() -> list[tuple[object, ...]]:
 def test_registry_is_unique_validated_and_deterministically_ordered() -> None:
     operation_ids = [item.operation_id for item in DEFAULT_OPERATION_REGISTRY.operations]
     assert operation_ids == sorted(operation_ids)
-    assert len(operation_ids) == len(set(operation_ids)) == 48
+    assert len(operation_ids) == len(set(operation_ids)) == 49
     assert all(callable(item.handler) for item in DEFAULT_OPERATION_REGISTRY.operations)
     assert all(
         fields(item.input_model) is not None for item in DEFAULT_OPERATION_REGISTRY.operations
@@ -176,7 +178,7 @@ def test_inventory_is_canonical_json_and_omits_unstable_handler_details() -> Non
     assert first == second
     inventory = canonical_operation_inventory()
     assert inventory["schema_version"] == "1"
-    assert len(inventory["operations"]) == 48
+    assert len(inventory["operations"]) == 49
     assert "0x" not in first
     assert "handler" not in first
     semantic = json.dumps(
@@ -194,7 +196,7 @@ def test_inventory_is_canonical_json_and_omits_unstable_handler_details() -> Non
         separators=(",", ":"),
     )
     assert hashlib.sha256(semantic.encode()).hexdigest() == (
-        "2a4c626b8666b4c71c37ba304bebaa9fe77f3c9bb78d6ee6dead43dea9ac8c55"
+        "eaa13f2e8788b72eb4d008414a04375e91cc0151ead7148f55d4495e9226d851"
     )
 
 
