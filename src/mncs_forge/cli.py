@@ -184,6 +184,15 @@ def _common_parser() -> argparse.ArgumentParser:
     )
     receipt_get.add_argument("binding_id")
 
+    license_evidence = commands.add_parser(_cli_command("rights.license-evidence.scan", 0))
+    license_evidence_commands = license_evidence.add_subparsers(
+        dest="license_evidence_command", required=True
+    )
+    _register(
+        license_evidence_commands.add_parser(_cli_command("rights.license-evidence.scan")),
+        "rights.license-evidence.scan",
+    )
+
     assessments = commands.add_parser(_cli_command("execution.assurance.list", 0))
     assessment_commands = assessments.add_subparsers(dest="assessment_command", required=True)
     assessment_request = _register(
