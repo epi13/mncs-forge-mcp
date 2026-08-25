@@ -13,6 +13,13 @@ from mncs_forge.config import load_config
 from mncs_forge.errors import ForgeError
 from mncs_forge.podman_runner import PodmanRunner
 
+# The rootless Podman adapter is POSIX-only by contract; on Windows hosts the
+# adapter itself refuses (ForgeError), so these tests assert POSIX behavior.
+pytestmark = pytest.mark.skipif(
+    os.name != "posix",
+    reason="rootless Podman runner requires a POSIX host",
+)
+
 FAKE_PODMAN = """\
 #!/usr/bin/env python3
 import json, os, sys, time

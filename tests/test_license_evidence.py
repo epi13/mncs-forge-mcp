@@ -71,7 +71,7 @@ def test_notice_file_hash_and_heuristic_confidence(project_root: Path) -> None:
     recorded = observations["notice_file:LICENSE"]["value"]["sha256"]
     import hashlib
 
-    assert recorded == hashlib.sha256(b"Apache License\nVersion 2.0, January 2004\n").hexdigest()
+    assert recorded == hashlib.sha256((project_root / "LICENSE").read_bytes()).hexdigest()
 
 
 def test_digest_tamper_detection(project_root: Path) -> None:
