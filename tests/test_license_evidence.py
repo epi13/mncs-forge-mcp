@@ -43,8 +43,7 @@ def test_declared_metadata_becomes_observed_declaration(project_root: Path) -> N
     evidence = scan_license_evidence(_config(project_root))
     claims = [c for c in evidence["claims"] if c["claim_type"] == "license-identification"]
     assert any(
-        c["confidence"] == "observed-declaration" and "Apache-2.0" in c["statement"]
-        for c in claims
+        c["confidence"] == "observed-declaration" and "Apache-2.0" in c["statement"] for c in claims
     )
 
 
@@ -72,12 +71,7 @@ def test_notice_file_hash_and_heuristic_confidence(project_root: Path) -> None:
     recorded = observations["notice_file:LICENSE"]["value"]["sha256"]
     import hashlib
 
-    assert (
-        recorded
-        == hashlib.sha256(
-            b"Apache License\nVersion 2.0, January 2004\n"
-        ).hexdigest()
-    )
+    assert recorded == hashlib.sha256(b"Apache License\nVersion 2.0, January 2004\n").hexdigest()
 
 
 def test_digest_tamper_detection(project_root: Path) -> None:
