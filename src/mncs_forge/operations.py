@@ -449,6 +449,7 @@ class ForgeOperationTarget(Protocol):
     def final_evaluation_run(self, workflow_names: list[str]) -> JsonObject: ...
     def evidence_reconcile(self, candidate_id: str | None = None) -> JsonObject: ...
     def bundle_build(self, workflow_name: str, candidate_id: str | None = None) -> JsonObject: ...
+    def license_evidence_scan(self) -> JsonObject: ...
     def execution_receipts_list(
         self,
         candidate_identity: str | None = None,
@@ -767,6 +768,11 @@ def _evidence_reconcile(forge: ForgeOperationTarget, value: OperationInput) -> J
 def _bundle_build(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
     request = _typed(value, BundleBuildInput)
     return forge.bundle_build(request.workflow_name, request.candidate_identity)
+
+
+def _license_evidence_scan(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    del value
+    return forge.license_evidence_scan()
 
 
 def _execution_receipts_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
@@ -1658,6 +1664,24 @@ _OPERATIONS = (
         ),
         mcp=_mcp("mncs_forge_execution_receipts_list"),
         resources=(ResourceExposure("mncs-forge://execution/receipts"),),
+    ),
+    _operation(
+        "rights.license-evidence.scan",
+        input_model=NoInput,
+        output=OutputContract.RECORD,
+        handler=_license_evidence_scan,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Scan project license declarations into a rights/provenance evidence "
+            "record. Unknown states are explicit; this is not legal review."
+        ),
+        cli=_cli(
+            "license-evidence",
+            "scan",
+        ),
+        mcp=_mcp("mncs_forge_license_evidence_scan"),
     ),
     _operation(
         "execution.receipts.get",

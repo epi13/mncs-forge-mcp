@@ -14,6 +14,7 @@ from .application.concept_evaluations import ConceptEvaluationService
 from .application.evaluation import EvaluationService
 from .application.evidence import EvidenceService
 from .application.execution_receipts import get_binding, list_bindings
+from .application.license_evidence import scan_license_evidence as _scan_license_evidence
 from .application.lifecycle import LifecycleContext
 from .application.project import ProjectService
 from .application.providers import ProviderService
@@ -222,6 +223,10 @@ class Forge:
         """Retain direct local ledger verification as an intentional CLI utility."""
 
         return self.ledger.verify()
+
+    def license_evidence_scan(self) -> dict[str, object]:
+        """Scan project license declarations into a rights evidence record."""
+        return _scan_license_evidence(self.config)
 
     def provider_list(self) -> dict[str, object]:
         return self._provider_service.inventory()
