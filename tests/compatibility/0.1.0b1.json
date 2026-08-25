@@ -440,6 +440,7 @@
           "namespace": "provider_id"
         }
       ],
+      "rights.license-evidence.scan": [],
       "verifiers.batch": [
         {
           "decoder": "value",
@@ -1293,6 +1294,10 @@
       "ledger verify": {
         "arguments": [],
         "operation_id": "ledger.verify"
+      },
+      "license-evidence scan": {
+        "arguments": [],
+        "operation_id": "rights.license-evidence.scan"
       },
       "operations": {
         "arguments": [],
@@ -2190,6 +2195,12 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_license_evidence_scan": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_project_inspect": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
@@ -2639,6 +2650,12 @@
             "workflow_names"
           ]
         },
+        "mncs_forge_license_evidence_scan": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_project_inspect": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
@@ -2793,6 +2810,7 @@
       "providers.capability-blockers",
       "providers.list",
       "providers.probe",
+      "rights.license-evidence.scan",
       "verifiers.batch",
       "verifiers.describe",
       "verifiers.explain",
@@ -2801,7 +2819,7 @@
       "verifiers.run"
     ],
     "schema_version": "1",
-    "semantic_sha256": "2a4c626b8666b4c71c37ba304bebaa9fe77f3c9bb78d6ee6dead43dea9ac8c55"
+    "semantic_sha256": "eaa13f2e8788b72eb4d008414a04375e91cc0151ead7148f55d4495e9226d851"
   },
   "packaging": {
     "dependencies": [
@@ -2858,6 +2876,7 @@
       "failure_explain": "(self, output_identity: 'str | None' = None) -> 'dict[str, object]'",
       "final_evaluation_run": "(self, workflow_names: 'list[str]') -> 'dict[str, object]'",
       "ledger_verify": "(self) -> 'dict[str, object]'",
+      "license_evidence_scan": "(self) -> 'dict[str, object]'",
       "project_inspect": "(self) -> 'dict[str, object]'",
       "provider_list": "(self) -> 'dict[str, object]'",
       "provider_probe": "(self, provider_id: 'str') -> 'dict[str, object]'",
