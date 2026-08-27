@@ -238,7 +238,7 @@ def invoke_shadow_provider(
         "context_observations": list(context_observations),
         "lineage_identity": lineage_identity,
     }
-    request_identity = request["request_id"]
+    request_identity = str(request["request_id"])
     encoded_request = canonical_bytes(request)
     if len(encoded_request) > MAX_REQUEST_BYTES:
         raise LearnedSpecialistError("specialist request exceeds Forge input ceiling")
