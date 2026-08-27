@@ -77,6 +77,7 @@ class OutputContract(StrEnum):
 
 class CliDecoder(StrEnum):
     VALUE = "value"
+    JSON_VALUE = "json-value"
     JSON_OBJECT = "json-object"
     DEPENDENCIES = "dependencies"
 
@@ -124,6 +125,16 @@ class ClaimBlockersInput(OperationInput):
 @dataclass(frozen=True, slots=True)
 class ProviderProbeInput(OperationInput):
     provider_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class LearnedSpecialistShadowInput(OperationInput):
+    artifact_path: str
+    provider_command: list[str]
+    source_records: list[dict[str, object]]
+    context_observations: list[dict[str, object]] | None = None
+    lineage_identity: str | None = None
+    timeout_seconds: float = 5.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -367,6 +378,16 @@ class ForgeOperationTarget(Protocol):
     def claim_blockers(self, requested_claim: str) -> JsonObject: ...
     def provider_list(self) -> JsonObject: ...
     def provider_probe(self, provider_id: str) -> JsonObject: ...
+    def learned_specialist_shadow(
+        self,
+        artifact_path: str,
+        provider_command: list[str],
+        source_records: list[dict[str, object]],
+        *,
+        context_observations: list[dict[str, object]] | None = None,
+        lineage_identity: str | None = None,
+        timeout_seconds: float = 5.0,
+    ) -> JsonObject: ...
     def capability_blockers(self, required_capabilities: list[str] | None = None) -> JsonObject: ...
     def verifier_list(self) -> JsonObject: ...
     def verifier_describe(self, verifier_id: str) -> JsonObject: ...
@@ -619,6 +640,18 @@ def _provider_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonOb
 def _provider_probe(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
     request = _typed(value, ProviderProbeInput)
     return forge.provider_probe(request.provider_id)
+
+
+def _learned_specialist_shadow(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, LearnedSpecialistShadowInput)
+    return forge.learned_specialist_shadow(
+        request.artifact_path,
+        request.provider_command,
+        request.source_records,
+        context_observations=request.context_observations,
+        lineage_identity=request.lineage_identity,
+        timeout_seconds=request.timeout_seconds,
+    )
 
 
 def _capability_blockers(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
@@ -1048,6 +1081,35 @@ _OPERATIONS = (
         description="Explicitly probe one provider using bounded Provider Protocol capabilities.",
         cli=_cli("providers", "probe", bindings=(_binding("provider_id"),)),
         mcp=_mcp("mncs_forge_provider_probe"),
+    ),
+    _operation(
+        "providers.learned-shadow",
+        input_model=LearnedSpecialistShadowInput,
+        output=OutputContract.RECORD,
+        handler=_learned_specialist_shadow,
+        authority=AuthorityRequirement.DECLARED_PROVIDER,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Invoke an identity-bound MNEL specialist through the bounded provider boundary "
+            "and record a non-authoritative Forge shadow observation."
+        ),
+        cli=_cli(
+            "providers",
+            "learned-shadow",
+            bindings=(
+                _binding("artifact_path", "artifact"),
+                _binding("provider_command", "provider_command"),
+                _binding("source_records", "source_records", CliDecoder.JSON_VALUE),
+                _binding(
+                    "context_observations",
+                    "context_observations",
+                    CliDecoder.JSON_VALUE,
+                ),
+                _binding("lineage_identity", "lineage"),
+                _binding("timeout_seconds", "timeout"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_learned_specialist_shadow"),
     ),
     _operation(
         "providers.capability-blockers",

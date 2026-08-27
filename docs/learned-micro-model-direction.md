@@ -206,3 +206,14 @@ This direction does **not** mean:
 If this direction works, Forge should become more efficient as its evidence base grows. Repeated development patterns will migrate toward tiny, fast specialists, while rare and genuinely difficult cases continue to receive larger-model reasoning.
 
 The goal is not merely lower token use. It is to make **context selection itself an evidence-governed machine-native capability**.
+
+## Executable first slice
+
+Forge exposes `providers.learned-shadow` through the canonical operation registry and
+`mncs_forge_learned_specialist_shadow` through MCP. It accepts a serialized,
+identity-bound MNEL recurrent specialist, invokes a declared provider with bounded
+argv/timeout/output limits, and compares selected source-record identities against a
+deterministic baseline. The returned record measures recall, false omissions,
+abstention correctness, disagreement, and source bytes/tokens avoided. It retains the
+source-vs-generated distinction and never returns a verifier verdict or promotion
+evidence.
