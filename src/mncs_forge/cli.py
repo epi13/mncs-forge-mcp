@@ -66,6 +66,16 @@ def _common_parser() -> argparse.ArgumentParser:
         "providers.capability-blockers",
     )
     capability_blockers.add_argument("capabilities", nargs="*")
+    learned_shadow = _register(
+        provider_commands.add_parser(_cli_command("providers.learned-shadow")),
+        "providers.learned-shadow",
+    )
+    learned_shadow.add_argument("artifact")
+    learned_shadow.add_argument("--provider-command", action="append", required=True)
+    learned_shadow.add_argument("--source-records", required=True)
+    learned_shadow.add_argument("--context-observations", default="[]")
+    learned_shadow.add_argument("--lineage")
+    learned_shadow.add_argument("--timeout", type=float, default=5.0)
 
     verifier = commands.add_parser(_cli_command("verifiers.list", 0))
     verifier_commands = verifier.add_subparsers(dest="verifier_command", required=True)
@@ -335,6 +345,13 @@ def _json_object(value: str, label: str) -> dict[str, object]:
     return {str(key): item for key, item in parsed.items()}
 
 
+def _json_value(value: str, label: str) -> object:
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ForgeError("CLI_INPUT", f"{label} must be valid JSON") from exc
+
+
 def _dependencies(values: list[str]) -> dict[str, str]:
     result: dict[str, str] = {}
     for value in values:
@@ -354,7 +371,9 @@ def _cli_payload(args: argparse.Namespace) -> dict[str, object]:
     payload: dict[str, object] = {}
     for binding in operation.cli.bindings:
         value = getattr(args, binding.namespace_name)
-        if binding.decoder is CliDecoder.JSON_OBJECT and value is not None:
+        if binding.decoder is CliDecoder.JSON_VALUE and value is not None:
+            value = _json_value(str(value), binding.namespace_name.replace("_", "-"))
+        elif binding.decoder is CliDecoder.JSON_OBJECT and value is not None:
             value = _json_object(str(value), binding.namespace_name.replace("_", "-"))
         elif binding.decoder is CliDecoder.DEPENDENCIES:
             value = _dependencies(list(value))

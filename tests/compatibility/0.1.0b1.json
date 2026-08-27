@@ -432,6 +432,38 @@
           "namespace": "capabilities"
         }
       ],
+      "providers.learned-shadow": [
+        {
+          "decoder": "value",
+          "input": "artifact_path",
+          "namespace": "artifact"
+        },
+        {
+          "decoder": "value",
+          "input": "provider_command",
+          "namespace": "provider_command"
+        },
+        {
+          "decoder": "json-value",
+          "input": "source_records",
+          "namespace": "source_records"
+        },
+        {
+          "decoder": "json-value",
+          "input": "context_observations",
+          "namespace": "context_observations"
+        },
+        {
+          "decoder": "value",
+          "input": "lineage_identity",
+          "namespace": "lineage"
+        },
+        {
+          "decoder": "value",
+          "input": "timeout_seconds",
+          "namespace": "timeout"
+        }
+      ],
       "providers.list": [],
       "providers.probe": [
         {
@@ -1315,6 +1347,64 @@
         ],
         "operation_id": "providers.capability-blockers"
       },
+      "providers learned-shadow": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "artifact",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "provider_command",
+            "nargs": null,
+            "options": [
+              "--provider-command"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "source_records",
+            "nargs": null,
+            "options": [
+              "--source-records"
+            ],
+            "required": true
+          },
+          {
+            "default": "[]",
+            "destination": "context_observations",
+            "nargs": null,
+            "options": [
+              "--context-observations"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "lineage",
+            "nargs": null,
+            "options": [
+              "--lineage"
+            ],
+            "required": false
+          },
+          {
+            "default": 5.0,
+            "destination": "timeout",
+            "nargs": null,
+            "options": [
+              "--timeout"
+            ],
+            "required": false,
+            "value_type": "float"
+          }
+        ],
+        "operation_id": "providers.learned-shadow"
+      },
       "providers list": {
         "arguments": [],
         "operation_id": "providers.list"
@@ -2195,6 +2285,23 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_learned_specialist_shadow": {
+          "input_properties": [
+            "artifact_path",
+            "context_observations",
+            "lineage_identity",
+            "provider_command",
+            "source_records",
+            "timeout_seconds"
+          ],
+          "input_schema_sha256": "0720dd246b2348acbbcf3b9bf5edbfcfa2ee740949ad9366e1b0b71fca3d2f0c",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "artifact_path",
+            "provider_command",
+            "source_records"
+          ]
+        },
         "mncs_forge_license_evidence_scan": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
@@ -2650,6 +2757,23 @@
             "workflow_names"
           ]
         },
+        "mncs_forge_learned_specialist_shadow": {
+          "input_properties": [
+            "artifact_path",
+            "context_observations",
+            "lineage_identity",
+            "provider_command",
+            "source_records",
+            "timeout_seconds"
+          ],
+          "input_schema_sha256": "0720dd246b2348acbbcf3b9bf5edbfcfa2ee740949ad9366e1b0b71fca3d2f0c",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "artifact_path",
+            "provider_command",
+            "source_records"
+          ]
+        },
         "mncs_forge_license_evidence_scan": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
@@ -2808,6 +2932,7 @@
       "project.doctor",
       "project.inspect",
       "providers.capability-blockers",
+      "providers.learned-shadow",
       "providers.list",
       "providers.probe",
       "rights.license-evidence.scan",
@@ -2819,7 +2944,7 @@
       "verifiers.run"
     ],
     "schema_version": "1",
-    "semantic_sha256": "eaa13f2e8788b72eb4d008414a04375e91cc0151ead7148f55d4495e9226d851"
+    "semantic_sha256": "2df90ea4221ca5927ca788e12c17b5c1890a56d68c9e85d78e0f3c790e0a956e"
   },
   "packaging": {
     "dependencies": [
@@ -2875,6 +3000,7 @@
       "execution_receipts_list": "(self, candidate_identity: 'str | None' = None, action_identity: 'str | None' = None) -> 'dict[str, object]'",
       "failure_explain": "(self, output_identity: 'str | None' = None) -> 'dict[str, object]'",
       "final_evaluation_run": "(self, workflow_names: 'list[str]') -> 'dict[str, object]'",
+      "learned_specialist_shadow": "(self, artifact_path: 'str', provider_command: 'list[str]', source_records: 'list[dict[str, object]]', *, context_observations: 'list[dict[str, object]] | None' = None, lineage_identity: 'str | None' = None, timeout_seconds: 'float' = 5.0) -> 'dict[str, object]'",
       "ledger_verify": "(self) -> 'dict[str, object]'",
       "license_evidence_scan": "(self) -> 'dict[str, object]'",
       "project_inspect": "(self) -> 'dict[str, object]'",

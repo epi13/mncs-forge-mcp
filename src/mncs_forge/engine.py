@@ -31,6 +31,7 @@ from .forge_cell import (
 from .forge_cell import (
     assess_execution_assurance as assess_cell_execution_assurance,
 )
+from .learned_specialists import invoke_shadow_provider, read_artifact
 from .ledger import Ledger
 from .micro_verifiers import MicroVerifierService
 from .record_store import LocalRecordStore, RecordStore
@@ -233,6 +234,28 @@ class Forge:
 
     def provider_probe(self, provider_id: str) -> dict[str, object]:
         return self._provider_service.probe(provider_id)
+
+    def learned_specialist_shadow(
+        self,
+        artifact_path: str,
+        provider_command: list[str],
+        source_records: list[dict[str, object]],
+        *,
+        context_observations: list[dict[str, object]] | None = None,
+        lineage_identity: str | None = None,
+        timeout_seconds: float = 5.0,
+    ) -> dict[str, object]:
+        """Run the learned specialist as a bounded, non-authoritative shadow."""
+
+        artifact = read_artifact(artifact_path)
+        return invoke_shadow_provider(
+            provider_command,
+            artifact,
+            source_records,
+            context_observations=context_observations or (),
+            timeout_seconds=timeout_seconds,
+            lineage_identity=lineage_identity,
+        )
 
     def capability_blockers(
         self, required_capabilities: list[str] | None = None
