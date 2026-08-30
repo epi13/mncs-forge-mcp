@@ -1,0 +1,57 @@
+mncs 0.10;
+
+// Public MNCS-native Forge core entrypoints. Host adapters can compile and
+// execute this module independently while the Python CLI/MCP remains the
+// compatibility surface during migration.
+module mncs.forge.core.v1;
+
+use mncs.core.identity as idlib;
+use mncs.core.status as statlib;
+use mncs.core.version as verlib;
+use mncs.forge.lifecycle as lifelib;
+use mncs.forge.records as recslib;
+use mncs.forge.serialization as serlib;
+
+fn candidate_bytes(candidate: recslib.CandidateRecord) -> (result: serlib.CanonicalMaterial) {
+    return recslib.canonical_material(candidate);
+}
+
+fn candidate_validation(
+    candidate: recslib.CandidateRecord,
+    material_digest: idlib.Digest32,
+    expected_parent: idlib.Digest32,
+    expected_source: idlib.Digest32,
+    expected_version: verlib.Version
+) -> (result: recslib.ValidationResult) {
+    return recslib.validate_candidate(candidate, material_digest, expected_parent, expected_source, expected_version);
+}
+
+fn lifecycle_initial() -> (result: lifelib.LifecycleState) {
+    return lifelib.initial();
+}
+
+fn lifecycle_step(current: lifelib.LifecycleState, input: lifelib.TransitionRequest) -> (result: lifelib.TransitionResult) {
+    return lifelib.apply(current, input);
+}
+
+fn status_join(first: statlib.Status, second: statlib.Status, third: statlib.Status, fourth: statlib.Status) -> (result: statlib.Status) {
+    return statlib.dominate4(first, second, third, fourth);
+}
+
+fn status_probe() -> (result: statlib.Status) {
+    return statlib.Status.UNKNOWN;
+}
+
+fn canonical_probe() -> (result: serlib.CanonicalMaterial) {
+    let parent: [byte; 32] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+    let source: [byte; 32] = [31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16,
+        15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
+    let candidate: serlib.CandidateMaterial = serlib.make_candidate_material(
+        idlib.make(parent),
+        idlib.make(source),
+        statlib.Status.UNKNOWN,
+        [1, 2, 3, 4]
+    );
+    return serlib.encode_candidate_material(candidate);
+}
