@@ -1,0 +1,87 @@
+mncs 0.10;
+
+// A narrow MNCS-native Forge record subset. These records are logical values:
+// their identity is supplied by the host after hashing the canonical bytes.
+module mncs.forge.records.v1;
+
+use mncs.core.identity as idlib;
+use mncs.core.status as statlib;
+use mncs.core.version as verlib;
+use mncs.forge.serialization as serlib;
+
+record CandidateRecord {
+    identity: idlib.Digest32,
+    parent: idlib.Digest32,
+    source: idlib.Digest32,
+    version: verlib.Version,
+    evidence: statlib.Status,
+    changed_files: [byte; 4]
+}
+
+record ValidationResult { status: statlib.Status, reason: byte }
+
+fn make_candidate(
+    identity: idlib.Digest32,
+    parent: idlib.Digest32,
+    source: idlib.Digest32,
+    major: i32,
+    minor: i32,
+    patch: i32,
+    evidence: statlib.Status,
+    changed_files: [byte; 4]
+) -> (result: CandidateRecord) {
+    return CandidateRecord {
+        identity: identity,
+        parent: parent,
+        source: source,
+        version: verlib.make(major, minor, patch),
+        evidence: evidence,
+        changed_files: changed_files
+    };
+}
+
+fn canonical_material(value: CandidateRecord) -> (result: serlib.CanonicalMaterial) {
+    let material: serlib.CandidateMaterial = serlib.make_candidate_material(
+        value.parent,
+        value.source,
+        value.evidence,
+        value.changed_files
+    );
+    return serlib.encode_candidate_material(material);
+}
+
+fn valid(status_value: statlib.Status, reason: byte) -> (result: ValidationResult) {
+    return ValidationResult { status: status_value, reason: reason };
+}
+
+// Fail-closed candidate validation. The host-computed material digest is an
+// input, never an authority assertion. UNKNOWN evidence remains UNKNOWN after
+// all structural checks pass, and FAIL always dominates it.
+fn validate_candidate(
+    value: CandidateRecord,
+    material_digest: idlib.Digest32,
+    expected_parent: idlib.Digest32,
+    expected_source: idlib.Digest32,
+    expected_version: verlib.Version
+) -> (result: ValidationResult) {
+    if idlib.is_zero(value.identity) {
+        return valid(statlib.Status.FAIL, 1);
+    }
+    if idlib.equal(value.identity, material_digest) { } else {
+        return valid(statlib.Status.FAIL, 2);
+    }
+    if idlib.equal(value.parent, expected_parent) { } else {
+        return valid(statlib.Status.FAIL, 3);
+    }
+    if idlib.equal(value.source, expected_source) { } else {
+        return valid(statlib.Status.FAIL, 4);
+    }
+    if verlib.satisfies(verlib.Envelope.Exact, expected_version, value.version) { } else {
+        return valid(statlib.Status.FAIL, 5);
+    }
+    return match value.evidence {
+        FAIL => valid(statlib.Status.FAIL, 6),
+        UNKNOWN => valid(statlib.Status.UNKNOWN, 7),
+        PASS => valid(statlib.Status.PASS, 0),
+    };
+}

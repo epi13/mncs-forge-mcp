@@ -14,6 +14,19 @@ limitations, executable identity, and the last explicit probe. A recognized capa
 response can satisfy discovery policy; it is not structural-analysis or conformance PASS.
 Missing capability remains UNKNOWN.
 
+## MNCS-native migration boundary
+
+The repository contains an incremental MNCS-native Forge source spine under
+`mncs/forge/`. It owns the first bounded identity, canonical-material,
+typed-record, and lifecycle seams, while `src/mncs_forge/` remains the Python
+compatibility shell. `NativeForgeAdapter` invokes the language-owned CLI through
+Forge’s existing bounded runner and returns its structured observation. Host-side
+SHA-256 is explicit and limited to material declared by the MNCS module; no
+cryptographic authority is implied by the source helper. The migration is
+deliberately additive: native availability, backend support, and response validity
+are all independently observable, and missing or unsupported capabilities remain
+`UNKNOWN` rather than being treated as success.
+
 ## Control-plane composition
 
 `Forge` is the stable compatibility and composition facade used by both existing interfaces. It
