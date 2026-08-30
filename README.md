@@ -31,9 +31,8 @@ flowchart LR
   Records --> Validators[Offline MNCS / MNCDS validators]
 ```
 
-Forge is orchestration, not analysis. Joern is an optional legacy provider rather than a default
-dependency. Compilers, analyzers, benchmarks, mutation systems, sanitizers, and runtime harnesses
-remain replaceable providers.
+Forge is orchestration, not analysis. Compilers, analyzers, benchmarks, mutation systems,
+sanitizers, and runtime harnesses remain replaceable providers.
 
 ## Quick start
 
