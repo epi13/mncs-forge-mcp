@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add a typed MNCS-native reconciliation kernel for Forge technical evidence.
+  Native mode now classifies bounded per-category status counts, conflict flags,
+  unsupported counts, and aggregate status over a 16-category/8-observation
+  envelope. The host retains labels, record identity, disclosure, persistence,
+  and authority; explicit `off` mode and unavailable runtimes retain the
+  compatibility classifier. The language consumer fixture is now clearly
+  isolated under `integration/forge/` in the sibling repository.
+
 - Package the authoritative Forge MNCS modules in wheels and sdists and add an explicit native
   execution policy (`off`, `prefer`, `required`). The native lifecycle kernel now projects a
   bounded typed history of epochs, candidates, evidence, dispositions, freezes, and evaluations,

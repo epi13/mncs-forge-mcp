@@ -1,0 +1,194 @@
+mncs 0.10;
+
+// Bounded MNCS-native Forge evidence reconciliation.
+//
+// This module classifies only the technical evidence envelope supplied by the
+// host: it does not inspect files, invoke providers, create records, or make a
+// promotion/rights claim. Category names and evidence identities remain opaque
+// host-bound digests. The host retains the record and disclosure projection.
+module mncs.forge.reconciliation.v1;
+
+use mncs.core.identity as idlib;
+use mncs.core.status as statlib;
+
+record CategoryInput {
+    category: idlib.Digest32,
+    statuses: [statlib.Status; 8],
+    count: byte,
+    unsupported_count: byte
+}
+
+record CategoryProjection {
+    category: idlib.Digest32,
+    status: statlib.Status,
+    pass_count: i64,
+    fail_count: i64,
+    unknown_count: i64,
+    observed_count: i64,
+    conflict: bool,
+    unsupported_count: i64,
+    valid: bool
+}
+
+record ReconciliationInput {
+    categories: [CategoryInput; 16],
+    category_count: byte
+}
+
+record ReconciliationState {
+    categories: [CategoryProjection; 16],
+    status: statlib.Status,
+    category_count: i64,
+    conflicting_category_count: i64,
+    unsupported_count: i64,
+    observed_count: i64,
+    valid: bool
+}
+
+record ReconciliationResult { state: ReconciliationState, status: statlib.Status, reason: byte }
+
+fn category_is_present(value: idlib.Digest32) -> (result: bool) {
+    if idlib.is_zero(value) { return false; }
+    return true;
+}
+
+fn category_step(current: CategoryProjection, observed: statlib.Status, include: bool) -> (result: CategoryProjection) {
+    if include {
+        let combined: statlib.Status = statlib.dominate(current.status, observed);
+        return match observed {
+            PASS => CategoryProjection {
+                ..current,
+                status: combined,
+                pass_count: current.pass_count +% 1,
+                observed_count: current.observed_count +% 1
+            },
+            FAIL => CategoryProjection {
+                ..current,
+                status: combined,
+                fail_count: current.fail_count +% 1,
+                observed_count: current.observed_count +% 1
+            },
+            UNKNOWN => CategoryProjection {
+                ..current,
+                status: combined,
+                unknown_count: current.unknown_count +% 1,
+                observed_count: current.observed_count +% 1
+            }
+        };
+    }
+    return current;
+}
+
+fn category(input: CategoryInput) -> (result: CategoryProjection) {
+    let statuses: [statlib.Status; 8] = input.statuses;
+    let count: byte = input.count;
+    let initial: CategoryProjection = CategoryProjection {
+        category: input.category,
+        status: statlib.Status.UNKNOWN,
+        pass_count: 0,
+        fail_count: 0,
+        unknown_count: 0,
+        observed_count: 0,
+        conflict: false,
+        unsupported_count: input.unsupported_count as i64,
+        valid: category_is_present(input.category)
+    };
+    iterate i over statuses carrying summary: CategoryProjection = initial {
+        let include: bool = (i as i64) < (count as i64);
+        next summary = category_step(summary, statuses[i], include);
+    }
+    let kinds: i64 = (summary.pass_count > 0) as i64
+        +% (summary.fail_count > 0) as i64
+        +% (summary.unknown_count > 0) as i64;
+    let valid: bool = summary.valid && (count as i64) <= 8 && summary.observed_count > 0;
+    return CategoryProjection { ..summary, conflict: kinds > 1, valid: valid };
+}
+
+fn empty_category() -> (result: CategoryProjection) {
+    return CategoryProjection {
+        category: idlib.zero(),
+        status: statlib.Status.UNKNOWN,
+        pass_count: 0,
+        fail_count: 0,
+        unknown_count: 0,
+        observed_count: 0,
+        conflict: false,
+        unsupported_count: 0,
+        valid: true
+    };
+}
+
+fn initial() -> (result: ReconciliationState) {
+    let empty: CategoryProjection = empty_category();
+    let categories: [CategoryProjection; 16] = [
+        empty, empty, empty, empty, empty, empty, empty, empty,
+        empty, empty, empty, empty, empty, empty, empty, empty
+    ];
+    return ReconciliationState {
+        categories: categories,
+        status: statlib.Status.UNKNOWN,
+        category_count: 0,
+        conflicting_category_count: 0,
+        unsupported_count: 0,
+        observed_count: 0,
+        valid: true
+    };
+}
+
+fn combine_category(current: statlib.Status, incoming: statlib.Status, has_previous: bool) -> (result: statlib.Status) {
+    if has_previous {
+        return statlib.dominate(current, incoming);
+    }
+    return incoming;
+}
+
+fn add_category(
+    current: ReconciliationState,
+    input: CategoryInput,
+    include: bool
+) -> (result: ReconciliationState) {
+    if include {
+        let projected: CategoryProjection = category(input);
+        let combined: statlib.Status = combine_category(
+            current.status,
+            projected.status,
+            current.category_count > 0
+        );
+        let next_categories: [CategoryProjection; 16] = replace(
+            current.categories,
+            current.category_count as u64,
+            projected
+        );
+        return ReconciliationState {
+            categories: next_categories,
+            status: combined,
+            category_count: current.category_count +% 1,
+            conflicting_category_count: current.conflicting_category_count
+                +% (projected.conflict as i64),
+            unsupported_count: current.unsupported_count +% projected.unsupported_count,
+            observed_count: current.observed_count +% projected.observed_count,
+            valid: current.valid && projected.valid
+        };
+    }
+    return current;
+}
+
+fn project(input: ReconciliationInput) -> (result: ReconciliationResult) {
+    let initial_state: ReconciliationState = initial();
+    let category_inputs: [CategoryInput; 16] = input.categories;
+    iterate i over category_inputs carrying state: ReconciliationState = initial_state {
+        let include: bool = (i as i64) < (input.category_count as i64);
+        let current_input: CategoryInput = category_inputs[i];
+        next state = add_category(state, current_input, include);
+    }
+    let bounded: bool = (input.category_count as i64) <= 16;
+    let valid: bool = state.valid && bounded;
+    if valid {
+        return ReconciliationResult { state: state, status: state.status, reason: 0 };
+    }
+    return ReconciliationResult {
+        state: ReconciliationState { ..state, valid: false },
+        status: statlib.Status.UNKNOWN,
+        reason: 1
+    };
+}

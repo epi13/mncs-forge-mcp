@@ -3,7 +3,8 @@
 Forge now carries a packaged MNCS-native source spine alongside the established
 Python compatibility surface. The source modules are an incremental authority
 boundary for identity-shaped values, canonical candidate material, typed
-candidate validation, and lifecycle projection; the Python CLI and MCP server
+candidate validation, lifecycle projection, and bounded technical evidence
+reconciliation; the Python CLI and MCP server
 remain the stable integration surface during the migration. Forge invokes the
 lifecycle module for both bounded history projection and covered transition
 preflight.
@@ -14,6 +15,7 @@ preflight.
 | `mncs.forge.serialization.v1` | Versioned candidate material layout and status codes |
 | `mncs.forge.records.v1` | Candidate/validation records and fail-closed checks |
 | `mncs.forge.lifecycle.v1` | Epoch/candidate lineage, evidence, disposition, freeze, evaluation, freshness, and stage projection |
+| `mncs.forge.reconciliation.v1` | Bounded per-category status counts, conflict classification, unsupported-count accounting, and aggregate technical status |
 | `mncs.forge.core.v1` | Public entrypoints used by the adapter and service drift fixture |
 
 The authoritative Forge source files are package data under
@@ -53,6 +55,15 @@ identity production, evidence envelopes, evaluator custody, and bundle semantics
 remain in the host boundary. A missing language checkout retains the explicit
 compatibility path; an available but malformed, timed-out, or semantically
 mismatching native result fails closed.
+
+Evidence reconciliation now crosses the same typed boundary. Forge supplies
+opaque category digests plus up to eight status observations per category and
+receives typed category summaries and an aggregate status. Category labels,
+record identities, unsupported-construct presentation, persistence, and
+authority remain host concerns. The 16-category/8-observation limits are
+explicit; native mode never truncates an oversized envelope or treats malformed
+input as a compatibility success. Compatibility classification remains only
+for explicit `off` mode or unavailable language runtimes.
 
 The pure preflight/projection caches are keyed by the native contract, full
 packaged Forge source content, language library/compiler/runtime content, exact

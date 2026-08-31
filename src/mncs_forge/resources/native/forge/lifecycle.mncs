@@ -291,6 +291,9 @@ fn project_candidate(current: ProjectionState, event: HistoryEvent) -> (result: 
     if idlib.is_zero(event.candidate) {
         return invalid_projection(current);
     }
+    if idlib.equal(event.parent_candidate, event.candidate) {
+        return invalid_projection(current);
+    }
     if linelib.valid_root_or_successor(event.parent_candidate, current.current_candidate) { } else {
         return invalid_projection(current);
     }

@@ -23,6 +23,16 @@ authorization returns. An unavailable runtime uses the explicit compatibility pa
 selected native adapter that times out, returns malformed data, or disagrees with the expected
 transition blocks the operation.
 
+Evidence reconciliation uses the native reconciliation kernel when native mode
+is selected. It receives opaque category identities and bounded status slots,
+then returns per-category counts/conflict flags and the aggregate technical
+status. Forge reconstructs the presentation layer from its own records and
+keeps category names, record identities, unsupported-construct disclosure,
+persistence, and rights outside the MNCS ABI. The native envelope is bounded
+to 16 categories with 8 observations each; oversized or malformed input is a
+fail-closed `UNKNOWN` condition, never a truncated compatibility result. The
+compatibility classifier is reserved for `off` mode or unavailable runtimes.
+
 ## Projected dimensions and stages
 
 The projection keeps these dimensions separate:

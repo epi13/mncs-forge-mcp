@@ -9,6 +9,7 @@ use mncs.core.identity as idlib;
 use mncs.core.status as statlib;
 use mncs.core.version as verlib;
 use mncs.forge.lifecycle as lifelib;
+use mncs.forge.reconciliation as reconlib;
 use mncs.forge.records as recslib;
 use mncs.forge.serialization as serlib;
 
@@ -70,6 +71,13 @@ fn lifecycle_preflight(
         evidence
     );
     return lifelib.apply(current, input);
+}
+
+// Project a bounded technical evidence envelope. Forge owns category names,
+// records, persistence, and promotion policy; MNCS owns the status lattice,
+// per-category conflict classification, and aggregate projection.
+fn evidence_reconcile(input: reconlib.ReconciliationInput) -> (result: reconlib.ReconciliationResult) {
+    return reconlib.project(input);
 }
 
 fn status_join(first: statlib.Status, second: statlib.Status, third: statlib.Status, fourth: statlib.Status) -> (result: statlib.Status) {

@@ -10,6 +10,25 @@ from .errors import ForgeError
 FAMILY_MODULE_ROOTS_MECHANISM = "mncs-forge.family-module-roots.v0.1"
 
 
+def resolve_project_root(config_path: Path, value: str) -> Path:
+    """Resolve an integration config's project root within its ancestor chain."""
+
+    if not isinstance(value, str) or not value:
+        raise ForgeError("INVALID_PATH", "configured paths must be non-empty strings")
+    if Path(value).is_absolute():
+        raise ForgeError("ABSOLUTE_PATH", f"absolute project root is forbidden: {value}")
+    if "\x00" in value:
+        raise ForgeError("INVALID_PATH", "NUL is forbidden in paths")
+    config_directory = config_path.resolve(strict=True).parent
+    root = (config_directory / value).resolve(strict=True)
+    if not config_directory.is_relative_to(root):
+        raise ForgeError(
+            "PROJECT_ROOT_ESCAPE",
+            f"project root must contain the configuration directory: {value}",
+        )
+    return root
+
+
 def resolve_family_module_root(project_root: Path, value: str) -> Path:
     """Resolve one declared sibling/package import root.
 
