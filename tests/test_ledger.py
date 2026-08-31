@@ -38,7 +38,23 @@ def test_append_and_verify(tmp_path: Path) -> None:
     second = ledger.append("candidate", candidate(2))
     assert first["sequence"] == 1
     assert second["previous_hash"] == first["entry_hash"]
-    assert ledger.verify()["entries"] == 2
+    assert ledger.verify_chain()["entries"] == 2
+
+
+def test_current_ledger_entry_round_trip_and_hash_projection_are_stable(
+    tmp_path: Path,
+) -> None:
+    ledger = Ledger(tmp_path)
+    entry = ledger.append("candidate", candidate(1))
+    serialized = entry.to_json()
+    body = {key: value for key, value in serialized.items() if key != "entry_hash"}
+
+    assert serialized["record_type"] == "ledger_entry"
+    assert serialized["schema_version"] == "1"
+    assert entry.entry_hash == Ledger._entry_hash(body)
+    assert canonical_bytes(normalize_ledger_entry(serialized).to_json()) == canonical_bytes(
+        serialized
+    )
 
 
 def test_current_ledger_entry_round_trip_and_hash_projection_are_stable(
@@ -72,4 +88,4 @@ def test_concurrent_append_is_serialized(tmp_path: Path) -> None:
     ledger = Ledger(tmp_path)
     with ThreadPoolExecutor(max_workers=8) as pool:
         list(pool.map(lambda value: ledger.append("candidate", candidate(value)), range(40)))
-    assert ledger.verify()["entries"] == 40
+    assert ledger.verify_chain()["entries"] == 40

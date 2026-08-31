@@ -1,6 +1,6 @@
 # ADR 0001: Explicit control-plane composition
 
-- **Status:** Accepted; verifier consolidation implemented, broader service composition pending
+- **Status:** Accepted; implemented in Tasks 1 and 5
 - **Target:** `0.1.0a3` and `0.1.0b1`
 
 ## Context
@@ -25,7 +25,7 @@ Forge will use explicit composition:
 - storage and execution will be injected through typed protocols; and
 - CLI and MCP adapters will invoke application operations rather than implement policy.
 
-The intended dependency direction is:
+The implemented dependency direction is:
 
 ```text
 interfaces -> application services -> domain rules -> adapter protocols -> concrete adapters
@@ -57,3 +57,18 @@ Costs and risks:
 - the verifier lifecycle has one authoritative implementation;
 - `Forge` delegates to explicit services; and
 - import-boundary tests prevent domain-to-interface dependency inversion.
+
+## Implementation evidence
+
+Task 1 removed import-time verifier substitution and retained one `MicroVerifierService`. Task 5
+reduced `Forge` to construction, intentional compatibility helpers, and delegation; introduced
+cohesive application services; and added typed record, execution, identity/workspace-observation,
+and verifier-catalog ports with local adapters at the composition root. The verifier service no
+longer receives a Forge-shaped host. Repository-owned architecture tests reject upward imports,
+service constructors accepting `Forge`, direct service calls to `run_bounded`, concrete local-store
+construction in services, storage bypasses, and cycles among the new application modules.
+
+Task 6 added the typed registry and common pre-handler invocation gate documented in ADR 0010.
+Argparse and FastMCP now derive dispatch identity, typed inputs, mode/mutation policy, authority and
+disclosure metadata, and tool visibility from one definition. Full replaceable runner semantics
+remain Task 7.

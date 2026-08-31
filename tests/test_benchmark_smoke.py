@@ -31,6 +31,7 @@ def test_micro_verifier_benchmark_smoke() -> None:
         "verifier_match",
         "verifier_run",
         "ledger_verify",
+        "state_inspect",
         "verifier_explain",
     }
     for metric in result["metrics"].values():

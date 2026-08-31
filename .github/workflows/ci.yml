@@ -25,5 +25,11 @@ jobs:
       - run: ruff check .
       - run: mypy src
       - run: pytest
-      - run: python scripts/benchmark-micro-verifiers.py --iterations 2
+      - run: python -m pip check
       - run: python -m build
+      - run: python scripts/verify-package.py --artifact-dir dist --no-build
+      - run: python scripts/benchmark-micro-verifiers.py --iterations 2 > benchmark.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: benchmark.json

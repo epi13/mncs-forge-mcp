@@ -8,7 +8,18 @@ evaluator authority, selection/objective references, providers, and workflows.
 
 A provider can declare name, identity/version, argv command, `stdio-jsonl` transport,
 capabilities, required/optional status, supported and unsupported constructs, limitations,
-expected executable SHA-256 identity, descriptor, and allowlisted environment overrides.
+expected executable SHA-256 identity, descriptor, allowlisted environment overrides,
+`python_packages`, and `module_roots`.
+
+`module_roots` is the named **family module roots** mechanism
+(`mncs-forge.family-module-roots.v0.1`). Conventional provider isolation cannot
+see undeclared sibling checkouts. A declared root may walk to a sibling under
+the workspace parent of the Forge project; Forge resolves it, rejects escapes
+and missing directories, injects it into that provider's `PYTHONPATH`, and
+records a module-root observation identity on probe/execution evidence. This
+is not a silent `sys.path` insertion and is not package attestation.
+`python_packages` names importable packages that must be visible through those
+roots or the selected interpreter before a probe is treated as available.
 `required_capabilities` declares project capability policy. Providers are absent and optional by
 default; the configuration never infers a provider from PATH.
 
@@ -40,3 +51,10 @@ declared checks work in a fresh checkout without mutable candidate ledger state.
 
 See [`examples/minimal`](../examples/minimal) and the
 [EdgeStream template](../examples/edgestream/mncs-forge.toml).
+
+The version-1 schema is the explicit compatibility contract; Forge does not introduce a second
+configuration-version mechanism for `0.1.0b1`. Unknown sections, missing required fields, and an
+unsupported `version` fail with `CONFIG_INVALID`. Malformed TOML also fails with
+`CONFIG_INVALID`, while a missing or unreadable file fails with `CONFIG_READ`. Defaults and the
+schema's semantic validation digest are frozen by the
+[`0.1.0b1` compatibility boundary](compatibility-boundary-0.1.0b1.md).

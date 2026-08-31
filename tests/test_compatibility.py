@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 from typing import cast
 
@@ -56,14 +58,40 @@ def test_legacy_fixture_sha256_contract_is_unchanged() -> None:
         assert hashlib.sha256((LEGACY / relative).read_bytes()).hexdigest() == expected
 
 
+def test_0_1_0b1_semantic_compatibility_snapshot_is_current() -> None:
+    subprocess.run(
+        [sys.executable, "scripts/generate-compatibility-snapshot.py", "--check"],
+        check=True,
+    )
+
+
+def test_cli_variadic_positional_requiredness_is_semantic() -> None:
+    snapshot_path = Path("tests/compatibility/0.1.0b1.json")
+    snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    command = snapshot["cli"]["commands"]["providers blockers"]
+    assert command["arguments"][0]["nargs"] == "*"
+    assert command["arguments"][0]["required"] is False
+
+
 def test_legacy_ledger_raw_integrity_is_verified_before_migration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def migration_must_not_run(*args: object, **kwargs: object) -> object:
-        del args, kwargs
-        raise AssertionError("migration ran before raw ledger verification")
+    raw_verified = False
+    original_verify = Ledger._verify_raw_records
+    original_normalize = MIGRATIONS.normalize
 
-    monkeypatch.setattr(MIGRATIONS, "normalize", migration_must_not_run)
+    def observe_raw_verify(self: Ledger, records: list[dict[str, object]]) -> str:
+        nonlocal raw_verified
+        result = original_verify(self, records)  # type: ignore[arg-type]
+        raw_verified = True
+        return result
+
+    def migration_after_raw(*args: object, **kwargs: object) -> object:
+        assert raw_verified, "migration ran before raw ledger verification"
+        return original_normalize(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Ledger, "_verify_raw_records", observe_raw_verify)
+    monkeypatch.setattr(MIGRATIONS, "normalize", migration_after_raw)
     assert Ledger(STATE).verify() == {
         "ok": True,
         "entries": 14,
@@ -161,6 +189,64 @@ def test_legacy_unknown_field_keeps_historical_record_identity_projection() -> N
     assert canonical_bytes(reparsed.to_json()) == canonical_bytes(migrated.to_json())
 
 
+@pytest.mark.parametrize(
+    ("group", "record_type"),
+    [
+        ("results", RecordType.WORKFLOW_RESULT),
+        ("evaluations", RecordType.FINAL_EVALUATION),
+        ("bundles", RecordType.BUNDLE),
+    ],
+)
+def test_early_legacy_result_subject_migrates_without_identity_or_status_drift(
+    group: str, record_type: RecordType
+) -> None:
+    record_path = next((STATE / f"records/{group}").glob("*.json"))
+    raw = json.loads(record_path.read_text(encoding="utf-8"))
+    assert isinstance(raw, dict)
+    raw.pop("subject_type")
+    raw_without_identity = {key: value for key, value in raw.items() if key != "output_identity"}
+    raw["output_identity"] = local_json_identity(raw_without_identity)
+    historical_identity = raw["output_identity"]
+    historical_status = raw["status"]
+
+    migrated = parse_record(raw, expected_type=record_type)
+
+    assert migrated["subject_type"] == "candidate"
+    assert migrated.identity == historical_identity
+    assert migrated.status == historical_status
+    reparsed = parse_record(migrated.to_json(), expected_type=record_type)
+    assert canonical_bytes(reparsed.to_json()) == canonical_bytes(migrated.to_json())
+
+
+def test_early_legacy_result_never_infers_project_authority_from_identity_text() -> None:
+    record_path = next((STATE / "records/results").glob("*.json"))
+    raw = json.loads(record_path.read_text(encoding="utf-8"))
+    assert isinstance(raw, dict)
+    raw.pop("subject_type")
+    raw["candidate_identity"] = "project:historical-fixture"
+    raw_without_identity = {key: value for key, value in raw.items() if key != "output_identity"}
+    raw["output_identity"] = local_json_identity(raw_without_identity)
+
+    migrated = parse_record(raw, expected_type=RecordType.WORKFLOW_RESULT)
+
+    assert migrated["subject_type"] == "candidate"
+
+
+def test_legacy_project_subject_must_participate_in_historical_identity() -> None:
+    record_path = next((STATE / "records/results").glob("*.json"))
+    raw = json.loads(record_path.read_text(encoding="utf-8"))
+    assert isinstance(raw, dict)
+    raw["subject_type"] = "project"
+    without_subject = {
+        key: value for key, value in raw.items() if key not in {"output_identity", "subject_type"}
+    }
+    raw["output_identity"] = local_json_identity(without_subject)
+
+    with pytest.raises(ForgeError) as issue:
+        parse_record(raw, expected_type=RecordType.WORKFLOW_RESULT)
+    assert issue.value.code == "RECORD_IDENTITY"
+
+
 def test_legacy_extensions_and_unknown_fields_both_round_trip() -> None:
     result_path = next((STATE / "records/results").glob("*.json"))
     raw = json.loads(result_path.read_text(encoding="utf-8"))
@@ -218,10 +304,40 @@ def test_raw_valid_type_mismatched_current_ledger_fails_after_integrity(
         + "\n",
         encoding="utf-8",
     )
-    assert ledger.verify()["ok"] is True
+    assert ledger.verify_chain()["ok"] is True
+    with pytest.raises(ForgeError) as issue:
+        ledger.verify()
+    assert issue.value.code == "RECORD_TYPE_MISMATCH"
+
+
+def test_raw_valid_legacy_ledger_rejects_invalid_migrated_status(tmp_path: Path) -> None:
+    result_path = next((STATE / "records/results").glob("*.json"))
+    payload = json.loads(result_path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    payload["status"] = "CERTIFIED"
+    without_identity = {key: value for key, value in payload.items() if key != "output_identity"}
+    payload["output_identity"] = local_json_identity(without_identity)
+    entry_body: dict[str, object] = {
+        "sequence": 1,
+        "timestamp": "2026-01-01T00:00:00+00:00",
+        "kind": "result",
+        "previous_hash": "0" * 64,
+        "payload": payload,
+    }
+    entry = {**entry_body, "entry_hash": Ledger._entry_hash(entry_body)}
+    (tmp_path / "ledger.jsonl").write_text(
+        json.dumps(
+            entry, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    ledger = Ledger(tmp_path)
+    assert ledger.verify_chain()["ok"] is True
     with pytest.raises(ForgeError) as issue:
         ledger.records()
-    assert issue.value.code == "RECORD_TYPE_MISMATCH"
+    assert issue.value.code == "RECORD_STATUS"
 
 
 def test_future_version_is_never_reinterpreted_as_legacy() -> None:

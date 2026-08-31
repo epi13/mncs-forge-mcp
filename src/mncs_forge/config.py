@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tomllib
+from contextlib import suppress
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path, PurePosixPath
@@ -14,12 +15,16 @@ from jsonschema import Draft202012Validator
 
 from .errors import ForgeError
 from .execution import validate_argv
+from .serialization import local_json_identity
 from .paths import (
+    FAMILY_MODULE_ROOTS_MECHANISM,
     resolve_contained,
+    resolve_family_module_root,
     validate_relative_path,
     validate_scopes_do_not_overlap,
     validate_tree_containment,
 )
+from .serialization import local_json_identity
 
 
 @dataclass(frozen=True)
@@ -51,6 +56,8 @@ class Provider:
     executable_identity: str | None
     descriptor: str | None
     environment: dict[str, str]
+    module_roots: tuple[str, ...] = ()
+    python_packages: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -122,6 +129,9 @@ class ForgeConfig:
 
     @property
     def state_dir(self) -> Path:
+        override = os.environ.get("MNCS_FORGE_STATE_DIR")
+        if override:
+            return Path(override).expanduser().resolve() / self.project_identity
         return self.root / ".mncs-forge"
 
     def paths(self, key: str, *, must_exist: bool = False) -> list[Path]:
@@ -136,10 +146,53 @@ class ForgeConfig:
         ]
 
     def environment(self, workflow: Workflow) -> dict[str, str]:
-        return self._environment(workflow.environment, f"workflow {workflow.name}")
+        result = self._environment(workflow.environment, f"workflow {workflow.name}")
+        if any(
+            Path(token).name in {"go", "gofmt", "go test", "go vet"} for token in workflow.command
+        ):
+            runtime = self.state_dir / "runtime"
+            cache = runtime / "cache"
+            go_cache = runtime / "go-cache"
+            for directory in (runtime, cache, go_cache):
+                directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+                with suppress(OSError):
+                    os.chmod(directory, 0o700)
+            # Go refuses to start without a cache/home in Forge's intentionally
+            # sparse environment. These paths are Forge-owned and bounded to the
+            # project state directory; the host HOME is never exposed.
+            result.update(
+                {
+                    "HOME": str(runtime),
+                    "XDG_CACHE_HOME": str(cache),
+                    "GOCACHE": str(go_cache),
+                }
+            )
+        return result
+
+    def resolved_module_roots(self, provider: Provider) -> list[tuple[Path, str]]:
+        roots: list[tuple[Path, str]] = []
+        for value in provider.module_roots:
+            resolved = resolve_family_module_root(self.root, value)
+            identity = local_json_identity(
+                {
+                    "mechanism": FAMILY_MODULE_ROOTS_MECHANISM,
+                    "declared": value,
+                    "resolved": str(resolved),
+                    "entries": sorted(path.name for path in resolved.iterdir()),
+                }
+            )
+            roots.append((resolved, identity))
+        return roots
 
     def provider_environment(self, provider: Provider) -> dict[str, str]:
-        return self._environment(provider.environment, f"provider {provider.provider_id}")
+        result = self._environment(provider.environment, f"provider {provider.provider_id}")
+        roots = self.resolved_module_roots(provider)
+        if roots:
+            existing = result.get("PYTHONPATH", "")
+            result["PYTHONPATH"] = os.pathsep.join(
+                [str(path) for path, _identity in roots] + ([existing] if existing else [])
+            )
+        return result
 
     def _environment(self, declared: dict[str, str], label: str) -> dict[str, str]:
         allowed = set(self.raw.get("environment_allowlist", []))
@@ -159,6 +212,11 @@ class ForgeConfig:
     @property
     def required_capabilities(self) -> list[str]:
         return list(self.raw.get("required_capabilities", []))
+
+    @property
+    def runner_settings(self) -> dict[str, Any]:
+        value = self.raw.get("runner", {})
+        return dict(value) if isinstance(value, dict) else {}
 
     def public_commands(self) -> dict[str, list[str]]:
         commands = self.raw.get("commands", {})
@@ -187,10 +245,12 @@ def validate_config_data(data: object) -> dict[str, Any]:
 
 
 def load_config(path: Path | str = Path("mncs-forge.toml")) -> ForgeConfig:
-    config_path = Path(path).expanduser().resolve(strict=True)
     try:
+        config_path = Path(path).expanduser().resolve(strict=True)
         with config_path.open("rb") as stream:
             raw = validate_config_data(tomllib.load(stream))
+    except tomllib.TOMLDecodeError as exc:
+        raise ForgeError("CONFIG_INVALID", f"configuration TOML is malformed: {exc}") from exc
     except OSError as exc:
         raise ForgeError("CONFIG_READ", f"cannot read configuration: {exc}") from exc
     project_root = validate_relative_path(str(raw["project"]["root"]), allow_dot=True)
@@ -211,6 +271,17 @@ def load_config(path: Path | str = Path("mncs-forge.toml")) -> ForgeConfig:
         for value in path_values[key]
     ]
     validate_scopes_do_not_overlap(writable, protected)
+    runner_settings = raw.get("runner", {})
+    if str(runner_settings.get("kind", "local-process")) == "podman-rootless":
+        if not str(runner_settings.get("image", "")).strip():
+            raise ForgeError(
+                "CONFIG_INVALID",
+                "runner kind podman-rootless requires a declared image",
+            )
+        runner_writable = [
+            validate_relative_path(value) for value in runner_settings.get("writable_paths", [])
+        ]
+        validate_scopes_do_not_overlap(runner_writable, protected)
     for policy in raw["policies"].values():
         resolve_contained(root, str(policy), must_exist=False)
     workflows: dict[str, Workflow] = {}
@@ -258,7 +329,11 @@ def load_config(path: Path | str = Path("mncs-forge.toml")) -> ForgeConfig:
             ),
             descriptor=descriptor,
             environment=dict(item.get("environment", {})),
+            module_roots=tuple(str(declared) for declared in item.get("module_roots", [])),
+            python_packages=tuple(str(name) for name in item.get("python_packages", [])),
         )
+        for declared_root in providers[provider_id].module_roots:
+            resolve_family_module_root(root, declared_root)
     for workflow in workflows.values():
         if workflow.provider_protocol and tuple(workflow.command) not in provider_commands:
             raise ForgeError(

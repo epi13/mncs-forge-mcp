@@ -153,6 +153,80 @@ def terminal_unknown_result(
     return result
 
 
+def recovered_terminal_unknown_result(
+    *, action: Mapping[str, object], recorded_at: str
+) -> dict[str, object]:
+    """Build conservative evidence for a durable action stranded by process loss.
+
+    The original provider outcome is unknowable.  This result therefore binds only
+    fields already present in the action and never reconstructs PASS or FAIL evidence
+    from current configuration.
+    """
+
+    mode = action["mode"]
+    result: dict[str, object] = {
+        "action_id": action["action_id"],
+        "verifier_id": action["verifier_id"],
+        "verifier_version": action["verifier_version"],
+        "verifier_identity": action["verifier_identity"],
+        "claim": "verifier execution completion",
+        "category": "operational_recovery",
+        "provider_id": action["provider_id"],
+        "provider_configuration_identity": action["provider_configuration_identity"],
+        "provider_executable_identity": None,
+        "provider_identity": None,
+        "provider_response_identity": None,
+        "method": action["method"],
+        "mode": mode,
+        "evidence_class": (
+            "development_evidence" if mode == "development" else "local_evaluator_evidence"
+        ),
+        "independent_evaluation": False,
+        "iterative_development_overlap": False,
+        "epoch_identity": action["epoch_identity"],
+        "candidate_identity": action["candidate_identity"],
+        "candidate_parent_identity": action["candidate_parent_identity"],
+        "freeze_identity": action["freeze_identity"],
+        "supersedes_output_identity": action["supersedes_output_identity"],
+        "input_identities": action["input_identities"],
+        "configuration_identity": action["configuration_identity"],
+        "policy_identity": action["policy_identity"],
+        "environment_identity": action["environment_identity"],
+        "status": "UNKNOWN",
+        "summary": "verifier action was recovered without a trustworthy provider outcome",
+        "witnesses": [],
+        "assumptions": [],
+        "limitations": [
+            "the process ended after the verifier action became durable",
+            "provider execution may have begun, but no trustworthy terminal output survived",
+        ],
+        "unsupported_constructs": ["interrupted-verifier-action"],
+        "dependency_envelope": {
+            "paths": [],
+            "path_identities": {},
+            "additional_identities": {},
+            "complete": False,
+            "identity": None,
+        },
+        "duration_seconds": 0.0,
+        "stderr_diagnostic": "",
+        "returncode": None,
+        "operational_error": {
+            "code": "VERIFIER_ACTION_STRANDED",
+            "message": "action recovered after process interruption; provider outcome is unknown",
+        },
+        "disclosure": "full" if mode == "development" else "status-only",
+        "recorded_at": recorded_at,
+    }
+    if mode == "evaluator":
+        redact_status_only_result(result)
+        result["operational_error"] = {
+            "code": "VERIFIER_ACTION_STRANDED",
+            "message": "action recovered after process interruption; provider outcome is unknown",
+        }
+    return result
+
+
 def unrecorded_batch_unknown(verifier_id: str, code: str, message: str) -> dict[str, Any]:
     """Describe a verifier rejected before an immutable action could be created."""
 
