@@ -19,6 +19,7 @@ from .paths import (
     FAMILY_MODULE_ROOTS_MECHANISM,
     resolve_contained,
     resolve_family_module_root,
+    resolve_project_root,
     validate_relative_path,
     validate_scopes_do_not_overlap,
     validate_tree_containment,
@@ -272,8 +273,7 @@ def load_config(path: Path | str = Path("mncs-forge.toml")) -> ForgeConfig:
         raise ForgeError("CONFIG_INVALID", f"configuration TOML is malformed: {exc}") from exc
     except OSError as exc:
         raise ForgeError("CONFIG_READ", f"cannot read configuration: {exc}") from exc
-    project_root = validate_relative_path(str(raw["project"]["root"]), allow_dot=True)
-    root = config_path.parent.joinpath(*project_root.parts).resolve(strict=True)
+    root = resolve_project_root(config_path, str(raw["project"]["root"]))
     path_values = {key: list(value) for key, value in raw["paths"].items()}
     for values in path_values.values():
         for value in values:

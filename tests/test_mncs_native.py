@@ -251,6 +251,55 @@ def test_native_lifecycle_projection_covers_lineage_freshness_and_terminality() 
     assert ambiguous.status == "UNKNOWN"
 
 
+def test_native_reconciliation_projection_is_typed_and_conflict_visible() -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+
+    result = adapter.reconciliation_projection(
+        {
+            "build": [{"status": "PASS"}, {"status": "UNKNOWN"}],
+            "safety": [{"status": "FAIL", "unsupported_constructs": ["opaque"]}],
+        }
+    )
+
+    assert result.valid is True
+    assert result.reason == 0
+    assert result.status == "FAIL"
+    assert result.category_count == 2
+    assert result.conflicting_category_count == 1
+    assert result.observed_count == 3
+    assert result.unsupported_count == 1
+    assert result.categories[0].status == "UNKNOWN"
+    assert result.categories[0].conflict is True
+    assert result.categories[0].pass_count == 1
+    assert result.categories[0].unknown_count == 1
+    assert result.categories[1].status == "FAIL"
+    assert result.categories[1].unsupported_count == 1
+
+    empty = adapter.reconciliation_projection({})
+    assert empty.status == "UNKNOWN"
+    assert empty.category_count == 0
+    assert empty.observed_count == 0
+
+
+def test_native_reconciliation_projection_rejects_malformed_or_unbounded_input() -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+
+    with pytest.raises(ForgeError, match="between 1 and 8 records"):
+        adapter.reconciliation_projection({"too-many": [{"status": "PASS"}] * 9})
+    with pytest.raises(ForgeError, match="16-category bound"):
+        adapter.reconciliation_projection(
+            {f"category-{index}": [{"status": "PASS"}] for index in range(17)}
+        )
+    with pytest.raises(ForgeError, match="status is invalid"):
+        adapter.reconciliation_projection({"malformed": [{"status": []}]})
+    with pytest.raises(ForgeError, match="categories are malformed"):
+        adapter.reconciliation_projection([])  # type: ignore[arg-type]
+    with pytest.raises(ForgeError, match="records are malformed"):
+        adapter.reconciliation_projection({"malformed": "not-a-record-list"})  # type: ignore[arg-type]
+
+
 def test_native_cache_identity_changes_with_content_even_at_same_path(tmp_path: Path) -> None:
     source = tmp_path / "source.mncs"
     source.write_text("one", encoding="utf-8")

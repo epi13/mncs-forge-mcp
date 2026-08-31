@@ -227,6 +227,96 @@ class EvidenceService:
             "boundary": "Forge reports blockers; it cannot create external authority or promotion",
         }
 
+    @staticmethod
+    def _unsupported_values(items: list[dict[str, object]]) -> list[str]:
+        values: list[str] = []
+        for item in items:
+            unsupported = item.get("unsupported_constructs")
+            if isinstance(unsupported, list):
+                values.extend(str(value) for value in unsupported)
+        return values
+
+    def _native_reconciliation(
+        self, by_category: dict[str, list[dict[str, object]]]
+    ) -> tuple[dict[str, object], list[str], str] | None:
+        native = self.lifecycle.native
+        if native is None:
+            return None
+        projection = native.reconciliation_projection(by_category)
+        ordered = sorted(by_category.items())
+        if len(projection.categories) != len(ordered):
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_MISMATCH",
+                "native reconciliation returned an unexpected category count",
+            )
+        categories: dict[str, object] = {}
+        conflicts: list[str] = []
+        for (category, items), native_category in zip(ordered, projection.categories, strict=True):
+            unsupported_values = self._unsupported_values(items)
+            if native_category.observed_count != len(items):
+                raise ForgeError(
+                    "NATIVE_RECONCILIATION_MISMATCH",
+                    f"native observed count disagrees for evidence category {category}",
+                )
+            if native_category.unsupported_count != len(unsupported_values):
+                raise ForgeError(
+                    "NATIVE_RECONCILIATION_MISMATCH",
+                    f"native unsupported count disagrees for evidence category {category}",
+                )
+            if (
+                native_category.pass_count
+                + native_category.fail_count
+                + native_category.unknown_count
+                != len(items)
+            ):
+                raise ForgeError(
+                    "NATIVE_RECONCILIATION_MISMATCH",
+                    f"native status counts disagree for evidence category {category}",
+                )
+            if native_category.conflict:
+                conflicts.append(category)
+            categories[category] = {
+                "status": native_category.status,
+                "dependencies": [],
+                "records": [str(item["output_identity"]) for item in items],
+                "unsupported": sorted(set(unsupported_values)),
+            }
+        if (
+            projection.observed_count != sum(len(items) for _, items in ordered)
+            or projection.unsupported_count
+            != sum(len(self._unsupported_values(items)) for _, items in ordered)
+            or projection.conflicting_category_count != len(conflicts)
+        ):
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_MISMATCH",
+                "native reconciliation aggregate counts disagree with the request",
+            )
+        return categories, conflicts, projection.status
+
+    @classmethod
+    def _compat_reconciliation(
+        cls, by_category: dict[str, list[dict[str, object]]]
+    ) -> tuple[dict[str, object], list[str], str]:
+        """Compatibility classification used only when native mode is off/unavailable."""
+
+        categories: dict[str, object] = {}
+        conflicts: list[str] = []
+        for category, items in sorted(by_category.items()):
+            values = {str(item["status"]) for item in items}
+            if len(values) > 1:
+                conflicts.append(category)
+            unsupported_values = cls._unsupported_values(items)
+            categories[category] = {
+                "status": aggregate_status(values),
+                "dependencies": [],
+                "records": [str(item["output_identity"]) for item in items],
+                "unsupported": sorted(set(unsupported_values)),
+            }
+        aggregate = aggregate_status(
+            str(value["status"]) for value in categories.values() if isinstance(value, dict)
+        )
+        return categories, conflicts, aggregate
+
     def reconcile(self, candidate_id: str | None = None) -> dict[str, object]:
         resolved_candidate = self.lifecycle.machine().authorize_reconciliation(candidate_id)
         selected_results = self.development.result_records(resolved_candidate)
@@ -238,30 +328,11 @@ class EvidenceService:
         by_category: dict[str, list[dict[str, object]]] = {}
         for result in results:
             by_category.setdefault(str(result["category"]), []).append(result)
-        categories: dict[str, object] = {}
-        conflicts: list[str] = []
-        for category, items in sorted(by_category.items()):
-            values = {str(item["status"]) for item in items}
-            if len(values) > 1:
-                conflicts.append(category)
-            unsupported_values = [
-                str(value)
-                for item in items
-                for value in (
-                    item["unsupported_constructs"]
-                    if isinstance(item["unsupported_constructs"], list)
-                    else []
-                )
-            ]
-            categories[category] = {
-                "status": aggregate_status(values),
-                "dependencies": [],
-                "records": [item["output_identity"] for item in items],
-                "unsupported": sorted(set(unsupported_values)),
-            }
-        aggregate = aggregate_status(
-            str(value["status"]) for value in categories.values() if isinstance(value, dict)
-        )
+        native_projection = self._native_reconciliation(by_category)
+        if native_projection is None:
+            categories, conflicts, aggregate = self._compat_reconciliation(by_category)
+        else:
+            categories, conflicts, aggregate = native_projection
         rights = self._rights_status(resolved_candidate)
         return new_record(
             RecordType.RECONCILIATION,

@@ -66,13 +66,14 @@ execution path — declared workflows and verifier providers — persists identi
 Remaining Task 7 follow-ups are optional Docker/SSH adapters; Forge Cell Linux isolation remains
 ordered Cell work below.
 
-The MNCS-native spine is now consumed at runtime for bounded lifecycle projection and transition
-preflight. It projects epoch/candidate successors, evidence dominance, disposition, freeze,
-evaluation, lineage, and candidate freshness through typed records. The host still owns Forge
-record persistence and identity production, authority/evidence envelopes, evaluator custody, and
-bundle semantics. The next native tranche should extend the typed record boundary to reconciliation
-and bundle projections, then remove the corresponding duplicated Python classification only after
-differential/adversarial coverage is in place.
+The MNCS-native spine is now consumed at runtime for bounded lifecycle projection, transition
+preflight, and technical evidence reconciliation. It projects epoch/candidate successors, evidence
+dominance, disposition, freeze, evaluation, lineage, candidate freshness, per-category status
+counts/conflicts, and aggregate technical status through typed records. The host still owns Forge
+record persistence and identity production, category labels, authority/evidence envelopes,
+evaluator custody, and bundle semantics. The next native tranche is bundle/readiness projection;
+the corresponding host classification should move only after differential and adversarial coverage
+proves the typed boundary.
 
 Task 5 completed the service and dependency decomposition without changing public CLI/MCP
 dispatch. Task 6's shared typed operation registry is the current `0.1.0b1` priority. Full runner

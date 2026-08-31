@@ -40,6 +40,23 @@ def test_configuration_defaults_remain_compatible(config: ForgeConfig) -> None:
     assert provider.required is False
 
 
+def test_nested_configuration_can_scope_an_ancestor_project(project: Path) -> None:
+    nested = project / "integration" / "forge"
+    nested.mkdir(parents=True)
+    path = nested / "mncs-forge.toml"
+    path.write_text(
+        (project / "mncs-forge.toml")
+        .read_text(encoding="utf-8")
+        .replace('root = "."', 'root = "../.."', 1),
+        encoding="utf-8",
+    )
+
+    config = load_config(path)
+
+    assert config.root == project.resolve()
+    assert config.paths("candidates") == [(project / "candidate").resolve()]
+
+
 def test_native_execution_mode_is_explicit_and_environment_overridable(
     config: ForgeConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -54,6 +54,7 @@ _LIFECYCLE_OPERATIONS = {
     "RecordEvaluation": 6,
 }
 _LIFECYCLE_MODULE = "mncs.forge.lifecycle.v1"
+_RECONCILIATION_MODULE = "mncs.forge.reconciliation.v1"
 _IDENTITY_MODULE = "mncs.core.identity.v1"
 
 
@@ -140,6 +141,54 @@ _PROJECTION_RESULT_TYPE = _record_type_identity(
     "ProjectionResult",
     {"projection": "ProjectionState", "reason": "byte", "status": _STATUS_TYPE},
 )
+_CATEGORY_INPUT_TYPE = _record_type_identity(
+    _RECONCILIATION_MODULE,
+    "CategoryInput",
+    {
+        "category": _DIGEST_TYPE,
+        "count": "byte",
+        "statuses": f"[{_STATUS_TYPE}; 8]",
+        "unsupported_count": "byte",
+    },
+)
+_CATEGORY_PROJECTION_TYPE = _record_type_identity(
+    _RECONCILIATION_MODULE,
+    "CategoryProjection",
+    {
+        "category": _DIGEST_TYPE,
+        "conflict": "bool",
+        "fail_count": "i64",
+        "observed_count": "i64",
+        "pass_count": "i64",
+        "status": _STATUS_TYPE,
+        "unknown_count": "i64",
+        "unsupported_count": "i64",
+        "valid": "bool",
+    },
+)
+_RECONCILIATION_INPUT_TYPE = _record_type_identity(
+    _RECONCILIATION_MODULE,
+    "ReconciliationInput",
+    {"categories": "[CategoryInput; 16]", "category_count": "byte"},
+)
+_RECONCILIATION_STATE_TYPE = _record_type_identity(
+    _RECONCILIATION_MODULE,
+    "ReconciliationState",
+    {
+        "categories": "[CategoryProjection; 16]",
+        "category_count": "i64",
+        "conflicting_category_count": "i64",
+        "observed_count": "i64",
+        "status": _STATUS_TYPE,
+        "unsupported_count": "i64",
+        "valid": "bool",
+    },
+)
+_RECONCILIATION_RESULT_TYPE = _record_type_identity(
+    _RECONCILIATION_MODULE,
+    "ReconciliationResult",
+    {"reason": "byte", "state": "ReconciliationState", "status": _STATUS_TYPE},
+)
 _FINITE_VARIANTS: dict[str, dict[str, int]] = {
     _STATUS_TYPE: _STATUS_VARIANTS,
     _STAGE_TYPE: _LIFECYCLE_STAGES,
@@ -164,6 +213,7 @@ _FINITE_VARIANTS: dict[str, dict[str, int]] = {
 }
 NATIVE_EXECUTION_CONTRACT = "mncs-forge.native-execution.v1"
 NATIVE_LIFECYCLE_PROJECTION_CONTRACT = "mncs-forge.lifecycle-projection.v1"
+NATIVE_RECONCILIATION_CONTRACT = "mncs-forge.reconciliation-projection.v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,8 +264,37 @@ class NativeLifecycleProjection:
     reason: int
 
 
+@dataclass(frozen=True, slots=True)
+class NativeReconciliationCategory:
+    """Typed MNCS projection for one bounded technical evidence category."""
+
+    category: bytes
+    status: str
+    pass_count: int
+    fail_count: int
+    unknown_count: int
+    observed_count: int
+    conflict: bool
+    unsupported_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class NativeReconciliationProjection:
+    """Typed MNCS projection of a bounded technical evidence envelope."""
+
+    categories: tuple[NativeReconciliationCategory, ...]
+    status: str
+    category_count: int
+    conflicting_category_count: int
+    unsupported_count: int
+    observed_count: int
+    valid: bool
+    reason: int
+
+
 _LIFECYCLE_CACHE: dict[tuple[object, ...], NativeLifecycleResult] = {}
 _LIFECYCLE_PROJECTION_CACHE: dict[tuple[object, ...], NativeLifecycleProjection] = {}
+_RECONCILIATION_CACHE: dict[tuple[object, ...], NativeReconciliationProjection] = {}
 
 
 def canonical_candidate_material(
@@ -320,6 +399,7 @@ class NativeForgeAdapter:
                 "core.mncs",
                 "identity.mncs",
                 "lifecycle.mncs",
+                "reconciliation.mncs",
                 "records.mncs",
                 "serialization.mncs",
             )
@@ -582,6 +662,73 @@ class NativeForgeAdapter:
                 "status": NativeForgeAdapter._finite_value(
                     _STATUS_TYPE, "mncs.core.status.v1", "Status", status
                 ),
+            },
+        )
+
+    @staticmethod
+    def reconciliation_category_identity(category: str) -> bytes:
+        """Bind a host category label without making strings part of the ABI."""
+
+        if not isinstance(category, str) or not category:
+            raise ForgeError("NATIVE_RECONCILIATION_UNKNOWN", "evidence category is malformed")
+        return hashlib.sha256(
+            b"mncs-forge.reconciliation.category.v1\0" + category.encode("utf-8")
+        ).digest()
+
+    @classmethod
+    def _reconciliation_category_value(
+        cls, category: str, records: Sequence[Mapping[str, object]]
+    ) -> dict[str, object]:
+        if len(records) == 0 or len(records) > 8:
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN",
+                "native evidence category must contain between 1 and 8 records",
+            )
+        statuses: list[dict[str, object]] = []
+        unsupported_count = 0
+        for record in records:
+            if not isinstance(record, Mapping):
+                raise ForgeError(
+                    "NATIVE_RECONCILIATION_UNKNOWN",
+                    f"native evidence record is malformed for category {category}",
+                )
+            status = record.get("status")
+            if not isinstance(status, str) or status not in _STATUS_VARIANTS:
+                raise ForgeError(
+                    "NATIVE_RECONCILIATION_UNKNOWN",
+                    f"native evidence status is invalid for category {category}",
+                )
+            statuses.append(
+                cls._finite_value(_STATUS_TYPE, "mncs.core.status.v1", "Status", str(status))
+            )
+            unsupported = record.get("unsupported_constructs", [])
+            if isinstance(unsupported, Sequence) and not isinstance(unsupported, (str, bytes)):
+                unsupported_count += len(unsupported)
+            elif unsupported is not None:
+                raise ForgeError(
+                    "NATIVE_RECONCILIATION_UNKNOWN",
+                    f"unsupported construct list is malformed for category {category}",
+                )
+        if unsupported_count > 255:
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN",
+                f"unsupported construct count exceeds the byte bound for category {category}",
+            )
+        statuses.extend(
+            cls._finite_value(_STATUS_TYPE, "mncs.core.status.v1", "Status", "UNKNOWN")
+            for _ in range(8 - len(statuses))
+        )
+        return cls._record_value(
+            _CATEGORY_INPUT_TYPE,
+            "CategoryInput",
+            {
+                "category": cls._digest_value(
+                    cls.reconciliation_category_identity(category),
+                    context="reconciliation category",
+                ),
+                "count": {"byte": {"value": len(records)}},
+                "statuses": cls._sequence_value(statuses),
+                "unsupported_count": {"byte": {"value": unsupported_count}},
             },
         )
 
@@ -929,4 +1076,219 @@ class NativeForgeAdapter:
             reason=self._byte(result_fields.get("reason"), context="lifecycle projection reason"),
         )
         _LIFECYCLE_PROJECTION_CACHE[cache_key] = result
+        return result
+
+    def reconciliation_projection(
+        self, categories: Mapping[str, Sequence[Mapping[str, object]]]
+    ) -> NativeReconciliationProjection:
+        """Project bounded technical evidence categories through MNCS.
+
+        Category labels, record identities, and disclosure-shaped values remain
+        host concerns. The native kernel owns the bounded status fold, per
+        category conflict classification, and aggregate technical status.
+        """
+
+        if not isinstance(categories, Mapping):
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN",
+                "native reconciliation categories are malformed",
+            )
+        for category, records in categories.items():
+            if not isinstance(category, str) or not category:
+                raise ForgeError(
+                    "NATIVE_RECONCILIATION_UNKNOWN",
+                    "native reconciliation category is malformed",
+                )
+            if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
+                raise ForgeError(
+                    "NATIVE_RECONCILIATION_UNKNOWN",
+                    f"native evidence records are malformed for category {category}",
+                )
+        ordered = sorted(categories.items())
+        if len(ordered) > 16:
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN",
+                "native reconciliation exceeds the 16-category bound",
+            )
+        self.ensure_available()
+        category_values = [
+            self._reconciliation_category_value(category, records) for category, records in ordered
+        ]
+        empty = self._reconciliation_category_value("__unused__", [{"status": "UNKNOWN"}])
+        category_values.extend(empty for _ in range(16 - len(category_values)))
+        try:
+            serialized = json.dumps(
+                {
+                    "categories": [
+                        {
+                            "category": category,
+                            "records": [dict(record) for record in records],
+                        }
+                        for category, records in ordered
+                    ]
+                },
+                sort_keys=True,
+            )
+        except (TypeError, ValueError) as exc:
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN",
+                "native reconciliation input cannot be serialized",
+            ) from exc
+        cache_key = (
+            NATIVE_RECONCILIATION_CONTRACT,
+            self.semantic_input_identity(),
+            serialized,
+        )
+        cached = _RECONCILIATION_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+        request_value = self._record_value(
+            _RECONCILIATION_INPUT_TYPE,
+            "ReconciliationInput",
+            {
+                "categories": self._sequence_value(category_values),
+                "category_count": {"byte": {"value": len(ordered)}},
+            },
+        )
+        request = {
+            "schema_version": NATIVE_SCHEMA_VERSION,
+            "target": {
+                "module": "mncs.forge.core.v1",
+                "function": "evidence_reconcile",
+            },
+            "arguments": [request_value],
+            "step_budget": 500_000,
+        }
+        with tempfile.TemporaryDirectory(prefix=".mncs-native-", dir=self.forge_root) as directory:
+            request_path = Path(directory) / "reconciliation-request.json"
+            request_path.write_text(json.dumps(request), encoding="utf-8")
+            invocation = self.execute(self.native_source, request_path)
+        if not invocation.ok or invocation.payload is None:
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN",
+                "language-owned reconciliation did not return valid JSON "
+                f"(returncode {invocation.returncode})",
+            )
+        result_fields = self._record_fields(invocation.payload, context="reconciliation")
+        state_fields = self._record_value_fields(
+            result_fields.get("state"),
+            _RECONCILIATION_STATE_TYPE,
+            context="reconciliation state",
+        )
+        category_sequence = state_fields.get("categories")
+        if not isinstance(category_sequence, dict) or not isinstance(
+            category_sequence.get("sequence"), dict
+        ):
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN", "reconciliation categories are malformed"
+            )
+        category_items = category_sequence["sequence"].get("values")
+        if not isinstance(category_items, list) or len(category_items) != 16:
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN", "reconciliation categories are malformed"
+            )
+        category_count = self._integer(
+            state_fields.get("category_count"), context="reconciliation category count"
+        )
+        if category_count != len(ordered) or not 0 <= category_count <= 16:
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN",
+                "reconciliation category count disagrees with the request",
+            )
+        result_status = self._finite_variant(
+            result_fields.get("status"),
+            _STATUS_TYPE,
+            context="reconciliation result status",
+        )
+        state_status = self._finite_variant(
+            state_fields.get("status"),
+            _STATUS_TYPE,
+            context="reconciliation state status",
+        )
+        valid = self._boolean(state_fields.get("valid"), context="reconciliation validity")
+        reason = self._byte(result_fields.get("reason"), context="reconciliation reason")
+        if not valid or reason != 0 or state_status != result_status:
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_UNKNOWN",
+                "language-owned reconciliation reported an invalid bounded projection",
+            )
+        projected: list[NativeReconciliationCategory] = []
+        for index in range(category_count):
+            fields = self._record_value_fields(
+                category_items[index],
+                _CATEGORY_PROJECTION_TYPE,
+                context="reconciliation category projection",
+            )
+            category_digest = self._digest_bytes(
+                fields.get("category"), context="reconciliation category identity"
+            )
+            expected_digest = self.reconciliation_category_identity(ordered[index][0])
+            if category_digest != expected_digest:
+                raise ForgeError(
+                    "NATIVE_RECONCILIATION_MISMATCH",
+                    "native reconciliation category identity disagrees with the request",
+                )
+            projected.append(
+                NativeReconciliationCategory(
+                    category=category_digest,
+                    status=self._finite_variant(
+                        fields.get("status"),
+                        _STATUS_TYPE,
+                        context="reconciliation category status",
+                    ),
+                    pass_count=self._integer(
+                        fields.get("pass_count"), context="reconciliation pass count"
+                    ),
+                    fail_count=self._integer(
+                        fields.get("fail_count"), context="reconciliation fail count"
+                    ),
+                    unknown_count=self._integer(
+                        fields.get("unknown_count"), context="reconciliation unknown count"
+                    ),
+                    observed_count=self._integer(
+                        fields.get("observed_count"), context="reconciliation observed count"
+                    ),
+                    conflict=self._boolean(
+                        fields.get("conflict"), context="reconciliation conflict flag"
+                    ),
+                    unsupported_count=self._integer(
+                        fields.get("unsupported_count"),
+                        context="reconciliation unsupported count",
+                    ),
+                )
+            )
+        result = NativeReconciliationProjection(
+            categories=tuple(projected),
+            status=result_status,
+            category_count=category_count,
+            conflicting_category_count=self._integer(
+                state_fields.get("conflicting_category_count"),
+                context="reconciliation conflict count",
+            ),
+            unsupported_count=self._integer(
+                state_fields.get("unsupported_count"),
+                context="reconciliation unsupported count",
+            ),
+            observed_count=self._integer(
+                state_fields.get("observed_count"), context="reconciliation observed count"
+            ),
+            valid=valid,
+            reason=reason,
+        )
+        if result.conflicting_category_count != sum(item.conflict for item in projected):
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_MISMATCH",
+                "native reconciliation conflict count is inconsistent",
+            )
+        if result.observed_count != sum(item.observed_count for item in projected):
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_MISMATCH",
+                "native reconciliation observed count is inconsistent",
+            )
+        if result.unsupported_count != sum(item.unsupported_count for item in projected):
+            raise ForgeError(
+                "NATIVE_RECONCILIATION_MISMATCH",
+                "native reconciliation unsupported count is inconsistent",
+            )
+        _RECONCILIATION_CACHE[cache_key] = result
         return result

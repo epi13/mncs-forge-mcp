@@ -36,6 +36,7 @@ REQUIRED_WHEEL_FILES = {
     "mncs_forge/resources/native/forge/core.mncs",
     "mncs_forge/resources/native/forge/identity.mncs",
     "mncs_forge/resources/native/forge/lifecycle.mncs",
+    "mncs_forge/resources/native/forge/reconciliation.mncs",
     "mncs_forge/resources/native/forge/records.mncs",
     "mncs_forge/resources/native/forge/serialization.mncs",
 }
@@ -184,6 +185,7 @@ def audit_sdist(sdist: Path) -> dict[str, Any]:
             "src/mncs_forge/resources/native/forge/core.mncs",
             "src/mncs_forge/resources/native/forge/identity.mncs",
             "src/mncs_forge/resources/native/forge/lifecycle.mncs",
+            "src/mncs_forge/resources/native/forge/reconciliation.mncs",
             "src/mncs_forge/resources/native/forge/records.mncs",
             "src/mncs_forge/resources/native/forge/serialization.mncs",
         }
@@ -199,7 +201,7 @@ def module_origin(python: Path, *, cwd: Path, env: dict[str, str]) -> dict[str, 
         "from importlib.resources import files; "
         "native_root = files('mncs_forge.resources').joinpath('native', 'forge'); "
         "native_names = ("
-        "'core.mncs', 'identity.mncs', 'lifecycle.mncs', "
+        "'core.mncs', 'identity.mncs', 'lifecycle.mncs', 'reconciliation.mncs', "
         "'records.mncs', 'serialization.mncs'); "
         "print(json.dumps({'module': mncs_forge.__file__, "
         "'purelib': sysconfig.get_paths()['purelib'], "
