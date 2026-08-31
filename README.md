@@ -102,4 +102,9 @@ new language-owned bounded experiment result. Forge can compare realization requ
 typed artifact identities, and copied validator observations while leaving experiment status,
 semantic legality, assurance, and conformance under their declared owners.
 
+Compiler experiment persistence accepts both the original language compilation-study record and the
+new language-owned bounded experiment result. Forge can compare realization requests, backend and
+typed artifact identities, and copied validator observations while leaving experiment status,
+semantic legality, assurance, and conformance under their declared owners.
+
 Licensed under Apache-2.0.
