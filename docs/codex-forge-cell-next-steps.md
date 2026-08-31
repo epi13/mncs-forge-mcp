@@ -21,6 +21,18 @@ The repository now contains:
 
 The following work remains.
 
+## Progress note (this iteration)
+
+- Cell Task 1 is partially complete: the fail-closed assurance assessment and
+  Forge Cell document validation are exposed through the shared operation
+  registry (`cell.documents.validate`, `cell.execution.assess`), and Forge now
+  persists its own typed `execution_assurance` assessments over receipt
+  bindings (ADR 0017). Full Cell Task 1 — policy, bundle, and execution-record
+  documents stored as first-class transactional records with canonical
+  identities and migration dispatch — remains open.
+- Cell Task 2's runner foundation exists as the rootless `PodmanRunner`
+  (ADR 0016); a native Linux namespace/landlock/seccomp launcher remains open.
+
 ---
 
 ## Cell Task 1 — Integrate typed Forge Cell records

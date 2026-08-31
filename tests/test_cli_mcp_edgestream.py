@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -82,14 +83,20 @@ def test_mcp_startup_reports_missing_configuration(tmp_path: Path) -> None:
 def test_codex_launcher_uses_relocatable_module_entrypoint(project: Path) -> None:
     root = Path(__file__).parents[1]
     launcher = root / "scripts" / "codex-mcp"
+    command = [
+        str(launcher),
+        "--config",
+        str(project / "mncs-forge.toml"),
+        "--mode",
+        "development",
+    ]
+    if sys.platform == "win32":
+        bash = shutil.which("bash")
+        if bash is None:
+            pytest.skip("the Codex launcher is a Bash entry point")
+        command.insert(0, bash)
     result = subprocess.run(
-        [
-            str(launcher),
-            "--config",
-            str(project / "mncs-forge.toml"),
-            "--mode",
-            "development",
-        ],
+        command,
         input="",
         capture_output=True,
         text=True,

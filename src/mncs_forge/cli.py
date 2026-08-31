@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +66,16 @@ def _common_parser() -> argparse.ArgumentParser:
         "providers.capability-blockers",
     )
     capability_blockers.add_argument("capabilities", nargs="*")
+    learned_shadow = _register(
+        provider_commands.add_parser(_cli_command("providers.learned-shadow")),
+        "providers.learned-shadow",
+    )
+    learned_shadow.add_argument("artifact")
+    learned_shadow.add_argument("--provider-command", action="append", required=True)
+    learned_shadow.add_argument("--source-records", required=True)
+    learned_shadow.add_argument("--context-observations", default="[]")
+    learned_shadow.add_argument("--lineage")
+    learned_shadow.add_argument("--timeout", type=float, default=5.0)
 
     verifier = commands.add_parser(_cli_command("verifiers.list", 0))
     verifier_commands = verifier.add_subparsers(dest="verifier_command", required=True)
@@ -120,6 +131,14 @@ def _common_parser() -> argparse.ArgumentParser:
     register.add_argument("--generator-config", required=True)
     register.add_argument("--parent")
     register.add_argument("--expected-identity")
+    refresh = _register(
+        candidate_commands.add_parser(_cli_command("candidates.refresh")),
+        "candidates.refresh",
+    )
+    refresh.add_argument("--hypothesis", required=True)
+    refresh.add_argument("--generator", required=True)
+    refresh.add_argument("--generator-config", required=True)
+    refresh.add_argument("--changed", action="append", default=[])
     compare = _register(
         candidate_commands.add_parser(_cli_command("candidates.compare")),
         "candidates.compare",
@@ -175,6 +194,140 @@ def _common_parser() -> argparse.ArgumentParser:
     )
     receipt_get.add_argument("binding_id")
 
+    license_evidence = commands.add_parser(_cli_command("rights.license-evidence.scan", 0))
+    license_evidence_commands = license_evidence.add_subparsers(
+        dest="license_evidence_command", required=True
+    )
+    _register(
+        license_evidence_commands.add_parser(_cli_command("rights.license-evidence.scan")),
+        "rights.license-evidence.scan",
+    )
+
+    assessments = commands.add_parser(_cli_command("execution.assurance.list", 0))
+    assessment_commands = assessments.add_subparsers(dest="assessment_command", required=True)
+    assessment_request = _register(
+        assessment_commands.add_parser(_cli_command("execution.assurance.assess")),
+        "execution.assurance.assess",
+    )
+    assessment_request.add_argument("binding")
+    assessment_request.add_argument("--requested", action="append", default=[], required=True)
+    assessment_request.add_argument("--policy", default=None)
+    assessment_list = _register(
+        assessment_commands.add_parser(_cli_command("execution.assurance.list")),
+        "execution.assurance.list",
+    )
+    assessment_list.add_argument("--binding", dest="binding_identity")
+    assessment_list.add_argument("--candidate", dest="candidate_identity")
+
+    cell = commands.add_parser(_cli_command("cell.documents.validate", 0))
+    cell_commands = cell.add_subparsers(dest="cell_command", required=True)
+    cell_validate = _register(
+        cell_commands.add_parser(_cli_command("cell.documents.validate")),
+        "cell.documents.validate",
+    )
+    cell_validate.add_argument("kind", choices=["policy", "test-bundle", "execution-record"])
+    cell_validate.add_argument("document", help="Forge Cell document JSON object")
+    cell_assess = _register(
+        cell_commands.add_parser(_cli_command("cell.execution.assess")),
+        "cell.execution.assess",
+    )
+    cell_assess.add_argument("policy", help="Forge Cell policy JSON object")
+    cell_assess.add_argument("record", help="Forge Cell execution-record JSON object")
+    cell_assess.add_argument("--nonce", dest="expected_nonce", default=None)
+
+    compiler = commands.add_parser(_cli_command("compiler.experiments.list", 0))
+    compiler_commands = compiler.add_subparsers(dest="compiler_command", required=True)
+    compiler_record = _register(
+        compiler_commands.add_parser(_cli_command("compiler.experiments.record")),
+        "compiler.experiments.record",
+    )
+    compiler_record.add_argument("record", help="language compiler-study JSON object")
+    _register(
+        compiler_commands.add_parser(_cli_command("compiler.experiments.list")),
+        "compiler.experiments.list",
+    )
+    compiler_compare = _register(
+        compiler_commands.add_parser(_cli_command("compiler.experiments.compare")),
+        "compiler.experiments.compare",
+    )
+    compiler_compare.add_argument("left")
+    compiler_compare.add_argument("right")
+    compiler_candidate_register = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.register")),
+        "compiler.candidates.register",
+    )
+    compiler_candidate_register.add_argument("baseline")
+    compiler_candidate_register.add_argument("candidate_artifact")
+    compiler_candidate_register.add_argument("generator")
+    compiler_candidate_register.add_argument("transformation")
+    compiler_candidate_register.add_argument("relation")
+    compiler_candidate_register.add_argument("benefit")
+    compiler_candidate_register.add_argument("--protected", action="append", default=[])
+    compiler_candidate_register.add_argument("--target", default="unspecified")
+    compiler_candidate_register.add_argument(
+        "--required-validation",
+        dest="required_validation",
+        default="translation-validation",
+    )
+    _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.list")),
+        "compiler.candidates.list",
+    )
+    compiler_candidate_compare = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.compare")),
+        "compiler.candidates.compare",
+    )
+    compiler_candidate_compare.add_argument("left")
+    compiler_candidate_compare.add_argument("right")
+    compiler_candidate_attach = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.attach-validation")),
+        "compiler.candidates.attach-validation",
+    )
+    compiler_candidate_attach.add_argument("candidate_id")
+    compiler_candidate_attach.add_argument("validator")
+    compiler_candidate_attach.add_argument("judgement")
+    compiler_candidate_attach.add_argument("relation")
+    compiler_candidate_attach.add_argument("--counterexample")
+    compiler_candidate_attach.add_argument("--limitations", action="append", default=[])
+    compiler_candidate_attach.add_argument("--stale", action="store_true")
+    compiler_candidate_attach.add_argument("--expected-artifact", dest="expected_artifact_identity")
+    compiler_tournament = _register(
+        compiler_commands.add_parser(_cli_command("compiler.tournament.run")),
+        "compiler.tournament.run",
+    )
+    compiler_tournament.add_argument("candidates", nargs="+")
+    compiler_candidate_select = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.select")),
+        "compiler.candidates.select",
+    )
+    compiler_candidate_select.add_argument("candidate_id")
+    compiler_candidate_select.add_argument(
+        "--policy",
+        default="explicit-protected-property-policy",
+    )
+    compiler_candidate_inspect = _register(
+        compiler_commands.add_parser(_cli_command("compiler.candidates.inspect")),
+        "compiler.candidates.inspect",
+    )
+    compiler_candidate_inspect.add_argument("candidate_id")
+
+    evaluations = commands.add_parser(_cli_command("concept.evaluations.list", 0))
+    evaluations_commands = evaluations.add_subparsers(dest="evaluations_command", required=True)
+    evaluations_record = _register(
+        evaluations_commands.add_parser(_cli_command("concept.evaluations.record")),
+        "concept.evaluations.record",
+    )
+    evaluations_record.add_argument("evaluation", help="built Forge concept-evaluation JSON object")
+    _register(
+        evaluations_commands.add_parser(_cli_command("concept.evaluations.list")),
+        "concept.evaluations.list",
+    )
+    evaluations_get = _register(
+        evaluations_commands.add_parser(_cli_command("concept.evaluations.get")),
+        "concept.evaluations.get",
+    )
+    evaluations_get.add_argument("id")
+
     ledger = commands.add_parser(_cli_command("ledger.verify", 0))
     ledger_commands = ledger.add_subparsers(dest="ledger_command", required=True)
     _register(ledger_commands.add_parser(_cli_command("ledger.verify")), "ledger.verify")
@@ -190,6 +343,13 @@ def _json_object(value: str, label: str) -> dict[str, object]:
     if not isinstance(parsed, dict):
         raise ForgeError("CLI_INPUT", f"{label} must be a JSON object")
     return {str(key): item for key, item in parsed.items()}
+
+
+def _json_value(value: str, label: str) -> object:
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ForgeError("CLI_INPUT", f"{label} must be valid JSON") from exc
 
 
 def _dependencies(values: list[str]) -> dict[str, str]:
@@ -211,7 +371,9 @@ def _cli_payload(args: argparse.Namespace) -> dict[str, object]:
     payload: dict[str, object] = {}
     for binding in operation.cli.bindings:
         value = getattr(args, binding.namespace_name)
-        if binding.decoder is CliDecoder.JSON_OBJECT and value is not None:
+        if binding.decoder is CliDecoder.JSON_VALUE and value is not None:
+            value = _json_value(str(value), binding.namespace_name.replace("_", "-"))
+        elif binding.decoder is CliDecoder.JSON_OBJECT and value is not None:
             value = _json_object(str(value), binding.namespace_name.replace("_", "-"))
         elif binding.decoder is CliDecoder.DEPENDENCIES:
             value = _dependencies(list(value))
@@ -243,9 +405,28 @@ def run(argv: list[str] | None = None) -> tuple[int, dict[str, Any]]:
         return 2, error.as_dict()
 
 
+def _cli_json(value: object) -> object:
+    """Make Forge CLI output JSON-serializable without changing record meaning."""
+
+    if isinstance(value, Mapping):
+        return {str(key): _cli_json(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_cli_json(item) for item in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
 def main(argv: list[str] | None = None) -> int:
     code, value = run(argv)
-    json.dump(value, sys.stdout, ensure_ascii=False, allow_nan=False, sort_keys=True, indent=2)
+    json.dump(
+        _cli_json(value),
+        sys.stdout,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        indent=2,
+    )
     sys.stdout.write("\n")
     return code
 

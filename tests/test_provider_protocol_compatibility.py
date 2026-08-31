@@ -304,8 +304,8 @@ def test_provider_protocol_0_1_verifier_extension_shape_is_stable(
     captured: list[dict[str, object]] = []
     monkeypatch.setattr(
         LocalCommandExecutor,
-        "execute",
-        _capture_provider_request(captured),
+        "run",
+        _capture_provider_run(captured),
     )
 
     result = forge.verifier_run(

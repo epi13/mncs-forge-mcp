@@ -17,11 +17,19 @@ capabilities fields, staleness after executable drift, and allowlisted probe env
 Unavailable optional providers are informational UNKNOWN; required providers or capabilities are
 blockers/UNKNOWN.
 
-Forge is not a filesystem, container, process, or network sandbox. A malicious executable already
-authorized in configuration may use its ambient operating-system permissions. Provider inputs are
-copied to a reduced temporary workspace, but this is not an OS access-control boundary. Use a
-container or host sandbox when adversarial providers are in scope. Process-tree cleanup is
-best-effort outside POSIX process groups.
+Forge is not, by default, a filesystem, container, process, or network sandbox. A malicious
+executable already authorized in configuration may use its ambient operating-system permissions
+under the default `local-process` runner. Provider inputs are copied to a reduced temporary
+workspace, but this is not an OS access-control boundary. Process-tree cleanup is best-effort
+outside POSIX process groups.
+
+Projects that declare `[runner] kind = "podman-rootless"` execute inside a rootless container with
+network isolation (`--network=none`), a read-only root filesystem and workspace mount, declared
+writable mounts only, dropped capabilities, and optional resource bounds (ADR 0016). That adapter
+records exactly the properties its flags and confirmed runtime facts enforce; it does not claim
+resistance to a hostile host kernel or host root, which remain trusted. Killing the `podman run`
+client is followed by best-effort container cleanup; a residual container after a hard kill is a
+known limitation. On SELinux hosts podman may relabel declared writable directories.
 
 Configuration and the executable environment remain trusted inputs. Hash-linked state detects
 rewriting; it does not provide external timestamping, protected custody, signatures, witnessing,
@@ -35,8 +43,9 @@ JSON parameter keys/depth/size, request/batch duration, stdout/stderr, witnesses
 records are bounded. Commands and environment values are omitted from verifier discovery.
 Evaluator runs require freeze/drift checks; status-only disclosure removes repair-enabling detail.
 
-A configured provider is still trusted code with ambient host permissions. The reduced temporary
-workspace and no-shell runner are not an OS or network sandbox.
+A configured provider is still trusted code. Under the default runner it has ambient host
+permissions; under the rootless Podman runner its ambient authority is bounded by the container
+property set recorded in the receipt binding, and the container stack remains trusted code.
 
 ## Forge Cell specification boundary
 
