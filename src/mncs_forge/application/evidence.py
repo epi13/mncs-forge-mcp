@@ -251,9 +251,7 @@ class EvidenceService:
             )
         categories: dict[str, object] = {}
         conflicts: list[str] = []
-        for (category, items), native_category in zip(
-            ordered, projection.categories, strict=True
-        ):
+        for (category, items), native_category in zip(ordered, projection.categories, strict=True):
             unsupported_values = self._unsupported_values(items)
             if native_category.observed_count != len(items):
                 raise ForgeError(

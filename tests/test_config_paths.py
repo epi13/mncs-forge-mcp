@@ -45,9 +45,9 @@ def test_nested_configuration_can_scope_an_ancestor_project(project: Path) -> No
     nested.mkdir(parents=True)
     path = nested / "mncs-forge.toml"
     path.write_text(
-        (project / "mncs-forge.toml").read_text(encoding="utf-8").replace(
-            'root = "."', 'root = "../.."', 1
-        ),
+        (project / "mncs-forge.toml")
+        .read_text(encoding="utf-8")
+        .replace('root = "."', 'root = "../.."', 1),
         encoding="utf-8",
     )
 
