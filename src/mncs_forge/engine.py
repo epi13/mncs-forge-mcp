@@ -5,10 +5,16 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from .adapters import LocalCommandExecutor, LocalProjectObserver
+from .adapters import LocalProjectObserver, build_runner
+from .application.assurance import assess_execution_receipt, list_assessments
 from .application.candidates import CandidateService
+from .application.compiler_candidates import CompilerCandidateService
+from .application.compiler_studies import CompilerEvolutionService
+from .application.concept_evaluations import ConceptEvaluationService
 from .application.evaluation import EvaluationService
 from .application.evidence import EvidenceService
+from .application.execution_receipts import get_binding, list_bindings
+from .application.license_evidence import scan_license_evidence as _scan_license_evidence
 from .application.lifecycle import LifecycleContext
 from .application.project import ProjectService
 from .application.providers import ProviderService
@@ -18,11 +24,20 @@ from .application.support import now, redact
 from .application.workflows import DevelopmentWorkflowService, WorkflowExecutor
 from .config import ForgeConfig, Provider
 from .errors import ForgeError
+from .forge_cell import (
+    ForgeCellValidationError,
+    validate_forge_cell_document,
+)
+from .forge_cell import (
+    assess_execution_assurance as assess_cell_execution_assurance,
+)
+from .learned_specialists import invoke_shadow_provider, read_artifact
 from .ledger import Ledger
 from .micro_verifiers import MicroVerifierService
 from .record_store import LocalRecordStore, RecordStore
 from .records import ForgeRecord, LedgerEntry
 from .state_machine import ForgeStateMachine
+from .verifier_support import recovered_terminal_unknown_result
 
 _redact = redact
 _now = now
@@ -53,7 +68,7 @@ class Forge:
         self.ledger = Ledger(config.state_dir)
         self.record_store = record_store or LocalRecordStore(config.state_dir, self.ledger)
 
-        self._executor = LocalCommandExecutor()
+        self._executor = build_runner(config)
         self._observer = LocalProjectObserver(config)
         self._lifecycle = LifecycleContext(
             mode=mode,
@@ -127,6 +142,18 @@ class Forge:
             providers=self._provider_service,
             verifiers=self._verifier_service,
         )
+        self._compiler_evolution_service = CompilerEvolutionService(
+            records=self.ledger,
+            record_store=self.record_store,
+        )
+        self._compiler_candidate_service = CompilerCandidateService(
+            records=self.ledger,
+            record_store=self.record_store,
+        )
+        self._concept_evaluation_service = ConceptEvaluationService(
+            records=self.ledger,
+            record_store=self.record_store,
+        )
 
     # Compatibility observation helpers. Implementations live in typed collaborators.
     def _records(self, kind: str) -> list[LedgerEntry]:
@@ -199,11 +226,37 @@ class Forge:
 
         return self.ledger.verify()
 
+    def license_evidence_scan(self) -> dict[str, object]:
+        """Scan project license declarations into a rights evidence record."""
+        return _scan_license_evidence(self.config)
+
     def provider_list(self) -> dict[str, object]:
         return self._provider_service.inventory()
 
     def provider_probe(self, provider_id: str) -> dict[str, object]:
         return self._provider_service.probe(provider_id)
+
+    def learned_specialist_shadow(
+        self,
+        artifact_path: str,
+        provider_command: list[str],
+        source_records: list[dict[str, object]],
+        *,
+        context_observations: list[dict[str, object]] | None = None,
+        lineage_identity: str | None = None,
+        timeout_seconds: float = 5.0,
+    ) -> dict[str, object]:
+        """Run the learned specialist as a bounded, non-authoritative shadow."""
+
+        artifact = read_artifact(artifact_path)
+        return invoke_shadow_provider(
+            provider_command,
+            artifact,
+            source_records,
+            context_observations=context_observations or (),
+            timeout_seconds=timeout_seconds,
+            lineage_identity=lineage_identity,
+        )
 
     def capability_blockers(
         self, required_capabilities: list[str] | None = None
@@ -328,6 +381,21 @@ class Forge:
             expected_identity=expected_identity,
         )
 
+    def candidate_refresh(
+        self,
+        *,
+        hypothesis: str,
+        generator_identity: str,
+        generator_config_identity: str,
+        changed_files: list[str] | None = None,
+    ) -> dict[str, object]:
+        return self._candidate_service.refresh(
+            hypothesis=hypothesis,
+            generator_identity=generator_identity,
+            generator_config_identity=generator_config_identity,
+            changed_files=changed_files,
+        )
+
     def development_checks_run(
         self, workflow_names: list[str], candidate_id: str | None = None
     ) -> dict[str, object]:
@@ -370,3 +438,180 @@ class Forge:
         self, workflow_name: str, candidate_id: str | None = None
     ) -> dict[str, object]:
         return self._evidence_service.build_bundle(workflow_name, candidate_id)
+
+    def execution_receipts_list(
+        self,
+        candidate_identity: str | None = None,
+        action_identity: str | None = None,
+    ) -> dict[str, object]:
+        return list_bindings(
+            self.ledger,
+            candidate_identity=candidate_identity,
+            action_identity=action_identity,
+        )
+
+    def execution_receipts_get(self, binding_id: str) -> dict[str, object]:
+        return get_binding(self.ledger, binding_id)
+
+    def execution_assurance_assess(
+        self,
+        *,
+        binding_id: str,
+        requested_properties: list[str],
+        policy_identity: str | None = None,
+    ) -> dict[str, object]:
+        return assess_execution_receipt(
+            config=self.config,
+            records=self.ledger,
+            record_store=self.record_store,
+            binding_id=binding_id,
+            requested_properties=requested_properties,
+            policy_identity=policy_identity,
+        )
+
+    def execution_assurance_list(
+        self,
+        binding_identity: str | None = None,
+        candidate_identity: str | None = None,
+    ) -> dict[str, object]:
+        return list_assessments(
+            self.ledger,
+            binding_identity=binding_identity,
+            candidate_identity=candidate_identity,
+        )
+
+    def cell_document_validate(
+        self, kind: str, document: Mapping[str, object]
+    ) -> dict[str, object]:
+        try:
+            validate_forge_cell_document(kind, document)  # type: ignore[arg-type]
+        except ForgeCellValidationError as exc:
+            return {
+                "ok": False,
+                "kind": kind,
+                "code": exc.code,
+                "message": str(exc),
+                "note": "Forge Cell validation is offline schema checking; it executes nothing.",
+            }
+        return {
+            "ok": True,
+            "kind": kind,
+            "schema_version": "0.1",
+            "note": "The document satisfies its packaged Forge Cell 0.1 schema.",
+        }
+        return new_record(RecordType.RECONCILIATION, fields).to_object_dict()
+
+    def cell_execution_assess(
+        self,
+        policy: Mapping[str, object],
+        record: Mapping[str, object],
+        expected_nonce: str | None = None,
+    ) -> dict[str, object]:
+        try:
+            assessment = assess_cell_execution_assurance(
+                dict(policy), dict(record), expected_nonce=expected_nonce
+            )
+        except ForgeCellValidationError as exc:
+            raise ForgeError("CELL_DOCUMENT_INVALID", f"{exc.code}: {exc}") from exc
+        return {
+            "assurance_status": assessment.status,
+            "reasons": list(assessment.reasons),
+            "requested": list(assessment.requested),
+            "enforced": list(assessment.enforced),
+            "unmet": list(assessment.unmet),
+            "dominance": "FAIL > UNKNOWN > PASS",
+            "note": (
+                "Assurance is assessed separately from any test result; a test PASS "
+                "cannot establish isolation or custody properties."
+            ),
+        }
+
+    def compiler_experiment_record(
+        self, language_record: Mapping[str, object]
+    ) -> dict[str, object]:
+        return self._compiler_evolution_service.record(language_record)
+
+    def compiler_experiments_list(self) -> dict[str, object]:
+        return self._compiler_evolution_service.list()
+
+    def compiler_experiments_compare(
+        self, left_experiment_id: str, right_experiment_id: str
+    ) -> dict[str, object]:
+        return self._compiler_evolution_service.compare(
+            left_experiment_id,
+            right_experiment_id,
+        )
+
+    def concept_evaluation_record(self, evaluation: Mapping[str, object]) -> dict[str, object]:
+        return self._concept_evaluation_service.record(evaluation)
+
+    def concept_evaluations_list(self) -> dict[str, object]:
+        return self._concept_evaluation_service.list()
+
+    def concept_evaluation_get(self, evaluation_id: str) -> dict[str, object]:
+        return self._concept_evaluation_service.get(evaluation_id)
+
+    def compiler_candidate_register(
+        self,
+        *,
+        baseline_artifact_identity: str,
+        candidate_artifact_identity: str,
+        generator_identity: str,
+        declared_transformation: str,
+        claimed_relation: str,
+        expected_benefit: str,
+        protected_properties: list[str] | None = None,
+        target_envelope: str = "unspecified",
+        required_validation: str = "translation-validation",
+    ) -> dict[str, object]:
+        return self._compiler_candidate_service.register(
+            baseline_artifact_identity=baseline_artifact_identity,
+            candidate_artifact_identity=candidate_artifact_identity,
+            generator_identity=generator_identity,
+            declared_transformation=declared_transformation,
+            claimed_relation=claimed_relation,
+            expected_benefit=expected_benefit,
+            protected_properties=protected_properties or [],
+            target_envelope=target_envelope,
+            required_validation=required_validation,
+        )
+
+    def compiler_candidates_list(self) -> dict[str, object]:
+        return self._compiler_candidate_service.inventory()
+
+    def compiler_candidates_compare(
+        self, left_candidate_id: str, right_candidate_id: str
+    ) -> dict[str, object]:
+        return self._compiler_candidate_service.compare(left_candidate_id, right_candidate_id)
+
+    def compiler_candidate_attach_validation(
+        self,
+        candidate_id: str,
+        *,
+        validator_identity: str,
+        judgement: str,
+        claimed_relation: str,
+        counterexample: dict[str, object] | None = None,
+        limitations: list[str] | None = None,
+        stale: bool = False,
+        expected_artifact_identity: str | None = None,
+    ) -> dict[str, object]:
+        return self._compiler_candidate_service.attach_validation(
+            candidate_id,
+            validator_identity=validator_identity,
+            judgement=judgement,
+            claimed_relation=claimed_relation,
+            counterexample=counterexample,
+            limitations=limitations,
+            stale=stale,
+            expected_artifact_identity=expected_artifact_identity,
+        )
+
+    def compiler_tournament(self, candidate_ids: list[str]) -> dict[str, object]:
+        return self._compiler_candidate_service.tournament(candidate_ids)
+
+    def compiler_candidate_select(self, candidate_id: str, policy: str) -> dict[str, object]:
+        return self._compiler_candidate_service.select(candidate_id, policy=policy)
+
+    def compiler_candidate_inspect(self, candidate_id: str) -> dict[str, object]:
+        return self._compiler_candidate_service.inspect_unresolved(candidate_id)

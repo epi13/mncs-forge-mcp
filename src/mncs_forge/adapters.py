@@ -2,24 +2,33 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import platform
 import shutil
 import tempfile
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .config import ForgeConfig, Provider
 from .errors import ForgeError
-from .execution import run_bounded
+from .execution import run_bounded, validate_argv, validate_limits
+from .execution_observations import ExecutionObservationBuilder
 from .identity import content_identity, file_identity, identity_map
 from .paths import is_within, resolve_contained, validate_relative_path
-from .ports import ExecutionResult
+from .ports import ExecutionObservation, ExecutionResult, ExecutionSession, RunnerCapabilities
 from .serialization import local_json_identity, read_json
 
+if TYPE_CHECKING:
+    from .podman_runner import PodmanRunner
 
-class LocalCommandExecutor:
-    """Preserve the existing bounded local-process semantics behind `CommandExecutor`."""
+
+class LocalProcessRunner:
+    """Run declared commands locally while preserving the bounded subprocess contract."""
+
+    runner_identity = "runner.local-process-v1"
 
     def execute(
         self,
@@ -41,6 +50,134 @@ class LocalCommandExecutor:
             environment=environment,
             stdin=stdin,
         )
+
+    def observe(
+        self,
+        command: object,
+        *,
+        cwd: Path,
+        timeout: float,
+        output_cap: int,
+        stderr_cap: int | None = None,
+        environment: dict[str, str],
+        stdin: bytes = b"",
+    ) -> ExecutionObservation:
+        """Execute through the same bounded path while retaining raw observations."""
+
+        return self.run(
+            command,
+            cwd=cwd,
+            timeout=timeout,
+            output_cap=output_cap,
+            stderr_cap=stderr_cap,
+            environment=environment,
+            stdin=stdin,
+        ).observation
+
+    def run(
+        self,
+        command: object,
+        *,
+        cwd: Path,
+        timeout: float,
+        output_cap: int,
+        stderr_cap: int | None = None,
+        environment: dict[str, str],
+        stdin: bytes = b"",
+    ) -> ExecutionSession:
+        """Return retained output and observation facts from one local invocation."""
+
+        argv = validate_argv(command)
+        validate_limits(timeout, output_cap, stderr_cap)
+        builder = ExecutionObservationBuilder(
+            argv=argv,
+            cwd=cwd,
+            timeout=timeout,
+            stdout_limit=output_cap,
+            stderr_limit=stderr_cap or output_cap,
+            environment=environment,
+            stdin=stdin,
+            capabilities=self.inspect_capabilities(),
+            runner_identity=self.runner_identity,
+            runner_version="1",
+            executable_identity=self._executable_identity(argv, cwd),
+            host_identity=self._host_identity(),
+            filesystem_policy="unrestricted-process-workspace",
+            network_policy="ambient-process-network",
+            same_operator=True,
+        )
+        try:
+            result = run_bounded(
+                argv,
+                cwd=cwd,
+                timeout=timeout,
+                output_cap=output_cap,
+                stderr_cap=stderr_cap,
+                environment=environment,
+                stdin=stdin,
+                _observation=builder,
+            )
+        except ForgeError as exc:
+            builder.failed(exc)
+            return builder.session(None, exc)
+        builder.completed(result)
+        return builder.session(result, None)
+
+    @staticmethod
+    def _host_identity() -> str:
+        digest = hashlib.sha256(platform.node().encode("utf-8", errors="replace")).hexdigest()
+        return f"host.local-{digest[:32]}"
+
+    @staticmethod
+    def _executable_identity(argv: list[str], cwd: Path) -> str | None:
+        executable = Path(argv[0])
+        if not executable.is_absolute() and (executable.parent != Path(".")):
+            executable = cwd / executable
+        else:
+            resolved = shutil.which(argv[0])
+            if resolved is None:
+                return None
+            executable = Path(resolved)
+        try:
+            identity = file_identity(executable)
+        except ForgeError:
+            return None
+        return identity.removeprefix("sha256:")
+
+    def inspect_capabilities(self) -> RunnerCapabilities:
+        return RunnerCapabilities(
+            runner_kind="local-process",
+            runner_version="1",
+            os_family=platform.system().lower() or "unknown",
+            architecture=platform.machine().lower() or "unknown",
+            execution_scope="local",
+            shell_execution="disabled",
+            timeout_enforcement="enforced",
+            stdout_limit="enforced",
+            stderr_limit="enforced",
+            process_group_termination=("enforced" if os.name == "posix" else "not-provided"),
+            sandbox_isolation="not-provided",
+            network_isolation="not-provided",
+            filesystem_isolation="not-provided",
+        )
+
+
+# Preserve the existing concrete adapter name while callers migrate to the runner vocabulary.
+LocalCommandExecutor = LocalProcessRunner
+
+
+def build_runner(config: ForgeConfig) -> LocalProcessRunner | PodmanRunner:
+    """Construct the declared project runner, failing closed when unavailable."""
+
+    settings = config.runner_settings
+    kind = str(settings.get("kind", "local-process"))
+    if kind == "local-process":
+        return LocalProcessRunner()
+    if kind == "podman-rootless":
+        from .podman_runner import build_podman_runner
+
+        return build_podman_runner(settings)
+    raise ForgeError("CONFIG_INVALID", f"unsupported runner kind: {kind!r}")
 
 
 class LocalProjectObserver:

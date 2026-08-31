@@ -7,7 +7,7 @@ import os
 from .. import __version__
 from ..config import ForgeConfig
 from ..errors import ForgeError
-from ..ports import CommandExecutor, ProjectObserver, RecordReader, VerifierCatalog
+from ..ports import ProjectObserver, RecordReader, Runner, VerifierCatalog
 from .lifecycle import LifecycleContext
 from .providers import ProviderService
 from .support import PUBLIC_LIMITATIONS, redact
@@ -20,7 +20,7 @@ class ProjectService:
         config: ForgeConfig,
         mode: str,
         records: RecordReader,
-        executor: CommandExecutor,
+        executor: Runner,
         observer: ProjectObserver,
         lifecycle: LifecycleContext,
         providers: ProviderService,

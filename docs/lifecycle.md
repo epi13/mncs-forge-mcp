@@ -43,6 +43,7 @@ legacy records.
 | begin successor epoch | development mode; parent is exactly the active epoch |
 | register first candidate | development mode; active epoch; current epoch authority; no parent |
 | register successor candidate | same active epoch; parent is exactly the current candidate; new content identity |
+| refresh candidate | development mode; an active-epoch candidate exists; no-op when current, otherwise register a successor whose parent is the stale current candidate |
 | run project check | development mode; no epoch or candidate required |
 | run candidate check/verifier | development mode; current, fresh active-epoch candidate |
 | select candidate | development mode; current candidate; no disposition; complete, current, comparable required PASS evidence |

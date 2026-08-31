@@ -8,6 +8,11 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
+from .application.execution_receipts import (
+    bind_verifier_execution,
+    binding_for_action,
+    summarize_binding,
+)
 from .application.lifecycle import LifecycleContext
 from .application.support import now, redact
 from .config import ForgeConfig, Provider, Verifier, Workflow
@@ -15,11 +20,12 @@ from .errors import ForgeError
 from .execution import parse_provider_response
 from .paths import is_within, resolve_contained, validate_relative_path
 from .ports import (
-    CommandExecutor,
     ExecutionResult,
+    ExecutionSession,
     ProjectObserver,
     RecordCommitter,
     RecordReader,
+    Runner,
     record_by_id,
 )
 from .records import (
@@ -82,7 +88,7 @@ class MicroVerifierService:
         record_store: RecordCommitter,
         lifecycle: LifecycleContext,
         observer: ProjectObserver,
-        executor: CommandExecutor,
+        executor: Runner,
     ) -> None:
         self.config = config
         self.mode = mode
@@ -390,8 +396,9 @@ class MicroVerifierService:
         with self.record_store.action_execution(str(action["action_id"])):
             self.record_store.commit("verifier-actions", "verifier_action", action)
             started = time.monotonic()
+            session: ExecutionSession | None = None
             try:
-                result = self._execute(
+                session, result = self._execute(
                     verifier,
                     workflow,
                     provider,
@@ -428,6 +435,25 @@ class MicroVerifierService:
                         "INTERNAL_RECORD", "terminal verifier result model is invalid"
                     ) from exc
                 result = terminal_record
+            binding = None
+            if session is not None:
+                if binding_for_action(self.records, str(action["action_id"])) is not None:
+                    raise ForgeError(
+                        "RECEIPT_DUPLICATE",
+                        f"execution receipt binding already exists for {action['action_id']}",
+                    )
+                binding = bind_verifier_execution(
+                    config=self.config,
+                    session=session,
+                    action=action,
+                    result_identity=str(result["output_identity"]),
+                    verifier_id=verifier.verifier_id,
+                    verifier_version=verifier.version,
+                    provider_id=provider.provider_id,
+                )
+                self.record_store.commit(
+                    "execution-receipt-bindings", "execution_receipt_binding", binding
+                )
             ForgeStateMachine.authorize_terminal_result_for_recorded_action(
                 action,
                 prior_verifier_results,
@@ -437,7 +463,10 @@ class MicroVerifierService:
                 mode=str(result["mode"]),
             )
             self.record_store.commit("verifier-results", "verifier_result", result)
-            return self._disclose_result(result)
+            disclosed = self._disclose_result(result)
+            if binding is not None:
+                disclosed["execution_receipt"] = summarize_binding(binding)
+            return disclosed
 
     def batch(
         self,
@@ -897,9 +926,10 @@ class MicroVerifierService:
         freeze: ForgeRecord | None,
         timeout_cap: float | None,
         prior_verifier_results: list[LedgerEntry],
-    ) -> VerifierResultRecord:
+    ) -> tuple[ExecutionSession | None, VerifierResultRecord]:
         started = time.monotonic()
         execution: ExecutionResult | None = None
+        session: ExecutionSession | None = None
         response: dict[str, Any] | None = None
         status = "UNKNOWN"
         summary = "verifier did not establish PASS or FAIL"
@@ -931,7 +961,7 @@ class MicroVerifierService:
                     "VERIFIER_BATCH_LIMIT", "batch duration exhausted before verifier run"
                 )
             with self.observer.provider_workspace(evaluator=self.mode == "evaluator") as workspace:
-                execution = self.executor.execute(
+                session = self.executor.run(
                     [str(executable), *provider.command[1:]],
                     cwd=Path(workspace),
                     timeout=timeout,
@@ -946,6 +976,12 @@ class MicroVerifierService:
                     environment=environment,
                     stdin=request_bytes,
                 )
+                if session.result is None:
+                    raise ForgeError(
+                        session.error_code or "COMMAND_START",
+                        session.error_message or "verifier provider produced no execution result",
+                    )
+                execution = session.result
             if execution.returncode != 0:
                 raise ForgeError(
                     "PROVIDER_EXIT",
@@ -1102,7 +1138,7 @@ class MicroVerifierService:
                 "VERIFIER_RESULT_LIMIT",
                 "verifier result cannot fit the configured result byte limit",
             )
-        return result
+        return session, result
 
     def _bounded_witnesses(self, value: object) -> list[object]:
         if not isinstance(value, list):
