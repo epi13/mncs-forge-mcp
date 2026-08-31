@@ -1186,6 +1186,41 @@
         ],
         "operation_id": "compiler.tournament.run"
       },
+      "compiler compare": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "left",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "right",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.experiments.compare"
+      },
+      "compiler list": {
+        "arguments": [],
+        "operation_id": "compiler.experiments.list"
+      },
+      "compiler record": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "record",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.experiments.record"
+      },
       "config validate": {
         "arguments": [],
         "operation_id": "config.validate"
@@ -2198,6 +2233,34 @@
           ]
         },
         "mncs_forge_concept_evaluations_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_compiler_experiment_record": {
+          "input_properties": [
+            "language_record"
+          ],
+          "input_schema_sha256": "8ccb8fdc7f85509e96e44d68878e0c993178b9fe45c463165e6716d0faba7956",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "language_record"
+          ]
+        },
+        "mncs_forge_compiler_experiments_compare": {
+          "input_properties": [
+            "left_experiment_id",
+            "right_experiment_id"
+          ],
+          "input_schema_sha256": "684bca3ccbac4c6e00d9a77c9b616b5416f0a99a7c6c038d75034ba91656c855",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "left_experiment_id",
+            "right_experiment_id"
+          ]
+        },
+        "mncs_forge_compiler_experiments_list": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
