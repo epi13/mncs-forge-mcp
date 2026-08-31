@@ -109,6 +109,34 @@ mncs-forge compiler candidate-inspect CANDIDATE
 
 A generator cannot certify its own candidate. Benchmark observations are stored separately and cannot authorize a FAIL or required-UNKNOWN candidate. Target envelopes remain explicit; a Linux-only candidate is not globally valid.
 
+## Compiler candidate search
+
+Forge can now persist isolated compiler-search candidates without becoming the language authority.
+
+```text
+baseline artifact
+   → generator/search identity
+   → isolated candidate artifact
+   → language/compiler obligations
+   → independent validator PASS / FAIL / UNKNOWN
+   → explicit policy
+   → accept / reject / retain unresolved
+```
+
+Operations:
+
+```bash
+mncs-forge compiler candidate-register ...
+mncs-forge compiler candidate-list
+mncs-forge compiler candidate-compare LEFT RIGHT
+mncs-forge compiler candidate-attach CANDIDATE VALIDATOR JUDGEMENT RELATION
+mncs-forge compiler tournament CANDIDATE...
+mncs-forge compiler candidate-select CANDIDATE --policy explicit-protected-property-policy
+mncs-forge compiler candidate-inspect CANDIDATE
+```
+
+A generator cannot certify its own candidate. Benchmark observations are stored separately and cannot authorize a FAIL or required-UNKNOWN candidate. Target envelopes remain explicit; a Linux-only candidate is not globally valid.
+
 ## Planned control-plane capabilities
 
 The next integration increments should:

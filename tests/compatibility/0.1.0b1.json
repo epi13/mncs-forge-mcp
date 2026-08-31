@@ -1186,6 +1186,197 @@
         ],
         "operation_id": "compiler.tournament.run"
       },
+      "compiler candidate-attach": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "validator",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "judgement",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "relation",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "counterexample",
+            "nargs": null,
+            "options": [
+              "--counterexample"
+            ],
+            "required": false
+          },
+          {
+            "default": [],
+            "destination": "limitations",
+            "nargs": null,
+            "options": [
+              "--limitations"
+            ],
+            "required": false
+          },
+          {
+            "const": true,
+            "default": false,
+            "destination": "stale",
+            "nargs": 0,
+            "options": [
+              "--stale"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "compiler.candidates.attach-validation"
+      },
+      "compiler candidate-compare": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "left",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "right",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.candidates.compare"
+      },
+      "compiler candidate-inspect": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.candidates.inspect"
+      },
+      "compiler candidate-list": {
+        "arguments": [],
+        "operation_id": "compiler.candidates.list"
+      },
+      "compiler candidate-register": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "baseline",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "candidate_artifact",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "generator",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "transformation",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "relation",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "benefit",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": [],
+            "destination": "protected",
+            "nargs": null,
+            "options": [
+              "--protected"
+            ],
+            "required": false
+          },
+          {
+            "default": "unspecified",
+            "destination": "target",
+            "nargs": null,
+            "options": [
+              "--target"
+            ],
+            "required": false
+          },
+          {
+            "default": "translation-validation",
+            "destination": "required_validation",
+            "nargs": null,
+            "options": [
+              "--required-validation"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "compiler.candidates.register"
+      },
+      "compiler candidate-select": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": "explicit-protected-property-policy",
+            "destination": "policy",
+            "nargs": null,
+            "options": [
+              "--policy"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "compiler.candidates.select"
+      },
       "compiler compare": {
         "arguments": [
           {
@@ -1220,6 +1411,18 @@
           }
         ],
         "operation_id": "compiler.experiments.record"
+      },
+      "compiler tournament": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidates",
+            "nargs": "+",
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.tournament.run"
       },
       "config validate": {
         "arguments": [],
@@ -2238,6 +2441,87 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_compiler_candidate_attach": {
+          "input_properties": [
+            "candidate_id",
+            "claimed_relation",
+            "counterexample",
+            "judgement",
+            "limitations",
+            "stale",
+            "validator_identity"
+          ],
+          "input_schema_sha256": "ee5f6ce569e078dc22560a254717639203ea0d64426c0fd4fff80a67fa23c3b4",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_id",
+            "claimed_relation",
+            "judgement",
+            "validator_identity"
+          ]
+        },
+        "mncs_forge_compiler_candidate_inspect": {
+          "input_properties": [
+            "candidate_id"
+          ],
+          "input_schema_sha256": "f3bd97b88ef9e7ece668b5b8b970819e255ab4a2b6f1ba219b3d820505df7472",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_id"
+          ]
+        },
+        "mncs_forge_compiler_candidate_register": {
+          "input_properties": [
+            "baseline_artifact_identity",
+            "candidate_artifact_identity",
+            "claimed_relation",
+            "declared_transformation",
+            "expected_benefit",
+            "generator_identity",
+            "protected_properties",
+            "required_validation",
+            "target_envelope"
+          ],
+          "input_schema_sha256": "9831be773080b22dea15a4efa28abb5ce058db9b61428c2d1dd57d07faef63f0",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "baseline_artifact_identity",
+            "candidate_artifact_identity",
+            "claimed_relation",
+            "declared_transformation",
+            "expected_benefit",
+            "generator_identity"
+          ]
+        },
+        "mncs_forge_compiler_candidate_select": {
+          "input_properties": [
+            "candidate_id",
+            "policy"
+          ],
+          "input_schema_sha256": "f99f91a047d854422e25630bcabac4f6b1569ef094da91189789d0d61c03286d",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_id"
+          ]
+        },
+        "mncs_forge_compiler_candidates_compare": {
+          "input_properties": [
+            "left_candidate_id",
+            "right_candidate_id"
+          ],
+          "input_schema_sha256": "c7e09c0418e638805d53b553fefef0fb2d468714fa8af3569a8deef4274c4c9c",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "left_candidate_id",
+            "right_candidate_id"
+          ]
+        },
+        "mncs_forge_compiler_candidates_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_compiler_experiment_record": {
           "input_properties": [
             "language_record"
@@ -2265,6 +2549,16 @@
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
+        },
+        "mncs_forge_compiler_tournament": {
+          "input_properties": [
+            "candidate_ids"
+          ],
+          "input_schema_sha256": "1e8660ca1ffce8d19380bf176d385306d3cde866eab8efb9106b7e64213d06f6",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_ids"
+          ]
         },
         "mncs_forge_development_checks_run": {
           "input_properties": [
