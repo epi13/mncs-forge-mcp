@@ -11,7 +11,7 @@ from mncs_forge.engine import Forge
 from mncs_forge.errors import ForgeError
 from mncs_forge.execution_windows import collect_windows_pipes
 from mncs_forge.micro_verifiers import MicroVerifierService
-from mncs_forge.serialization import local_json_identity
+from mncs_forge.records import derive_record_identity
 
 
 @pytest.mark.parametrize(
@@ -130,7 +130,7 @@ def test_started_action_receives_terminal_unknown_on_authority_drift(
 ) -> None:
     forge = Forge(config)
     begin_and_register(forge)
-    original = forge._current_authority_identities
+    original = forge._observer.current_authority_identities
     calls = 0
 
     def drifting_authority() -> dict[str, str]:
@@ -140,7 +140,7 @@ def test_started_action_receives_terminal_unknown_on_authority_drift(
             return original()
         return {"drift": "sha256:" + "0" * 64}
 
-    monkeypatch.setattr(forge, "_current_authority_identities", drifting_authority)  # type: ignore[attr-defined]
+    monkeypatch.setattr(forge._observer, "current_authority_identities", drifting_authority)
     result = forge.verifier_run(
         "verify-pass",
         changed_paths=["candidate/main.py"],
@@ -225,14 +225,15 @@ def test_evaluator_terminal_unknown_is_redacted_before_recording(
     assert disclosed["repair_feedback_withheld"] is True
     assert "repair-enabling evaluator detail" not in str(disclosed)
 
-    recorded = evaluator.ledger.records()[-1]["payload"]
-    assert recorded["assumptions"] == []
-    assert recorded["unsupported_constructs"] == []
+    recorded = evaluator.ledger.records()[-1].payload
+    assert recorded["assumptions"] == ()
+    assert recorded["unsupported_constructs"] == ()
     assert recorded["operational_error"] is None
     assert recorded["returncode"] is None
     assert "repair-enabling evaluator detail" not in str(recorded)
-    persisted_identity = recorded.pop("output_identity")
-    assert persisted_identity == local_json_identity(recorded)
+    assert recorded["output_identity"] == derive_record_identity(
+        recorded.record_type, recorded.to_json()
+    )
 
 
 def test_batch_supports_per_verifier_parameters(config: ForgeConfig) -> None:

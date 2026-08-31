@@ -115,6 +115,8 @@ Provider Protocol in this PR.
 **Target:** `0.1.0a3`  
 **Depends on:** Task 1
 
+**Status:** Completed in the versioned-record-model iteration.
+
 ### Objective
 
 Replace unstructured internal evidence dictionaries with explicit immutable models at the domain
@@ -178,6 +180,8 @@ Do not relocate every package module in this PR. Establish the models and adapte
 **Target:** `0.1.0a3`  
 **Depends on:** Task 2
 
+**Status:** Completed in the lifecycle-state-machine iteration.
+
 ### Objective
 
 Move lifecycle authorization from scattered method checks into an explicit transition model used
@@ -222,11 +226,19 @@ separate from candidate-scoped transitions.
 - historical state remains append-only rather than being edited in place; and
 - property-based or table-driven tests cover all valid and invalid transitions.
 
+### Implementation evidence
+
+Task 3 added a typed append-only-history projection, active epoch and same-epoch candidate lineage,
+policy-declared evidence readiness, one terminal disposition, current-selection freeze and
+evaluator gates, verifier action terminality, stable transition errors, per-stage inspection, and
+shared Forge/CLI/MCP state output. Historical Task 2 fixtures remain readable and are projected
+without rewriting or prospective-rule rejection. Transactional writes and recovery remain Task 4.
+
 ### Validation
 
 ```bash
 ./scripts/check.sh
-pytest -q tests/test_state_machine.py tests/test_evaluator.py tests/test_candidates.py
+pytest -q tests/test_state_machine.py tests/test_engine.py tests/test_cli_mcp_edgestream.py
 ```
 
 ---
@@ -236,6 +248,8 @@ pytest -q tests/test_state_machine.py tests/test_evaluator.py tests/test_candida
 **Priority:** P0  
 **Target:** `0.1.0a3`  
 **Depends on:** Tasks 2 and 3
+
+**Status:** Completed in Task 4
 
 ### Objective
 
@@ -279,6 +293,8 @@ Run repeated concurrency and interruption tests on Linux and Windows.
 **Priority:** P1  
 **Target:** `0.1.0b1`  
 **Depends on:** Tasks 1 through 4
+
+**Status:** Completed in the modular-control-plane iteration.
 
 ### Objective
 
@@ -330,6 +346,18 @@ mncs-forge --config examples/minimal/mncs-forge.toml inspect
 Add an import-boundary test or static dependency check that prevents domain modules from importing
 interface and adapter modules.
 
+### Implementation evidence
+
+Task 5 retained `Forge` as the compatibility/composition root and extracted cohesive project,
+provider, candidate/selection, development-workflow, evaluation, evidence/bundle, and recovery
+services. The singular `MicroVerifierService` now receives narrow collaborators rather than a
+Forge-shaped host. Typed ports cover verified record reads, transactional commits, bounded command
+execution, project/filesystem observations, and verifier catalog presentation. Static architecture
+tests prohibit upward imports, service-to-Forge dependencies, concrete execution/storage bypasses,
+and cycles among the new application modules. At the Task 5 boundary, Task 6's operation registry
+and Task 7's runner receipts, sandbox semantics, and alternate backends were intentionally not
+implemented; Task 6 is now complete below and Task 7 remains future work.
+
 ---
 
 ## Task 6 — Generate CLI and MCP dispatch from one operation registry
@@ -337,6 +365,8 @@ interface and adapter modules.
 **Priority:** P1  
 **Target:** `0.1.0b1`  
 **Depends on:** Task 5
+
+**Status:** Completed in the canonical-operation-registry iteration.
 
 ### Objective
 
@@ -346,11 +376,11 @@ Eliminate independent manual dispatch definitions that can drift between the CLI
 
 Each operation should declare:
 
-- stable operation name;
+- stable canonical operation identifier;
 - allowed mode or modes;
 - whether it mutates state;
 - input model;
-- output model;
+- output contract;
 - authority or transition requirement;
 - disclosure class;
 - CLI mapping where applicable; and
@@ -376,6 +406,27 @@ operation handler and permission checks.
 pytest -q tests/test_cli.py tests/test_mcp.py tests/test_operation_registry.py
 ```
 
+### Implementation evidence
+
+Task 6 added frozen operation definitions and explicit input models, one fail-closed invocation
+gate, registry-bound argparse leaves, generated FastMCP wrappers with preserved names and schemas,
+evaluator-only final-evaluation visibility, explicit CLI/MCP/resource asymmetries, and a
+deterministic version-1 machine inventory. Operation-backed resources use the same gate while
+prompts and static guidance remain presentation. Architecture tests reject direct CLI/server
+business calls and concrete storage, execution, filesystem-identity, or lifecycle behavior in the
+registry. `ForgeStateMachine`, `RecordStore`, Task 5 services, and authority/evidence semantics are
+unchanged. Task 7 runners remain deferred.
+
+### `0.1.0b1` compatibility closure
+
+The release-boundary iteration after Task 6 audited records/migrations, configuration, Provider
+Protocol 0.1, CLI, MCP, the operation registry, the Python facade, packaging, and installed-wheel
+upgrade behavior. It added only the gaps needed to close the gate: early unversioned result
+migration, stable configuration read/parse codes, a regenerable semantic snapshot, bounded
+protocol-envelope tests, and cross-version wheel verification. See
+[`0.1.0b1` compatibility boundary](compatibility-boundary-0.1.0b1.md). The next implementation task
+is Task 7; none of its runner or isolation work is part of the compatibility closure.
+
 ---
 
 ## Task 7 — Introduce a runner abstraction and sandbox-capable adapters
@@ -383,6 +434,47 @@ pytest -q tests/test_cli.py tests/test_mcp.py tests/test_operation_registry.py
 **Priority:** P2  
 **Target:** `0.2.x`  
 **Depends on:** Tasks 4 through 6
+
+**Status:** Task 7A, Task 7B-1, 7B-2, and 7C are complete. Remaining optional follow-ups are
+Docker/SSH adapters and an adversarial study of the Podman runner path (Cell Task 5 scope applied
+to the new adapter). Verifier-action receipt wiring is complete: verifier provider execution
+persists identity-bound `execution_receipt_binding` records with `action_kind="verifier_action"`.
+Typed execution-assurance assessments over bindings are implemented per ADR 0017
+(`execution.assurance.assess` / `.list`).
+
+### Task 7A — Extract and harden the local runner
+
+The first bounded increment evolves the existing `CommandExecutor` port into the typed `Runner`
+boundary, exposes `LocalProcessRunner`, and preserves the current bounded subprocess behavior.
+Its capability description reports only established local-process facts; it does not claim
+sandbox, network, filesystem, custody, witnessing, independence, or attestation. Adversarial
+execution tests and application-boundary checks are part of this increment. Persistent execution
+receipts are deliberately deferred.
+
+### Task 7B-1 — Forge observations and MNCS receipt-adapter readiness
+
+This increment used the experimental MNCS `mncs-execution-receipt` / `0.1-experimental` contract
+as the only receipt envelope. `LocalProcessRunner.observe()` collects bounded raw lifecycle,
+termination, identity, stream, aggregate-output, wall-duration, and capability facts through the
+same subprocess path used by `execute()`. Complete stream totals and hashes are emitted only when
+the runner drained the stream; interrupted or output-limited observations retain explicit unknown
+totals rather than inventing them.
+
+`mncs_forge.mncs_execution_receipt` accepts an observation and caller-supplied subject, bundle,
+policy, challenge, harness, and optional placement context. It uses RFC 8785 identities, validates
+required context, preserves `FAIL > UNKNOWN > PASS` and the fixed MNCS claim boundary, and returns
+an unpersisted JSON envelope. It does not execute commands, write Forge records, create assurance,
+or claim sandboxing. The pinned upstream schema commit and digest are recorded in the focused
+development evidence note.
+
+### Task 7B-2 — Persistent identity-bound receipt integration
+
+Declared workflow execution now persists a `workflow_action`, an `execution_receipt_binding`, and
+the existing result record. The binding stores Forge linkage and completeness separately from the
+upstream MNCS envelope. Incomplete timeout/output-limit executions persist an incomplete binding
+and re-raise the original error. Binding `status` cannot be `PASS`. A scripted Fabric adapter
+proves the `Runner` port can consume remote facts without Forge importing Fabric. Task 7C remains
+the sandbox-capable rootless Podman runner.
 
 ### Objective
 
@@ -428,6 +520,26 @@ Run the full suite plus adapter-specific tests. Container tests must skip explic
 runtime is unavailable and must not silently pass as though sandboxing was tested.
 
 ---
+
+### Task 7C — Rootless Podman runner (complete)
+
+`PodmanRunner` executes declared argv inside a rootless container with
+`--network=none`, `--read-only`, `--cap-drop=all`, a read-only workspace mount,
+declared writable mounts (`rw,Z`), and optional resource bounds. Availability
+probes fail closed with `RUNNER_UNAVAILABLE`; image digests come from
+`podman image inspect` and tags alone are never immutable identities. Runner
+selection is additive through the optional `[runner]` configuration section
+(default `local-process`). See ADR 0016. Container tests use a fake podman
+harness plus a real-podman integration test that verifies read-only rootfs,
+blocked networking, and persisted writable mounts.
+
+### Task 7D — Execution-assurance assessments (complete)
+
+Typed `execution_assurance` records assess receipt bindings against a fixed
+requestable property vocabulary, fail closed (ADR 0017), and are exposed as
+`execution.assurance.assess` / `.list` with an MCP resource. Forge Cell document
+validation is available read-only through `cell.documents.validate` and
+`cell.execution.assess`.
 
 ## Task 8 — Add ledger checkpoints and optional external anchoring
 
@@ -479,6 +591,65 @@ The resulting status model must distinguish at least:
 **Priority:** P1 after foundational tasks  
 **Target:** `0.2.0`  
 **Depends on:** Tasks 1 through 7
+
+**Status:** Task 9A is complete in the current `main` baseline. Its reusable Hypothesis properties
+for status precedence and randomized lifecycle ordering, adversarial Provider Protocol 0.1 corpus,
+compact raw-ledger corruption corpus, strengthened runner coverage, and reproducible branch-coverage
+command are retained. Task 9B package/release engineering is complete in the current `main`
+baseline, and all supported OS/Python matrix rows passed after the Windows test-harness repair.
+Task 9C is complete as this bounded implementation-mapped local threat-model and release-gate
+review increment. Task 9 and the full `0.2.0` gate remain incomplete.
+
+Run local branch coverage with:
+
+```bash
+bash scripts/coverage-local-stability.sh
+```
+
+This is development evidence for policy-branch discovery, not an assurance claim or a CI release
+threshold. Hypothesis settings are bounded and deterministic for this harness while preserving
+shrinking. Podman, execution receipts, external witnessing, and stronger execution authority stay
+deferred to later iterations. Persistent identity-bound workflow receipts are present.
+
+Run the package artifact verification locally with:
+
+```bash
+python scripts/verify-package.py
+```
+
+Capture and compare benchmark telemetry explicitly when investigating a change:
+
+```bash
+python scripts/benchmark-micro-verifiers.py --iterations 25 > baseline.json
+python scripts/benchmark-micro-verifiers.py --iterations 25 > candidate.json
+python scripts/compare-benchmarks.py baseline.json candidate.json
+```
+
+The artifact verifier builds and installs the wheel and source distribution in temporary virtual
+environments, checks import origin and packaged resources, exercises public entry points, and
+reads a copied historical state corpus without mutating the frozen fixtures. Benchmark comparison
+is operator-controlled development telemetry: it reports environment differences and metric deltas
+but has no repository performance threshold and does not establish correctness or assurance.
+
+Run the package artifact verification locally with:
+
+```bash
+python scripts/verify-package.py
+```
+
+Capture and compare benchmark telemetry explicitly when investigating a change:
+
+```bash
+python scripts/benchmark-micro-verifiers.py --iterations 25 > baseline.json
+python scripts/benchmark-micro-verifiers.py --iterations 25 > candidate.json
+python scripts/compare-benchmarks.py baseline.json candidate.json
+```
+
+The artifact verifier builds and installs the wheel and source distribution in temporary virtual
+environments, checks import origin and packaged resources, exercises public entry points, and
+reads a copied historical state corpus without mutating the frozen fixtures. Benchmark comparison
+is operator-controlled development telemetry: it reports environment differences and metric deltas
+but has no repository performance threshold and does not establish correctness or assurance.
 
 ### Objective
 
@@ -548,7 +719,7 @@ A reusable result must bind every material identity, including:
 
 ---
 
-## Task 11 — Design and implement distributed Forge
+## Task 11 — Consume Fabric for distributed execution evidence
 
 **Priority:** P3  
 **Target:** `0.3.0`  
@@ -556,26 +727,23 @@ A reusable result must bind every material identity, including:
 
 ### Objective
 
-Coordinate bounded work across heterogeneous machines for cross-platform reproduction,
-performance cohorts, scaled RAVEL, and automated MNCS-family testing.
+Evaluate Fabric-placed executions for cross-platform reproduction, performance cohorts, scaled
+RAVEL, and automated MNCS-family testing without building a second Forge fleet.
 
 ### Architecture constraint
 
-The MCP server remains the agent-facing control plane. Implement a separate coordinator/worker
-layer rather than embedding a distributed scheduler inside MCP request handlers.
+The MCP server remains the agent-facing control plane. Do not implement a Forge coordinator,
+worker registry, lease system, heartbeat layer, or generic remote worker protocol. Use
+`mncs-fabric` for placement and execution. Forge records what that execution proves.
 
 ### Required components
 
-- immutable content-addressed job envelope;
-- coordinator state and scheduling policy;
-- worker registration and capability declarations;
-- runner, provider, toolchain, OS, architecture, and resource constraints;
-- leases and heartbeat expiry;
-- idempotent execution and retry rules;
-- duplicate-result reconciliation;
-- artifact transfer with identity verification;
-- partial-failure and disconnected-worker recovery;
-- cohort plans for faster/slower and heterogeneous hosts; and
+- a `FabricRunner` / `FabricExecutionAdapter` over the existing `Runner` port;
+- immutable job/subject/action identity on the Forge side;
+- worker, runner, and environment identity binding;
+- capability-drift detection at the evidence layer;
+- retry/attempt lineage and duplicate-result reconciliation;
+- reproduction semantics for heterogeneous hosts; and
 - evidence classifications for same-operator reproduction, public reproduction, witnessing,
   protected holdout, and independent evaluation.
 
@@ -586,11 +754,11 @@ layer rather than embedding a distributed scheduler inside MCP request handlers.
   required;
 - bind every result to the exact worker, runner, environment, input, provider, and job identity;
 - worker capability drift must invalidate leases or require re-registration; and
-- the coordinator must tolerate duplicate delivery without duplicate authoritative state.
+- Forge must tolerate duplicate delivery without duplicate authoritative evidence.
 
 ### Acceptance criteria
 
-- loss of any one worker does not corrupt coordinator history;
+- loss of any one worker does not corrupt Forge evidence history;
 - replaying a job is idempotent and produces linked attempts;
 - mismatched artifacts or worker identities are rejected;
 - faster and slower cohorts can be compared without treating performance difference as correctness;
@@ -601,7 +769,7 @@ rules.
 ### Recommended first distributed study
 
 Use the committed minimal provider and a non-promotional RAVEL regression workflow across two
-machines before attempting a full cluster scheduler. Record capability mismatch, network loss,
+Fabric workers before attempting a live Fabric runner. Record capability mismatch, network loss,
 retry, duplicate delivery, and environment drift as deliberate test cases.
 
 ---

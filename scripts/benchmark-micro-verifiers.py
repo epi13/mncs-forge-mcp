@@ -3,7 +3,7 @@
 
 This is a development benchmark, not conformance evidence. It reports cold setup
 separately and p50/p95/p99 warm-operation latency for discovery, matching, execution,
-ledger verification, and freshness explanation.
+ledger verification, lifecycle inspection, and freshness explanation.
 """
 
 from __future__ import annotations
@@ -98,6 +98,7 @@ def run(iterations: int) -> dict[str, object]:
             ),
             "verifier_run": measure(iterations, execute),
             "ledger_verify": measure(iterations, forge.ledger.verify),
+            "state_inspect": measure(iterations, forge.state_inspect),
             "verifier_explain": measure(
                 iterations,
                 lambda: forge.verifier_explain(str(last_result["output_identity"])),

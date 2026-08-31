@@ -9,8 +9,8 @@ repair; evaluator results remain subject to freeze, separation, custody, and dis
 A micro-verifier is not a monolithic analyzer, whole-program proof, MNCS or MNCDS validator,
 certification system, source of independent evaluation, or custody mechanism. A `PASS` applies
 only to the verifier's declared claim, method, bounded inputs, assumptions, environment, and
-dependency envelope. Compilers, test harnesses, sanitizers, mutation tools, benchmarks, Joern,
-and other analyzers remain replaceable Provider Protocol backends or escalation paths.
+dependency envelope. Compilers, test harnesses, sanitizers, mutation tools, benchmarks, and
+other analyzers remain replaceable Provider Protocol backends or escalation paths.
 
 ## Control flow
 
@@ -165,8 +165,9 @@ isolation for adversarial providers.
 New verifier families should add a narrowly named Provider Protocol method, advertise it in a
 provider capability declaration, add a verifier declaration that references an authorized
 workflow, and return compact witnesses and explicit `UNKNOWN` limitations. Forge itself should
-not absorb analyzer-specific algorithms. Joern can back reachability/data-flow verifiers or serve
-as an escalation path, but the stable abstraction is the bounded claim, not the analyzer brand.
+not absorb analyzer-specific algorithms. A graph-analysis provider can back reachability/data-flow
+verifiers or serve as an escalation path, but the stable abstraction is the bounded claim, not the
+analyzer brand.
 
 ## Query-driven micro-debugging extension
 
