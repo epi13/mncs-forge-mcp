@@ -10,6 +10,7 @@ import shutil
 import tempfile
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .config import ForgeConfig, Provider
 from .errors import ForgeError
@@ -19,6 +20,9 @@ from .identity import content_identity, file_identity, identity_map
 from .paths import is_within, resolve_contained, validate_relative_path
 from .ports import ExecutionObservation, ExecutionResult, ExecutionSession, RunnerCapabilities
 from .serialization import local_json_identity, read_json
+
+if TYPE_CHECKING:
+    from .podman_runner import PodmanRunner
 
 
 class LocalProcessRunner:
@@ -160,6 +164,20 @@ class LocalProcessRunner:
 
 # Preserve the existing concrete adapter name while callers migrate to the runner vocabulary.
 LocalCommandExecutor = LocalProcessRunner
+
+
+def build_runner(config: ForgeConfig) -> LocalProcessRunner | PodmanRunner:
+    """Construct the declared project runner, failing closed when unavailable."""
+
+    settings = config.runner_settings
+    kind = str(settings.get("kind", "local-process"))
+    if kind == "local-process":
+        return LocalProcessRunner()
+    if kind == "podman-rootless":
+        from .podman_runner import build_podman_runner
+
+        return build_podman_runner(settings)
+    raise ForgeError("CONFIG_INVALID", f"unsupported runner kind: {kind!r}")
 
 
 class LocalProjectObserver:

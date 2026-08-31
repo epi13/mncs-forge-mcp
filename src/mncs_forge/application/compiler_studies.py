@@ -85,6 +85,8 @@ class CompilerEvolutionService:
 
     @staticmethod
     def _summary(record: ForgeRecord) -> dict[str, object]:
+        observation = record.get("observation")
+        projected = observation if isinstance(observation, Mapping) else {}
         return {
             "experiment_id": record["experiment_id"],
             "language_record_identity": record["language_record_identity"],
@@ -92,5 +94,12 @@ class CompilerEvolutionService:
             "compiler_identity": record["compiler_identity"],
             "pipeline_identity": record["pipeline_identity"],
             "compilation_status": record["compilation_status"],
+            "backend_identity": projected.get("backend_identity"),
+            "realization_request_identity": projected.get("realization_request_identity"),
+            "realization_plan_identity": projected.get("realization_plan_identity"),
+            "backend_artifact_identity": projected.get("backend_artifact_identity"),
+            "backend_artifact_kind": projected.get("backend_artifact_kind"),
+            "experiment_status": projected.get("experiment_status"),
+            "validation_judgements": projected.get("validation_judgements", []),
             "recorded_at": record["recorded_at"],
         }

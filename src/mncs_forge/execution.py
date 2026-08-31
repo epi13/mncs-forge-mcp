@@ -162,6 +162,28 @@ def run_bounded(
     )
 
 
+def run_provider(
+    command: object,
+    *,
+    cwd: Path,
+    timeout: float,
+    output_cap: int,
+    environment: dict[str, str],
+    stdin: bytes = b"",
+) -> ExecutionResult:
+    """Run a declared provider through the canonical bounded execution path."""
+
+    return run_bounded(
+        command,
+        cwd=cwd,
+        timeout=timeout,
+        output_cap=output_cap,
+        stderr_cap=output_cap,
+        environment=environment,
+        stdin=stdin,
+    )
+
+
 def parse_provider_response(stdout: bytes) -> dict[str, Any]:
     try:
         text = stdout.decode("utf-8")

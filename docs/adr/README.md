@@ -15,6 +15,12 @@ requirements.
 
 - [ADR 0001: Explicit control-plane composition](0001-explicit-control-plane-composition.md)
 - [ADR 0002: Versioned persistent record schemas](0002-versioned-record-schemas.md)
+- [ADR 0008: Derive lifecycle state from append-only history](0008-derived-lifecycle-state-machine.md)
+- [ADR 0009: Recoverable local record and ledger commits](0009-recoverable-record-store.md)
+- [ADR 0010: Canonical typed operation registry](0010-canonical-operation-registry.md)
+
+## Proposed decisions
+
 - [ADR 0003: Replaceable execution runners](0003-replaceable-execution-runners.md)
 - [ADR 0008: Derive lifecycle state from append-only history](0008-derived-lifecycle-state-machine.md)
 - [ADR 0009: Recoverable local record and ledger commits](0009-recoverable-record-store.md)
@@ -23,6 +29,8 @@ requirements.
 - [ADR 0013: Consume language-owned compiler experiment observations](0013-language-owned-compiler-experiment-observations.md)
 - [ADR 0014: Persist language-owned compiler experiments](0014-persistent-compiler-experiment-records.md)
 - [ADR 0015: Compiler candidate search without correctness authority](0015-compiler-candidate-search-without-correctness-authority.md)
+- [ADR 0016: Rootless Podman as the first sandbox-capable runner](0016-rootless-podman-runner.md)
+- [ADR 0017: Typed, fail-closed execution-assurance assessments](0017-execution-assurance-assessments.md)
 
 ## Proposed decisions
 

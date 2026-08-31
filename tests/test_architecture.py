@@ -211,7 +211,12 @@ def test_record_and_execution_boundaries_have_no_application_bypass() -> None:
         for path in PACKAGE.rglob("*.py")
         if "run_bounded(" in path.read_text(encoding="utf-8")
     )
-    assert direct_execution == ["adapters.py", "execution.py"]
+    assert direct_execution == [
+        "adapters.py",
+        "execution.py",
+        "mncs_native.py",
+        "podman_runner.py",
+    ]
 
 
 def test_operation_registry_does_not_become_domain_storage_or_execution_layer() -> None:

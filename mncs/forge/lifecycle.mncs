@@ -1,0 +1,170 @@
+mncs 0.10;
+
+// Bounded MNCS-native Forge lifecycle slice.
+//
+// This is a pure projection/transition kernel. It does not create records,
+// persist a ledger, run a provider, or claim evaluator independence. The host
+// application remains responsible for authority and custody boundaries.
+module mncs.forge.lifecycle.v1;
+
+use mncs.core.identity as idlib;
+use mncs.core.status as statlib;
+
+enum Stage {
+    NoEpoch,
+    EpochActive,
+    CandidateRegistered,
+    EvidenceIncomplete,
+    CandidateReady,
+    CandidateSelected,
+    CandidateRejected,
+    CandidateFrozen,
+    EvaluationComplete,
+    AmbiguousHistory
+}
+
+enum Operation {
+    BeginEpoch,
+    RegisterCandidate,
+    AddEvidence,
+    SelectCandidate,
+    RejectCandidate,
+    FreezeCandidate,
+    RecordEvaluation
+}
+
+record LifecycleState {
+    stage: Stage,
+    epoch: idlib.Digest32,
+    candidate: idlib.Digest32,
+    evidence: statlib.Status
+}
+
+record TransitionRequest {
+    operation: Operation,
+    epoch: idlib.Digest32,
+    candidate: idlib.Digest32,
+    evidence: statlib.Status
+}
+
+record TransitionResult { state: LifecycleState, status: statlib.Status, reason: byte }
+
+fn stage_code(value: Stage) -> (result: i64) {
+    return match value {
+        NoEpoch => 0,
+        EpochActive => 1,
+        CandidateRegistered => 2,
+        EvidenceIncomplete => 3,
+        CandidateReady => 4,
+        CandidateSelected => 5,
+        CandidateRejected => 6,
+        CandidateFrozen => 7,
+        EvaluationComplete => 8,
+        AmbiguousHistory => 9,
+    };
+}
+
+fn operation_code(value: Operation) -> (result: i64) {
+    return match value {
+        BeginEpoch => 0,
+        RegisterCandidate => 1,
+        AddEvidence => 2,
+        SelectCandidate => 3,
+        RejectCandidate => 4,
+        FreezeCandidate => 5,
+        RecordEvaluation => 6,
+    };
+}
+
+fn status_code(value: statlib.Status) -> (result: i64) {
+    return match value {
+        PASS => 0,
+        FAIL => 1,
+        UNKNOWN => 2,
+    };
+}
+
+fn state(stage: Stage, epoch: idlib.Digest32, candidate: idlib.Digest32, evidence: statlib.Status) -> (result: LifecycleState) {
+    return LifecycleState { stage: stage, epoch: epoch, candidate: candidate, evidence: evidence };
+}
+
+fn initial() -> (result: LifecycleState) {
+    return state(Stage.NoEpoch, idlib.zero(), idlib.zero(), statlib.Status.UNKNOWN);
+}
+
+fn request(operation: Operation, epoch: idlib.Digest32, candidate: idlib.Digest32, evidence: statlib.Status) -> (result: TransitionRequest) {
+    return TransitionRequest { operation: operation, epoch: epoch, candidate: candidate, evidence: evidence };
+}
+
+fn outcome(next_state: LifecycleState, status_value: statlib.Status, reason: byte) -> (result: TransitionResult) {
+    return TransitionResult { state: next_state, status: status_value, reason: reason };
+}
+
+fn rejected(current: LifecycleState, reason: byte) -> (result: TransitionResult) {
+    return outcome(current, statlib.Status.FAIL, reason);
+}
+
+fn begin_epoch(current: LifecycleState, input: TransitionRequest) -> (result: TransitionResult) {
+    if stage_code(current.stage) != 0 { return rejected(current, 2); }
+    if idlib.is_zero(input.epoch) { return rejected(current, 1); }
+    return outcome(state(Stage.EpochActive, input.epoch, idlib.zero(), statlib.Status.UNKNOWN), statlib.Status.PASS, 0);
+}
+
+fn register_candidate(current: LifecycleState, input: TransitionRequest) -> (result: TransitionResult) {
+    if stage_code(current.stage) != 1 { return rejected(current, 4); }
+    if idlib.is_zero(input.candidate) { return rejected(current, 3); }
+    return outcome(state(Stage.CandidateRegistered, current.epoch, input.candidate, statlib.Status.UNKNOWN), statlib.Status.UNKNOWN, 0);
+}
+
+fn add_evidence(current: LifecycleState, input: TransitionRequest) -> (result: TransitionResult) {
+    if stage_code(current.stage) != 2 && stage_code(current.stage) != 3 {
+        return rejected(current, 7);
+    }
+    let combined: statlib.Status = statlib.dominate(current.evidence, input.evidence);
+    return match combined {
+        FAIL => outcome(state(Stage.CandidateRejected, current.epoch, current.candidate, statlib.Status.FAIL), statlib.Status.FAIL, 5),
+        UNKNOWN => outcome(state(Stage.EvidenceIncomplete, current.epoch, current.candidate, statlib.Status.UNKNOWN), statlib.Status.UNKNOWN, 6),
+        PASS => outcome(state(Stage.CandidateReady, current.epoch, current.candidate, statlib.Status.PASS), statlib.Status.PASS, 0),
+    };
+}
+
+fn select_candidate(current: LifecycleState) -> (result: TransitionResult) {
+    if stage_code(current.stage) != 4 || status_code(current.evidence) != 0 {
+        return rejected(current, 8);
+    }
+    return outcome(state(Stage.CandidateSelected, current.epoch, current.candidate, statlib.Status.PASS), statlib.Status.PASS, 0);
+}
+
+fn reject_candidate(current: LifecycleState) -> (result: TransitionResult) {
+    if stage_code(current.stage) != 2 && stage_code(current.stage) != 3 && stage_code(current.stage) != 4 {
+        return rejected(current, 10);
+    }
+    return outcome(state(Stage.CandidateRejected, current.epoch, current.candidate, statlib.Status.FAIL), statlib.Status.FAIL, 9);
+}
+
+fn freeze_candidate(current: LifecycleState) -> (result: TransitionResult) {
+    if stage_code(current.stage) != 5 { return rejected(current, 11); }
+    return outcome(state(Stage.CandidateFrozen, current.epoch, current.candidate, statlib.Status.PASS), statlib.Status.PASS, 0);
+}
+
+fn record_evaluation(current: LifecycleState, input: TransitionRequest) -> (result: TransitionResult) {
+    if stage_code(current.stage) != 7 { return rejected(current, 12); }
+    let combined: statlib.Status = statlib.dominate(current.evidence, input.evidence);
+    return outcome(state(Stage.EvaluationComplete, current.epoch, current.candidate, combined), combined, 0);
+}
+
+fn apply(current: LifecycleState, input: TransitionRequest) -> (result: TransitionResult) {
+    if stage_code(current.stage) == 9 { return rejected(current, 90); }
+    if operation_code(input.operation) != 0 {
+        if idlib.equal(current.epoch, input.epoch) { } else { return rejected(current, 91); }
+    }
+    return match input.operation {
+        Operation.BeginEpoch => begin_epoch(current, input),
+        Operation.RegisterCandidate => register_candidate(current, input),
+        Operation.AddEvidence => add_evidence(current, input),
+        Operation.SelectCandidate => select_candidate(current),
+        Operation.RejectCandidate => reject_candidate(current),
+        Operation.FreezeCandidate => freeze_candidate(current),
+        Operation.RecordEvaluation => record_evaluation(current, input),
+    };
+}

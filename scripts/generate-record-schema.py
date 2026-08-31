@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from mncs_forge.records import (
+    ASSURANCE_REQUEST_PROPERTIES,
     CURRENT_SCHEMA_VERSION,
     LEDGER_KIND_TYPES,
     LEDGER_REQUIRED,
@@ -75,8 +76,22 @@ def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
         "conformance_status",
     }:
         return {"type": "null"}
+    if record_type is RecordType.CONCEPT_EVALUATION and field in {
+        "generator_identity",
+        "evaluator_policy_identity",
+        "assurance_status",
+        "conformance_status",
+    }:
+        if field in {"generator_identity", "evaluator_policy_identity"}:
+            return {"type": ["string", "null"]}
+        return {"type": "null"}
     if record_type is RecordType.COMPILER_EXPERIMENT and field == "language_contract_id":
-        return {"const": "mncs:language:compilation-study-result:0.1"}
+        return {
+            "enum": [
+                "mncs:language:compilation-study-result:0.1",
+                "mncs:language:experiment-result:0.1",
+            ]
+        }
     if record_type is RecordType.COMPILER_EXPERIMENT and field == "interpretation":
         return {"const": "observation_only_not_assurance_or_conformance"}
     if record_type is RecordType.COMPILER_EXPERIMENT and field == "compilation_status":
@@ -118,6 +133,23 @@ def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
         return {"type": ["string", "null"]}
     if field == "epoch_identity" and record_type is RecordType.EXECUTION_RECEIPT_BINDING:
         return {"type": ["string", "null"]}
+    if record_type is RecordType.EXECUTION_ASSURANCE and field == "policy_identity":
+        return {"type": ["string", "null"]}
+    if record_type is RecordType.EXECUTION_ASSURANCE and field == "requested_properties":
+        return {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": True,
+            "items": {"enum": sorted(ASSURANCE_REQUEST_PROPERTIES)},
+        }
+    if record_type is RecordType.EXECUTION_ASSURANCE and field in {
+        "unmet_properties",
+        "reasons",
+    }:
+        items: dict[str, object] = {"type": "string"}
+        if field == "reasons":
+            items["minLength"] = 1
+        return {"type": "array", "items": items}
     if field in NULLABLE_STRING_FIELDS:
         return {"type": ["string", "null"]}
     if field == "mncs_receipt":

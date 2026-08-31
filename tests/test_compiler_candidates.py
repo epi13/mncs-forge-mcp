@@ -129,3 +129,78 @@ def test_target_envelope_is_not_global(config: ForgeConfig) -> None:
     listed = forge.compiler_candidates_list()
     assert listed["assurance_status"] is None
     assert len(listed["candidates"]) == 2
+
+
+def test_validation_binds_to_candidate_artifact_identity(config: ForgeConfig) -> None:
+    forge = Forge(config)
+    candidate = register(forge, "bound")
+    attached = forge.compiler_candidate_attach_validation(
+        str(candidate["candidate_id"]),
+        validator_identity="mncs:validator:constant-folding:0.1",
+        judgement="PASS",
+        claimed_relation="observational-equivalence",
+    )
+    inspection = forge.compiler_candidate_inspect(str(attached["candidate_id"]))
+    assert inspection["validated_artifact_identity"] == "ssa:candidate:bound"
+    assert inspection["candidate_artifact_identity"] == "ssa:candidate:bound"
+    assert inspection["validation_freshness"] == "current"
+
+
+def test_validation_for_wrong_artifact_is_rejected(config: ForgeConfig) -> None:
+    forge = Forge(config)
+    candidate = register(forge, "mismatch")
+    with pytest.raises(ForgeError) as excinfo:
+        forge.compiler_candidate_attach_validation(
+            str(candidate["candidate_id"]),
+            validator_identity="mncs:validator:constant-folding:0.1",
+            judgement="PASS",
+            claimed_relation="observational-equivalence",
+            expected_artifact_identity="ssa:candidate:different-artifact",
+        )
+    assert excinfo.value.code == "COMPILER_VALIDATION_ARTIFACT_MISMATCH"
+    inspection = forge.compiler_candidate_inspect(str(candidate["candidate_id"]))
+    assert inspection["validation_freshness"] == "unvalidated"
+
+
+def test_copied_pass_onto_substituted_artifact_cannot_promote(
+    config: ForgeConfig,
+) -> None:
+    forge = Forge(config)
+    candidate = register(forge, "original")
+    passed = forge.compiler_candidate_attach_validation(
+        str(candidate["candidate_id"]),
+        validator_identity="mncs:validator:constant-folding:0.1",
+        judgement="PASS",
+        claimed_relation="observational-equivalence",
+    )
+    validation = passed["validation"]
+    assert isinstance(validation, dict)
+    substituted = forge.compiler_candidate_register(
+        baseline_artifact_identity="ssa:baseline",
+        candidate_artifact_identity="ssa:candidate:substituted-artifact",
+        generator_identity=str(passed["generator_identity"]),
+        declared_transformation="substituted",
+        claimed_relation="observational-equivalence",
+        expected_benefit="faster",
+        protected_properties=["return_value"],
+        target_envelope="mncs:target:portable-wasm-mvp-0.1",
+        required_validation="translation-validation",
+    )
+    forged = forge._compiler_candidate_service._successor(  # type: ignore[attr-defined]
+        forge._compiler_candidate_service._get(str(substituted["candidate_id"])),  # type: ignore[attr-defined]
+        semantic_status="PASS",
+        benchmark_observation=None,
+        validation=validation,
+        policy_disposition="accept",
+    )
+    forge.record_store.commit("compiler-candidates", "compiler_candidate", forged)
+
+    tournament = forge.compiler_tournament([str(forged["candidate_id"])])
+    assert tournament["accepted"] == []
+    assert tournament["unresolved"][0]["effective_semantic_status"] == "UNKNOWN"
+    assert tournament["unresolved"][0]["validation_freshness"] == "stale-artifact-mismatch"
+    with pytest.raises(ForgeError, match="search cannot promote it"):
+        forge.compiler_candidate_select(
+            str(forged["candidate_id"]),
+            policy="explicit-protected-property-policy",
+        )
