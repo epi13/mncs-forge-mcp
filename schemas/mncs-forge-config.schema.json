@@ -42,6 +42,17 @@
         "output_bytes": {"type": "integer", "minimum": 1024, "maximum": 16777216}
       }
     },
+    "native": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["off", "prefer", "required"],
+          "default": "prefer"
+        }
+      }
+    },
     "verifier_limits": {
       "type": "object",
       "additionalProperties": false,

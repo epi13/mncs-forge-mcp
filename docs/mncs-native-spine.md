@@ -1,20 +1,28 @@
 # MNCS-native Forge spine
 
-Forge now carries a small MNCS-native source spine alongside the established
+Forge now carries a packaged MNCS-native source spine alongside the established
 Python compatibility surface. The source modules are an incremental authority
 boundary for identity-shaped values, canonical candidate material, typed
-candidate validation, and lifecycle transitions; the Python CLI and MCP server
-remain the stable integration surface during the migration. Forge now invokes
-the lifecycle module as a preflight gate for the transitions that the native
-kernel covers.
+candidate validation, and lifecycle projection; the Python CLI and MCP server
+remain the stable integration surface during the migration. Forge invokes the
+lifecycle module for both bounded history projection and covered transition
+preflight.
 
 | Module | Responsibility |
 | --- | --- |
 | `mncs.forge.identity.v1` | Host-supplied 32-byte digest values and equality/zero checks |
 | `mncs.forge.serialization.v1` | Versioned candidate material layout and status codes |
 | `mncs.forge.records.v1` | Candidate/validation records and fail-closed checks |
-| `mncs.forge.lifecycle.v1` | Epoch, evidence, selection, rejection, freeze, and evaluation transitions |
+| `mncs.forge.lifecycle.v1` | Epoch/candidate lineage, evidence, disposition, freeze, evaluation, freshness, and stage projection |
 | `mncs.forge.core.v1` | Public entrypoints used by the adapter and service drift fixture |
+
+The authoritative Forge source files are package data under
+`src/mncs_forge/resources/native/forge/`; installed wheels and sdists expose the
+same files through `importlib.resources`. A release or CI lane may set
+`MNCS_FORGE_NATIVE_MODE=off|prefer|required` (or configure `[native].mode`).
+`off` disables selection, `prefer` selects the packaged runtime when available,
+and `required` fails closed before startup when it is unavailable. Project
+inspection exposes the selected/available/reason status.
 
 The canonical candidate material is exactly 71 bytes in this tranche:
 
@@ -34,18 +42,21 @@ With sibling checkouts at the workspace root:
 
 ```bash
 MNCS_LANGUAGE_ROOT=/absolute/path/to/mncs-language \
-python -c 'from pathlib import Path; from mncs_forge.mncs_native import NativeForgeAdapter; print(NativeForgeAdapter(Path("/absolute/path/to/mncs-forge-mcp")).execute(Path("/absolute/path/to/mncs-forge-mcp/mncs/forge/core.mncs"), Path("/absolute/path/to/mncs-forge-mcp/examples/execution/native-status-probe.json")).payload)'
+python -c 'from pathlib import Path; from mncs_forge.mncs_native import NativeForgeAdapter; a=NativeForgeAdapter(Path("/absolute/path/to/mncs-forge-mcp")); print(a.execute(a.native_source, Path("/absolute/path/to/mncs-forge-mcp/examples/execution/native-status-probe.json")).payload)'
 ```
 
 The adapter invokes `mncs-language` through Forge’s existing bounded, no-shell
 runner. First-epoch creation, first-candidate registration, candidate disposition,
 and candidate freeze are preflighted against the typed lifecycle kernel before
-their legacy-compatible records are committed. Forge-specific history projection,
-identity production, evidence envelopes, and evaluator/bundle states remain in
-the host boundary until the MNCS source has equivalent capabilities. A missing
-language checkout retains the explicit compatibility path; an available but
-malformed, timed-out, or semantically mismatching native result fails closed.
+their legacy-compatible records are committed. Forge-specific record persistence,
+identity production, evidence envelopes, evaluator custody, and bundle semantics
+remain in the host boundary. A missing language checkout retains the explicit
+compatibility path; an available but malformed, timed-out, or semantically
+mismatching native result fails closed.
 
-The preflight is intentionally cached by source, CLI, stage, operation, and
-evidence inputs because the kernel is pure. The cache does not persist evidence
-or lifecycle authority and is invalidated when the Forge MNCS source changes.
+The pure preflight/projection caches are keyed by the native contract, full
+packaged Forge source content, language library/compiler/runtime content, exact
+CLI command, and semantic inputs. They do not persist evidence or lifecycle
+authority and never rely on source mtime alone. The projection input is a fixed
+32-event typed array; histories outside that declared bound remain
+`NATIVE_LIFECYCLE_UNKNOWN` rather than being truncated or guessed.

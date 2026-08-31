@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from .errors import ForgeError
@@ -473,6 +473,218 @@ class ForgeStateMachine:
             policy_error=policy_error,
         )
 
+    def _native_history_events(self) -> list[dict[str, object]]:
+        """Reduce typed ledger records to the native lifecycle event ABI."""
+
+        events: list[dict[str, object]] = []
+        for entry in self.history:
+            record = entry.payload
+            if isinstance(record, EpochRecord):
+                events.append(
+                    {
+                        "kind": "EpochStarted",
+                        "epoch": str(record["epoch_id"]),
+                        "parent_epoch": record.get("parent_epoch"),
+                    }
+                )
+            elif isinstance(record, CandidateRecord):
+                events.append(
+                    {
+                        "kind": "CandidateRegistered",
+                        "epoch": str(record["source_epoch"]),
+                        "candidate": str(record["candidate_id"]),
+                        "parent_candidate": record.get("parent_candidate"),
+                    }
+                )
+            elif isinstance(record, WorkflowResultRecord):
+                if (
+                    record.get("candidate_identity") is not None
+                    and record.get("subject_type") != "project"
+                    and record.get("workflow") in self.required_evidence
+                ):
+                    events.append(
+                        {
+                            "kind": "EvidenceObserved",
+                            "candidate": str(record["candidate_identity"]),
+                            "status": str(record.get("status") or "UNKNOWN"),
+                        }
+                    )
+            elif isinstance(record, VerifierResultRecord):
+                if (
+                    record.get("candidate_identity") is not None
+                    and record.get("mode") == "development"
+                    and record.get("verifier_id") in self.required_evidence
+                ):
+                    events.append(
+                        {
+                            "kind": "EvidenceObserved",
+                            "candidate": str(record["candidate_identity"]),
+                            "status": str(record.get("status") or "UNKNOWN"),
+                        }
+                    )
+            elif isinstance(record, CandidateDispositionRecord):
+                disposition = str(record.get("disposition") or "")
+                if disposition in {"selected", "rejected"}:
+                    events.append(
+                        {
+                            "kind": "CandidateSelected"
+                            if disposition == "selected"
+                            else "CandidateRejected",
+                            "candidate": str(record["candidate_identity"]),
+                        }
+                    )
+            elif isinstance(record, FreezeRecord):
+                events.append(
+                    {
+                        "kind": "CandidateFrozen",
+                        "candidate": str(record["candidate_identity"]),
+                    }
+                )
+            elif (
+                isinstance(record, FinalEvaluationRecord)
+                and record.get("candidate_identity") is not None
+            ):
+                events.append(
+                    {
+                        "kind": "EvaluationRecorded",
+                        "candidate": str(record["candidate_identity"]),
+                        "status": str(record.get("status") or "UNKNOWN"),
+                    }
+                )
+        return events
+
+    @staticmethod
+    def _identity_digest(identity: object, *, context: str) -> bytes:
+        if identity is None or identity == "":
+            return bytes(32)
+        if not isinstance(identity, str):
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a digest identity")
+        try:
+            digest = bytes.fromhex(identity.rsplit(":", 1)[-1])
+        except ValueError as exc:
+            raise ForgeError(
+                "NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a digest identity"
+            ) from exc
+        if len(digest) != 32:
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a 32-byte digest")
+        return digest
+
+    def _apply_native_projection(self, projection: LifecycleProjection) -> LifecycleProjection:
+        if self.native is None:
+            return projection
+        project_native = getattr(self.native, "lifecycle_projection", None)
+        if not callable(project_native):
+            return projection
+        native = project_native(
+            self._native_history_events(),
+            current_candidate=self.current_candidate_identity,
+            required_evidence=len(self.required_evidence),
+        )
+        active_identity = (
+            str(projection.active_epoch["epoch_id"])
+            if projection.active_epoch is not None
+            else None
+        )
+        candidate_identity = (
+            str(projection.current_candidate["candidate_id"])
+            if projection.current_candidate is not None
+            else None
+        )
+        if active_identity is not None and native.active_epoch != self._identity_digest(
+            active_identity, context="native active epoch"
+        ):
+            raise ForgeError(
+                "NATIVE_LIFECYCLE_MISMATCH",
+                "native lifecycle projection disagrees with the active epoch identity",
+            )
+        if candidate_identity is not None and native.current_candidate != self._identity_digest(
+            candidate_identity, context="native current candidate"
+        ):
+            raise ForgeError(
+                "NATIVE_LIFECYCLE_MISMATCH",
+                "native lifecycle projection disagrees with the current candidate identity",
+            )
+        if native.parent_epoch != bytes(32) and projection.active_epoch is not None:
+            parent_identity = projection.active_epoch.get("parent_epoch")
+            if native.parent_epoch != self._identity_digest(
+                parent_identity, context="native parent epoch"
+            ):
+                raise ForgeError(
+                    "NATIVE_LIFECYCLE_MISMATCH",
+                    "native lifecycle projection disagrees with epoch parentage",
+                )
+        if native.parent_candidate != bytes(32) and projection.current_candidate is not None:
+            parent_identity = projection.current_candidate.get("parent_candidate")
+            if native.parent_candidate != self._identity_digest(
+                parent_identity, context="native parent candidate"
+            ):
+                raise ForgeError(
+                    "NATIVE_LIFECYCLE_MISMATCH",
+                    "native lifecycle projection disagrees with candidate parentage",
+                )
+        if not native.lineage_ok:
+            limitations = list(projection.limitations)
+            if not any(item.code == "NATIVE_LINEAGE_CONFLICT" for item in limitations):
+                limitations.append(
+                    TransitionBlocker(
+                        "NATIVE_LINEAGE_CONFLICT",
+                        "MNCS lifecycle projection found an invalid parent relationship",
+                    )
+                )
+            return replace(
+                projection,
+                stage=LifecycleStage.AMBIGUOUS_HISTORY,
+                candidate_status="ambiguous",
+                candidate_freshness=native.freshness.upper(),
+                limitations=tuple(limitations),
+                reconciliation_status="unknown",
+            )
+        if projection.bundles:
+            stage = projection.stage
+        else:
+            stage = LifecycleStage(
+                {
+                    "NoEpoch": LifecycleStage.NO_EPOCH,
+                    "EpochActive": LifecycleStage.EPOCH_ACTIVE,
+                    "CandidateRegistered": LifecycleStage.CANDIDATE_REGISTERED,
+                    "EvidenceIncomplete": LifecycleStage.EVIDENCE_INCOMPLETE,
+                    "CandidateReady": LifecycleStage.CANDIDATE_READY,
+                    "CandidateSelected": LifecycleStage.CANDIDATE_SELECTED,
+                    "CandidateRejected": LifecycleStage.CANDIDATE_REJECTED,
+                    "CandidateFrozen": LifecycleStage.CANDIDATE_FROZEN,
+                    "EvaluationComplete": LifecycleStage.EVALUATION_COMPLETE,
+                    "AmbiguousHistory": LifecycleStage.AMBIGUOUS_HISTORY,
+                }[native.stage]
+            )
+        native_freshness = {
+            "NotApplicable": "NOT_APPLICABLE",
+            "Current": "CURRENT",
+            "Stale": "STALE",
+            "Unknown": "UNKNOWN",
+        }[native.freshness]
+        native_disposition = {
+            "Undisposed": "undisposed",
+            "Selected": "selected",
+            "Rejected": "rejected",
+            "Conflict": "conflict",
+        }[native.disposition]
+        return replace(
+            projection,
+            stage=stage,
+            candidate_status=(
+                projection.candidate_status
+                if stage is not LifecycleStage.AMBIGUOUS_HISTORY
+                else "ambiguous"
+            ),
+            candidate_freshness=native_freshness,
+            disposition_status=native_disposition,
+            reconciliation_status=(
+                "unknown"
+                if stage is LifecycleStage.AMBIGUOUS_HISTORY
+                else projection.reconciliation_status
+            ),
+        )
+
     def _project(self) -> LifecycleProjection:
         limitations: list[TransitionBlocker] = []
         active_epoch, epoch_status, superseded = self._epoch_projection(limitations)
@@ -574,7 +786,7 @@ class ForgeStateMachine:
         reconciliation_status = (
             "unknown" if stage is LifecycleStage.AMBIGUOUS_HISTORY else "derived_on_request"
         )
-        return LifecycleProjection(
+        projection = LifecycleProjection(
             stage=stage,
             active_epoch=active_epoch,
             epoch_status=epoch_status,
@@ -595,6 +807,7 @@ class ForgeStateMachine:
             bundle_status=bundle_status,
             limitations=tuple(limitations),
         )
+        return self._apply_native_projection(projection)
 
     def _require_mode(self, expected: str) -> None:
         if self.mode != expected:

@@ -50,7 +50,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-"mncs_forge.resources" = ["*.json", "*.md"]
+"mncs_forge.resources" = ["*.json", "*.md", "native/forge/*.mncs"]
 
 [tool.ruff]
 target-version = "py311"
@@ -67,3 +67,4 @@ packages = ["mncs_forge"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+markers = ["native: requires the separately checked out and built mncs-language runtime"]

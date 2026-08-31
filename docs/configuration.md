@@ -36,6 +36,13 @@ Defaults are conservative and existing configurations without verifiers remain v
 [minimal example](../examples/minimal/mncs-forge.toml) and
 [micro-verifier guide](micro-verifiers.md).
 
+Optional `[native]` selects the MNCS-native Forge runtime with `mode = "off"`, `"prefer"`, or
+`"required"`; the default is `"prefer"`. `MNCS_FORGE_NATIVE_MODE` is a narrow environment
+override for CI and release checks. `off` disables native selection, `prefer` uses the packaged
+MNCS source when the checked-out language runtime is available, and `required` fails closed before
+Forge startup when either side of the native boundary is unavailable. `project inspect` reports
+the mode, availability, selection, and reason.
+
 All project paths are relative to the configured root. Absolute paths, `..`, NULs, symlink escape,
 and protected/writable overlap are rejected. Every command is a non-empty argument array. Forge
 never uses `shell=True` and has no arbitrary shell MCP tool.

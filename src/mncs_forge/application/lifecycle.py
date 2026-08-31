@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 
 from ..mncs_native import NativeForgeAdapter
 from ..ports import ProjectObserver, RecordReader, record_by_id
@@ -20,11 +21,34 @@ class LifecycleContext:
         records: RecordReader,
         observer: ProjectObserver,
         native: NativeForgeAdapter | None = None,
+        native_mode: str = "prefer",
+        root: Path | None = None,
     ) -> None:
         self.mode = mode
         self.records = records
         self.observer = observer
         self.native = native
+        self.native_mode = native_mode
+        self.root = root
+
+    def native_status(self) -> dict[str, object]:
+        if self.native is None:
+            if self.native_mode == "off":
+                return {
+                    "mode": self.native_mode,
+                    "selected": False,
+                    "available": False,
+                    "reason": "disabled",
+                }
+            if self.root is None:
+                return {
+                    "mode": self.native_mode,
+                    "selected": False,
+                    "available": False,
+                    "reason": "NATIVE_UNAVAILABLE",
+                }
+            return NativeForgeAdapter(self.root).status(self.native_mode)
+        return self.native.status(self.native_mode)
 
     def machine(
         self,

@@ -94,6 +94,7 @@ class ProjectService:
                 "root": str(self.config.root),
             },
             "mode": self.mode,
+            "native_execution": self.lifecycle.native_status(),
             "configured_paths": self.config.path_values,
             "candidate_write_boundaries": [
                 str(path) for path in self.config.relative_scopes("candidates", "generated")

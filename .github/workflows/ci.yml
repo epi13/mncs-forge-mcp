@@ -24,7 +24,7 @@ jobs:
       - run: ruff format --check .
       - run: ruff check .
       - run: mypy src
-      - run: pytest
+      - run: pytest -m "not native"
       - run: python -m pip check
       - run: python -m build
       - run: python scripts/verify-package.py --artifact-dir dist --no-build
