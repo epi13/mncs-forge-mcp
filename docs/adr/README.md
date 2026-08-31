@@ -15,6 +15,12 @@ requirements.
 
 - [ADR 0001: Explicit control-plane composition](0001-explicit-control-plane-composition.md)
 - [ADR 0002: Versioned persistent record schemas](0002-versioned-record-schemas.md)
+- [ADR 0008: Derive lifecycle state from append-only history](0008-derived-lifecycle-state-machine.md)
+- [ADR 0009: Recoverable local record and ledger commits](0009-recoverable-record-store.md)
+- [ADR 0010: Canonical typed operation registry](0010-canonical-operation-registry.md)
+
+## Proposed decisions
+
 - [ADR 0003: Replaceable execution runners](0003-replaceable-execution-runners.md)
 - [ADR 0008: Derive lifecycle state from append-only history](0008-derived-lifecycle-state-machine.md)
 - [ADR 0009: Recoverable local record and ledger commits](0009-recoverable-record-store.md)
