@@ -71,12 +71,20 @@ class Forge:
         self._executor = build_runner(config)
         self._observer = LocalProjectObserver(config)
         native = NativeForgeAdapter(config.root)
-        self._native = native if native.available and native.source_available else None
+        native_mode = config.native_execution_mode
+        if native_mode == "required":
+            native.ensure_available()
+        native_selected = native_mode == "required" or (
+            native_mode == "prefer" and bool(native.status(native_mode).get("selected"))
+        )
+        self._native = native if native_selected else None
         self._lifecycle = LifecycleContext(
             mode=mode,
             records=self.ledger,
             observer=self._observer,
             native=self._native,
+            native_mode=native_mode,
+            root=config.root,
         )
         RecoveryService(records=self.ledger, record_store=self.record_store).recover(
             recover_storage=record_store is not None

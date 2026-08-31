@@ -6,8 +6,10 @@ from pathlib import Path
 import pytest
 
 from mncs_forge.config import ForgeConfig, load_config
+from mncs_forge.engine import Forge
 from mncs_forge.errors import ForgeError
 from mncs_forge.execution import validate_argv
+from mncs_forge.mncs_native import NativeForgeAdapter
 from mncs_forge.paths import resolve_contained, validate_relative_path
 
 
@@ -36,6 +38,33 @@ def test_configuration_defaults_remain_compatible(config: ForgeConfig) -> None:
     provider = config.providers["provider-pass"]
     assert provider.transport == "stdio-jsonl"
     assert provider.required is False
+
+
+def test_native_execution_mode_is_explicit_and_environment_overridable(
+    config: ForgeConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("MNCS_FORGE_NATIVE_MODE", raising=False)
+    assert config.native_execution_mode == "prefer"
+    for mode in ("off", "prefer", "required"):
+        monkeypatch.setenv("MNCS_FORGE_NATIVE_MODE", mode)
+        assert config.native_execution_mode == mode
+    monkeypatch.setenv("MNCS_FORGE_NATIVE_MODE", "invalid")
+    with pytest.raises(ForgeError, match="native execution mode"):
+        _ = config.native_execution_mode
+
+
+def test_required_native_mode_fails_during_forge_startup(
+    config: ForgeConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MNCS_FORGE_NATIVE_MODE", "required")
+
+    def unavailable(_adapter: NativeForgeAdapter) -> None:
+        raise ForgeError("NATIVE_UNAVAILABLE", "mncs-language checkout is unavailable")
+
+    monkeypatch.setattr(NativeForgeAdapter, "ensure_available", unavailable)
+
+    with pytest.raises(ForgeError, match="mncs-language checkout is unavailable"):
+        Forge(config)
 
 
 def test_runtime_state_override_is_outside_source_tree(

@@ -14,7 +14,10 @@ import json
 import os
 import shutil
 import tempfile
+from collections.abc import Mapping, Sequence
+from contextlib import ExitStack, suppress
 from dataclasses import dataclass
+from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Any
 
@@ -50,9 +53,117 @@ _LIFECYCLE_OPERATIONS = {
     "FreezeCandidate": 5,
     "RecordEvaluation": 6,
 }
-_STAGE_TYPE = "mncs.forge.lifecycle.v1::Stage"
-_OPERATION_TYPE = "mncs.forge.lifecycle.v1::Operation"
-_STATUS_TYPE = "mncs.core.status.v1::Status"
+_LIFECYCLE_MODULE = "mncs.forge.lifecycle.v1"
+_IDENTITY_MODULE = "mncs.core.identity.v1"
+
+
+def _encode_identity_component(value: str) -> str:
+    return "".join(
+        chr(byte)
+        if (chr(byte).isalnum() and byte < 128) or byte in (ord("_"), ord("-"), ord("."))
+        else f"%{byte:02X}"
+        for byte in value.encode("utf-8")
+    )
+
+
+def _semantic_identity(kind: str, *components: str) -> str:
+    encoded = "::".join(_encode_identity_component(component) for component in components)
+    return f"mncs:0.2:{kind}:{encoded}"
+
+
+def _finite_type_identity(module: str, name: str) -> str:
+    return _semantic_identity("finite-type", module, name)
+
+
+def _finite_variant_identity(module: str, type_name: str, variant: str) -> str:
+    return _semantic_identity("finite-variant", module, type_name, variant)
+
+
+def _record_type_identity(module: str, name: str, fields: Mapping[str, str]) -> str:
+    canonical = "".join(
+        f"{field_name}:{field_type};" for field_name, field_type in sorted(fields.items())
+    )
+    return _semantic_identity("record-type", module, name, canonical)
+
+
+_STAGE_TYPE = _finite_type_identity(_LIFECYCLE_MODULE, "Stage")
+_OPERATION_TYPE = _finite_type_identity(_LIFECYCLE_MODULE, "Operation")
+_EVENT_KIND_TYPE = _finite_type_identity(_LIFECYCLE_MODULE, "EventKind")
+_DISPOSITION_TYPE = _finite_type_identity(_LIFECYCLE_MODULE, "Disposition")
+_FRESHNESS_TYPE = _finite_type_identity(_LIFECYCLE_MODULE, "Freshness")
+_STATUS_TYPE = _finite_type_identity("mncs.core.status.v1", "Status")
+_DIGEST_TYPE = _record_type_identity(_IDENTITY_MODULE, "Digest32", {"bytes": "[byte; 32]"})
+_HISTORY_EVENT_TYPE = _record_type_identity(
+    _LIFECYCLE_MODULE,
+    "HistoryEvent",
+    {
+        "candidate": _DIGEST_TYPE,
+        "epoch": _DIGEST_TYPE,
+        "kind": "EventKind",
+        "parent_candidate": _DIGEST_TYPE,
+        "parent_epoch": _DIGEST_TYPE,
+        "status": _STATUS_TYPE,
+    },
+)
+_PROJECTION_INPUT_TYPE = _record_type_identity(
+    _LIFECYCLE_MODULE,
+    "ProjectionInput",
+    {
+        "current_candidate": _DIGEST_TYPE,
+        "event_count": "byte",
+        "events": "[HistoryEvent; 32]",
+        "required_evidence": "byte",
+    },
+)
+_PROJECTION_STATE_TYPE = _record_type_identity(
+    _LIFECYCLE_MODULE,
+    "ProjectionState",
+    {
+        "active_epoch": _DIGEST_TYPE,
+        "candidate_count": "i64",
+        "current_candidate": _DIGEST_TYPE,
+        "disposition": "Disposition",
+        "epoch_count": "i64",
+        "evaluated": "bool",
+        "evidence": _STATUS_TYPE,
+        "evidence_count": "i64",
+        "frozen": "bool",
+        "freshness": "Freshness",
+        "lineage_ok": "bool",
+        "parent_candidate": _DIGEST_TYPE,
+        "parent_epoch": _DIGEST_TYPE,
+        "stage": "Stage",
+    },
+)
+_PROJECTION_RESULT_TYPE = _record_type_identity(
+    _LIFECYCLE_MODULE,
+    "ProjectionResult",
+    {"projection": "ProjectionState", "reason": "byte", "status": _STATUS_TYPE},
+)
+_FINITE_VARIANTS: dict[str, dict[str, int]] = {
+    _STATUS_TYPE: _STATUS_VARIANTS,
+    _STAGE_TYPE: _LIFECYCLE_STAGES,
+    _OPERATION_TYPE: _LIFECYCLE_OPERATIONS,
+    _EVENT_KIND_TYPE: {
+        "Empty": 0,
+        "EpochStarted": 1,
+        "CandidateRegistered": 2,
+        "EvidenceObserved": 3,
+        "CandidateSelected": 4,
+        "CandidateRejected": 5,
+        "CandidateFrozen": 6,
+        "EvaluationRecorded": 7,
+    },
+    _DISPOSITION_TYPE: {"Undisposed": 0, "Selected": 1, "Rejected": 2, "Conflict": 3},
+    _FRESHNESS_TYPE: {
+        "NotApplicable": 0,
+        "Current": 1,
+        "Stale": 2,
+        "Unknown": 3,
+    },
+}
+NATIVE_EXECUTION_CONTRACT = "mncs-forge.native-execution.v1"
+NATIVE_LIFECYCLE_PROJECTION_CONTRACT = "mncs-forge.lifecycle-projection.v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,7 +192,30 @@ class NativeLifecycleResult:
     reason: int
 
 
+@dataclass(frozen=True, slots=True)
+class NativeLifecycleProjection:
+    """Typed MNCS projection of bounded Forge lifecycle history."""
+
+    stage: str
+    active_epoch: bytes
+    parent_epoch: bytes
+    current_candidate: bytes
+    parent_candidate: bytes
+    evidence: str
+    disposition: str
+    freshness: str
+    lineage_ok: bool
+    epoch_count: int
+    candidate_count: int
+    evidence_count: int
+    frozen: bool
+    evaluated: bool
+    status: str
+    reason: int
+
+
 _LIFECYCLE_CACHE: dict[tuple[object, ...], NativeLifecycleResult] = {}
+_LIFECYCLE_PROJECTION_CACHE: dict[tuple[object, ...], NativeLifecycleProjection] = {}
 
 
 def canonical_candidate_material(
@@ -92,7 +226,7 @@ def canonical_candidate_material(
 ) -> bytes:
     """Mirror the MNCS chunk contract for host-side differential checks.
 
-    The byte order is declared by ``mncs/forge/serialization.mncs``. This
+    The byte order is declared by the packaged Forge MNCS serialization module. This
     helper only materializes bytes; SHA-256 remains an explicit host boundary.
     """
 
@@ -135,12 +269,23 @@ class NativeForgeAdapter:
         self.language_root = self._discover_language_root(language_root)
         self.timeout_seconds = timeout_seconds
         self.output_bytes = output_bytes
+        self._resource_stack = ExitStack()
         configured_source = os.environ.get("MNCS_FORGE_NATIVE_SOURCE")
-        self.native_source = (
-            Path(configured_source).expanduser().resolve()
-            if configured_source
-            else Path(__file__).resolve().parents[2] / "mncs" / "forge" / "core.mncs"
-        )
+        if configured_source:
+            self.native_source = Path(configured_source).expanduser().resolve()
+            self.native_root = self.native_source.parent
+        else:
+            resource_root = files("mncs_forge.resources").joinpath("native", "forge")
+            self.native_root = self._resource_stack.enter_context(as_file(resource_root))
+            self.native_source = self.native_root / "core.mncs"
+
+    def __del__(self) -> None:
+        # ``as_file`` normally resolves to the installed filesystem.  The
+        # context is still closed for zip-backed importers and test fixtures.
+        stack = getattr(self, "_resource_stack", None)
+        if stack is not None:
+            with suppress(Exception):
+                stack.close()
 
     @staticmethod
     def _discover_language_root(explicit: Path | None) -> Path | None:
@@ -163,9 +308,60 @@ class NativeForgeAdapter:
 
     @property
     def source_available(self) -> bool:
-        """Whether the checked-in Forge MNCS entrypoint is available."""
+        """Whether the packaged Forge MNCS entrypoint is available."""
 
         return self.native_source.is_file()
+
+    @property
+    def forge_modules_available(self) -> bool:
+        return all(
+            (self.native_root / name).is_file()
+            for name in (
+                "core.mncs",
+                "identity.mncs",
+                "lifecycle.mncs",
+                "records.mncs",
+                "serialization.mncs",
+            )
+        )
+
+    def ensure_available(self) -> None:
+        """Fail closed when required native execution cannot be selected."""
+
+        if self.language_root is None:
+            raise ForgeError("NATIVE_UNAVAILABLE", "mncs-language checkout is unavailable")
+        if not self.forge_modules_available:
+            raise ForgeError("NATIVE_UNAVAILABLE", "packaged Forge MNCS modules are unavailable")
+        self._command()
+
+    def status(self, mode: str) -> dict[str, object]:
+        """Return an observable, non-authoritative native selection status."""
+
+        if mode == "off":
+            return {"mode": mode, "selected": False, "available": False, "reason": "disabled"}
+        available = self.language_root is not None and self.forge_modules_available
+        if available:
+            try:
+                command = self._command()
+            except ForgeError as exc:
+                return {
+                    "mode": mode,
+                    "selected": False,
+                    "available": False,
+                    "reason": exc.code,
+                }
+            return {
+                "mode": mode,
+                "selected": True,
+                "available": True,
+                "command": list(command),
+            }
+        return {
+            "mode": mode,
+            "selected": False,
+            "available": False,
+            "reason": "NATIVE_UNAVAILABLE",
+        }
 
     def _command(self) -> list[str]:
         configured = os.environ.get("MNCS_CLI")
@@ -178,7 +374,7 @@ class NativeForgeAdapter:
             raise ForgeError("NATIVE_UNAVAILABLE", "cargo is not available")
         assert self.language_root is not None
         if self.source_available:
-            for relative in (Path("target/debug/mncs"), Path("target/release/mncs")):
+            for relative in (Path("target/release/mncs"), Path("target/debug/mncs")):
                 binary = self.language_root / relative
                 if binary.is_file() and os.access(binary, os.X_OK):
                     # The CLI loads Forge source at invocation time. Its
@@ -207,7 +403,7 @@ class NativeForgeAdapter:
             raise ForgeError("NATIVE_CONFIG_INVALID", "Forge root is not a directory")
         command = [*self._command(), *arguments]
         environment = dict(os.environ)
-        library_path = os.pathsep.join((str(self.language_root / "library"), str(self.forge_root)))
+        library_path = os.pathsep.join((str(self.language_root / "library"), str(self.native_root)))
         environment["MNCS_LIBRARY_PATH"] = library_path
         result = run_bounded(
             command,
@@ -233,6 +429,44 @@ class NativeForgeAdapter:
             payload=payload,
         )
 
+    @staticmethod
+    def _content_identity(paths: list[Path]) -> str:
+        digest = hashlib.sha256()
+        for path in sorted(path for path in paths if path.is_file()):
+            relative = path.as_posix().encode("utf-8")
+            digest.update(len(relative).to_bytes(4, "big"))
+            digest.update(relative)
+            content = path.read_bytes()
+            digest.update(len(content).to_bytes(8, "big"))
+            digest.update(content)
+        return digest.hexdigest()
+
+    def semantic_input_identity(self) -> str:
+        """Identify every source/runtime input that can affect a native result."""
+
+        self.ensure_available()
+        assert self.language_root is not None
+        forge_sources = list(self.native_root.glob("*.mncs"))
+        library_sources = list((self.language_root / "library").rglob("*.mncs"))
+        compiler_sources = list((self.language_root / "crates").rglob("*.rs"))
+        manifest_sources = [
+            self.language_root / "Cargo.toml",
+            self.language_root / "Cargo.lock",
+        ]
+        command = self._command()
+        command_identity: list[Path] = []
+        if command and Path(command[0]).is_file():
+            command_identity.append(Path(command[0]))
+        identity = {
+            "contract": NATIVE_EXECUTION_CONTRACT,
+            "forge_sources": self._content_identity(forge_sources),
+            "library_sources": self._content_identity(library_sources),
+            "compiler_sources": self._content_identity(compiler_sources + manifest_sources),
+            "command": command,
+            "command_content": self._content_identity(command_identity),
+        }
+        return hashlib.sha256(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()
+
     def source_study(self, source: Path, *, node_id: str = "forge-native") -> NativeInvocation:
         return self.invoke(["source-study", str(source.resolve()), "--node-id", node_id])
 
@@ -242,13 +476,114 @@ class NativeForgeAdapter:
 
     @staticmethod
     def _finite_argument(type_name: str, variant: str, discriminant: int) -> dict[str, object]:
+        type_identity = (
+            type_name
+            if type_name.startswith(_MNCS_TYPE_PREFIX)
+            else f"{_MNCS_TYPE_PREFIX}{type_name}"
+        )
+        variant_type_name = type_identity[len(_MNCS_TYPE_PREFIX) :]
         return {
             "finite": {
-                "type_identity": f"{_MNCS_TYPE_PREFIX}{type_name}",
-                "variant_identity": f"{_MNCS_VARIANT_PREFIX}{type_name}::{variant}",
+                "type_identity": type_identity,
+                "variant_identity": f"{_MNCS_VARIANT_PREFIX}{variant_type_name}::{variant}",
                 "discriminant": discriminant,
             }
         }
+
+    @staticmethod
+    def _finite_value(
+        type_identity: str, module: str, type_name: str, variant: str
+    ) -> dict[str, object]:
+        try:
+            discriminant = _FINITE_VARIANTS[type_identity][variant]
+        except KeyError as exc:
+            raise ForgeError(
+                "NATIVE_CONFIG_INVALID", f"unknown native finite variant: {variant}"
+            ) from exc
+        return {
+            "finite": {
+                "type_identity": type_identity,
+                "variant_identity": _finite_variant_identity(module, type_name, variant),
+                "discriminant": discriminant,
+            }
+        }
+
+    @staticmethod
+    def _record_value(
+        type_identity: str, name: str, fields: Mapping[str, object]
+    ) -> dict[str, object]:
+        return {
+            "record": {
+                "type_identity": type_identity,
+                "name": name,
+                "fields": [[field_name, fields[field_name]] for field_name in sorted(fields)],
+            }
+        }
+
+    @staticmethod
+    def _sequence_value(values: Sequence[object]) -> dict[str, object]:
+        return {"sequence": {"values": list(values)}}
+
+    @staticmethod
+    def _digest_value(value: object, *, context: str) -> dict[str, object]:
+        if value is None or value == "":
+            raw = bytes(32)
+        elif isinstance(value, bytes):
+            raw = value
+        elif isinstance(value, str):
+            encoded = value.rsplit(":", 1)[-1]
+            try:
+                raw = bytes.fromhex(encoded)
+            except ValueError as exc:
+                raise ForgeError(
+                    "NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a digest identity"
+                ) from exc
+        else:
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a digest identity")
+        if len(raw) != 32:
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a 32-byte digest")
+        return NativeForgeAdapter._record_value(
+            _DIGEST_TYPE,
+            "Digest32",
+            {
+                "bytes": NativeForgeAdapter._sequence_value(
+                    [{"byte": {"value": item}} for item in raw]
+                )
+            },
+        )
+
+    @staticmethod
+    def _history_event_value(event: Mapping[str, object]) -> dict[str, object]:
+        kind = str(event.get("kind", "Empty"))
+        if kind not in _FINITE_VARIANTS[_EVENT_KIND_TYPE]:
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"unknown native history event: {kind}")
+        status = str(event.get("status", "UNKNOWN"))
+        if status not in _STATUS_VARIANTS:
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"unknown native event status: {status}")
+        return NativeForgeAdapter._record_value(
+            _HISTORY_EVENT_TYPE,
+            "HistoryEvent",
+            {
+                "candidate": NativeForgeAdapter._digest_value(
+                    event.get("candidate"), context="history candidate"
+                ),
+                "epoch": NativeForgeAdapter._digest_value(
+                    event.get("epoch"), context="history epoch"
+                ),
+                "kind": NativeForgeAdapter._finite_value(
+                    _EVENT_KIND_TYPE, _LIFECYCLE_MODULE, "EventKind", kind
+                ),
+                "parent_candidate": NativeForgeAdapter._digest_value(
+                    event.get("parent_candidate"), context="history parent candidate"
+                ),
+                "parent_epoch": NativeForgeAdapter._digest_value(
+                    event.get("parent_epoch"), context="history parent epoch"
+                ),
+                "status": NativeForgeAdapter._finite_value(
+                    _STATUS_TYPE, "mncs.core.status.v1", "Status", status
+                ),
+            },
+        )
 
     @staticmethod
     def _record_fields(payload: dict[str, Any], *, context: str) -> dict[str, Any]:
@@ -283,9 +618,15 @@ class NativeForgeAdapter:
         if not isinstance(value, dict) or not isinstance(value.get("finite"), dict):
             raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a finite value")
         finite = value["finite"]
-        if finite.get("type_identity") != f"{_MNCS_TYPE_PREFIX}{type_name}":
+        type_identity = (
+            type_name
+            if type_name.startswith(_MNCS_TYPE_PREFIX)
+            else f"{_MNCS_TYPE_PREFIX}{type_name}"
+        )
+        if finite.get("type_identity") != type_identity:
             raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} has an invalid type")
-        expected_prefix = f"{_MNCS_VARIANT_PREFIX}{type_name}::"
+        variant_type_name = type_identity[len(_MNCS_TYPE_PREFIX) :]
+        expected_prefix = f"{_MNCS_VARIANT_PREFIX}{variant_type_name}::"
         variant_identity = finite.get("variant_identity")
         if not isinstance(variant_identity, str) or not variant_identity.startswith(
             expected_prefix
@@ -295,15 +636,65 @@ class NativeForgeAdapter:
         discriminant = finite.get("discriminant")
         if not isinstance(discriminant, int) or isinstance(discriminant, bool):
             raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} has no discriminant")
-        expected_values = {
-            _STATUS_TYPE: _STATUS_VARIANTS,
-            _STAGE_TYPE: _LIFECYCLE_STAGES,
-            _OPERATION_TYPE: _LIFECYCLE_OPERATIONS,
-        }[type_name]
+        expected_values = _FINITE_VARIANTS[type_identity]
         expected = expected_values.get(variant)
         if expected is None or discriminant != expected:
             raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} has an invalid variant")
         return variant
+
+    @staticmethod
+    def _record_value_fields(value: object, expected_type: str, *, context: str) -> dict[str, Any]:
+        if not isinstance(value, dict) or not isinstance(value.get("record"), dict):
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a record")
+        record = value["record"]
+        if record.get("type_identity") != expected_type:
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} has an invalid type")
+        fields = record.get("fields")
+        if not isinstance(fields, list):
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} has malformed fields")
+        result: dict[str, Any] = {}
+        for field in fields:
+            if (
+                not isinstance(field, list)
+                or len(field) != 2
+                or not isinstance(field[0], str)
+                or field[0] in result
+            ):
+                raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} has malformed fields")
+            result[field[0]] = field[1]
+        return result
+
+    @staticmethod
+    def _boolean(value: object, *, context: str) -> bool:
+        if not isinstance(value, dict) or not isinstance(value.get("boolean"), dict):
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a boolean")
+        result = value["boolean"].get("value")
+        if not isinstance(result, bool):
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} has an invalid value")
+        return result
+
+    @staticmethod
+    def _integer(value: object, *, context: str) -> int:
+        if not isinstance(value, dict) or not isinstance(value.get("integer"), dict):
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not an integer")
+        result = value["integer"].get("value")
+        if not isinstance(result, int) or isinstance(result, bool):
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} has an invalid value")
+        return result
+
+    @classmethod
+    def _digest_bytes(cls, value: object, *, context: str) -> bytes:
+        fields = cls._record_value_fields(value, _DIGEST_TYPE, context=context)
+        sequence = fields.get("bytes")
+        if not isinstance(sequence, dict) or not isinstance(sequence.get("sequence"), dict):
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} bytes are malformed")
+        values = sequence["sequence"].get("values")
+        if not isinstance(values, list) or len(values) != 32:
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} bytes are malformed")
+        output = bytearray()
+        for item in values:
+            output.append(cls._byte(item, context=context))
+        return bytes(output)
 
     @staticmethod
     def _byte(value: object, *, context: str) -> int:
@@ -335,15 +726,15 @@ class NativeForgeAdapter:
             raise ForgeError("NATIVE_CONFIG_INVALID", f"unknown native status: {evidence}")
         if not self.available:
             raise ForgeError("NATIVE_UNAVAILABLE", "mncs-language checkout is unavailable")
-        if not self.source_available:
+        if not self.forge_modules_available:
             raise ForgeError(
-                "NATIVE_UNAVAILABLE", "checked-in Forge MNCS lifecycle source is unavailable"
+                "NATIVE_UNAVAILABLE", "packaged Forge MNCS lifecycle source is unavailable"
             )
         command = tuple(self._command())
+        semantic_identity = self.semantic_input_identity()
         cache_key = (
-            str(self.language_root),
-            str(self.native_source),
-            self.native_source.stat().st_mtime_ns,
+            NATIVE_EXECUTION_CONTRACT,
+            semantic_identity,
             *command,
             stage,
             operation,
@@ -407,4 +798,135 @@ class NativeForgeAdapter:
             reason=reason,
         )
         _LIFECYCLE_CACHE[cache_key] = result
+        return result
+
+    def lifecycle_projection(
+        self,
+        events: Sequence[Mapping[str, object]],
+        *,
+        current_candidate: str | None,
+        required_evidence: int,
+    ) -> NativeLifecycleProjection:
+        """Project bounded typed lifecycle history in the MNCS runtime.
+
+        The host supplies only normalized record observations and digest
+        identities.  The native module owns parentage, disposition, freshness,
+        status, and stage projection; persistence and digest production remain
+        outside the language boundary.
+        """
+
+        if len(events) > 32:
+            raise ForgeError(
+                "NATIVE_LIFECYCLE_UNKNOWN", "native history exceeds the 32-event bound"
+            )
+        if not isinstance(required_evidence, int) or isinstance(required_evidence, bool):
+            raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", "native evidence bound is not an integer")
+        if not 0 <= required_evidence <= 255:
+            raise ForgeError(
+                "NATIVE_LIFECYCLE_UNKNOWN", "native evidence bound is outside byte range"
+            )
+        self.ensure_available()
+        event_list = [dict(event) for event in events]
+        cache_key = (
+            NATIVE_LIFECYCLE_PROJECTION_CONTRACT,
+            self.semantic_input_identity(),
+            json.dumps(event_list, sort_keys=True),
+            current_candidate or "",
+            required_evidence,
+        )
+        cached = _LIFECYCLE_PROJECTION_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+        event_values = [self._history_event_value(event) for event in event_list]
+        event_values.extend(self._history_event_value({}) for _ in range(32 - len(event_values)))
+        request_value = self._record_value(
+            _PROJECTION_INPUT_TYPE,
+            "ProjectionInput",
+            {
+                "current_candidate": self._digest_value(
+                    current_candidate, context="current candidate"
+                ),
+                "event_count": {"byte": {"value": len(event_list)}},
+                "events": self._sequence_value(event_values),
+                "required_evidence": {"byte": {"value": required_evidence}},
+            },
+        )
+        request = {
+            "schema_version": NATIVE_SCHEMA_VERSION,
+            "target": {"module": "mncs.forge.core.v1", "function": "lifecycle_project"},
+            "arguments": [request_value],
+            "step_budget": 200_000,
+        }
+        with tempfile.TemporaryDirectory(prefix=".mncs-native-", dir=self.forge_root) as directory:
+            request_path = Path(directory) / "lifecycle-projection-request.json"
+            request_path.write_text(json.dumps(request), encoding="utf-8")
+            invocation = self.execute(self.native_source, request_path)
+        if not invocation.ok or invocation.payload is None:
+            raise ForgeError(
+                "NATIVE_LIFECYCLE_UNKNOWN",
+                "language-owned lifecycle projection did not return valid JSON "
+                f"(returncode {invocation.returncode})",
+            )
+        result_fields = self._record_fields(invocation.payload, context="lifecycle projection")
+        projection_fields = self._record_value_fields(
+            result_fields.get("projection"),
+            _PROJECTION_STATE_TYPE,
+            context="lifecycle projection state",
+        )
+        stage = self._finite_variant(
+            projection_fields.get("stage"), _STAGE_TYPE, context="lifecycle projection stage"
+        )
+        evidence = self._finite_variant(
+            projection_fields.get("evidence"), _STATUS_TYPE, context="lifecycle projection evidence"
+        )
+        disposition = self._finite_variant(
+            projection_fields.get("disposition"),
+            _DISPOSITION_TYPE,
+            context="lifecycle projection disposition",
+        )
+        freshness = self._finite_variant(
+            projection_fields.get("freshness"),
+            _FRESHNESS_TYPE,
+            context="lifecycle projection freshness",
+        )
+        status = self._finite_variant(
+            result_fields.get("status"), _STATUS_TYPE, context="lifecycle projection status"
+        )
+        result = NativeLifecycleProjection(
+            stage=stage,
+            active_epoch=self._digest_bytes(
+                projection_fields.get("active_epoch"), context="active epoch"
+            ),
+            parent_epoch=self._digest_bytes(
+                projection_fields.get("parent_epoch"), context="parent epoch"
+            ),
+            current_candidate=self._digest_bytes(
+                projection_fields.get("current_candidate"), context="current candidate"
+            ),
+            parent_candidate=self._digest_bytes(
+                projection_fields.get("parent_candidate"), context="parent candidate"
+            ),
+            evidence=evidence,
+            disposition=disposition,
+            freshness=freshness,
+            lineage_ok=self._boolean(
+                projection_fields.get("lineage_ok"), context="lifecycle lineage flag"
+            ),
+            epoch_count=self._integer(
+                projection_fields.get("epoch_count"), context="lifecycle epoch count"
+            ),
+            candidate_count=self._integer(
+                projection_fields.get("candidate_count"), context="lifecycle candidate count"
+            ),
+            evidence_count=self._integer(
+                projection_fields.get("evidence_count"), context="lifecycle evidence count"
+            ),
+            frozen=self._boolean(projection_fields.get("frozen"), context="lifecycle frozen flag"),
+            evaluated=self._boolean(
+                projection_fields.get("evaluated"), context="lifecycle evaluated flag"
+            ),
+            status=status,
+            reason=self._byte(result_fields.get("reason"), context="lifecycle projection reason"),
+        )
+        _LIFECYCLE_PROJECTION_CACHE[cache_key] = result
         return result

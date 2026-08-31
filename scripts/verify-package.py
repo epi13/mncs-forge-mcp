@@ -33,6 +33,11 @@ REQUIRED_WHEEL_FILES = {
     "mncs_forge/resources/forge-records-1.schema.json",
     "mncs_forge/resources/mncs-forge-config.schema.json",
     "mncs_forge/resources/usage.md",
+    "mncs_forge/resources/native/forge/core.mncs",
+    "mncs_forge/resources/native/forge/identity.mncs",
+    "mncs_forge/resources/native/forge/lifecycle.mncs",
+    "mncs_forge/resources/native/forge/records.mncs",
+    "mncs_forge/resources/native/forge/serialization.mncs",
 }
 FORBIDDEN_PARTS = {
     ".coverage",
@@ -176,6 +181,11 @@ def audit_sdist(sdist: Path) -> dict[str, Any]:
             "pyproject.toml",
             "src/mncs_forge/resources/forge-records-1.schema.json",
             "src/mncs_forge/resources/mncs-forge-config.schema.json",
+            "src/mncs_forge/resources/native/forge/core.mncs",
+            "src/mncs_forge/resources/native/forge/identity.mncs",
+            "src/mncs_forge/resources/native/forge/lifecycle.mncs",
+            "src/mncs_forge/resources/native/forge/records.mncs",
+            "src/mncs_forge/resources/native/forge/serialization.mncs",
         }
         missing = sorted(required - relative)
         if missing:
@@ -186,9 +196,16 @@ def audit_sdist(sdist: Path) -> dict[str, Any]:
 def module_origin(python: Path, *, cwd: Path, env: dict[str, str]) -> dict[str, str]:
     code = (
         "import json, site, sys, sysconfig, mncs_forge; "
+        "from importlib.resources import files; "
+        "native_root = files('mncs_forge.resources').joinpath('native', 'forge'); "
+        "native_names = ("
+        "'core.mncs', 'identity.mncs', 'lifecycle.mncs', "
+        "'records.mncs', 'serialization.mncs'); "
         "print(json.dumps({'module': mncs_forge.__file__, "
         "'purelib': sysconfig.get_paths()['purelib'], "
-        "'site': site.getsitepackages()[0], 'python': sys.executable}, sort_keys=True))"
+        "'site': site.getsitepackages()[0], 'python': sys.executable, "
+        "'native_modules': all(native_root.joinpath(name).is_file() "
+        "for name in native_names)}, sort_keys=True))"
     )
     result = json.loads(run([python, "-c", code], cwd=cwd, env=env).stdout)
     if not isinstance(result, dict):
@@ -199,6 +216,8 @@ def module_origin(python: Path, *, cwd: Path, env: dict[str, str]) -> dict[str, 
         raise RuntimeError(f"mncs_forge imported outside site-packages: {module}")
     if ROOT.resolve() in module.parents:
         raise RuntimeError(f"mncs_forge imported from the checkout: {module}")
+    if result.get("native_modules") is not True:
+        raise RuntimeError("packaged Forge MNCS modules are unavailable after installation")
     result["module"] = str(module)
     result["site"] = str(site_packages)
     return {str(key): str(value) for key, value in result.items()}
@@ -362,6 +381,8 @@ def verify_installation(*, artifact: Path, label: str, root: Path, full: bool) -
         run([sys.executable, "-m", "venv", venv], cwd=root, env=os.environ.copy(), timeout=120)
         python = command_path(venv, "python")
         environment = clean_environment(venv=venv)
+        if os.environ.get("MNCS_FORGE_NATIVE_MODE") == "required":
+            environment["MNCS_FORGE_NATIVE_MODE"] = "required"
         run(
             [python, "-m", "pip", "install", artifact],
             cwd=temporary_root,
@@ -375,7 +396,8 @@ def verify_installation(*, artifact: Path, label: str, root: Path, full: bool) -
         cli = command_path(venv, "mncs-forge")
         mcp = command_path(venv, "mncs-forge-mcp")
         run_cli_smoke(cli, project / "mncs-forge.toml", cwd=temporary_root, env=environment)
-        if full:
+        native_required = environment.get("MNCS_FORGE_NATIVE_MODE") == "required"
+        if full or native_required:
             run_mcp_smoke(mcp, project / "mncs-forge.toml", cwd=temporary_root, env=environment)
             workflow = run_minimal_workflow(
                 python, project / "mncs-forge.toml", cwd=temporary_root, env=environment

@@ -16,18 +16,19 @@ Missing capability remains UNKNOWN.
 
 ## MNCS-native migration boundary
 
-The repository contains an incremental MNCS-native Forge source spine under
-`mncs/forge/`. It owns the first bounded identity, canonical-material,
-typed-record, and lifecycle seams, while `src/mncs_forge/` remains the Python
-compatibility shell. `NativeForgeAdapter` invokes the language-owned CLI through
+The repository contains an incremental MNCS-native Forge source spine as
+packaged data under `src/mncs_forge/resources/native/forge/`. It owns the first
+bounded identity, canonical-material, typed-record, and lifecycle seams, while
+`src/mncs_forge/` remains the Python compatibility shell. `NativeForgeAdapter` invokes the language-owned CLI through
 Forge’s existing bounded runner and returns its structured observation. Host-side
 SHA-256 is explicit and limited to material declared by the MNCS module; no
 cryptographic authority is implied by the source helper. The migration is
 deliberately incremental: native availability, backend support, and response validity
 are all independently observable. Covered lifecycle mutations are gated by the
-typed native preflight, while missing or unsupported capabilities retain the
-compatibility path and malformed native results remain fail-closed `UNKNOWN`
-observations rather than being treated as success.
+typed native preflight, and bounded epoch/candidate/evidence/disposition/freeze/
+evaluation projection is decoded into the host view. Missing or unsupported
+capabilities retain the explicit compatibility path; malformed native results
+remain fail-closed `UNKNOWN` observations rather than being treated as success.
 
 ## Control-plane composition
 

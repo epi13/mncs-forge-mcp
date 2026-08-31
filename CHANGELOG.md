@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Package the authoritative Forge MNCS modules in wheels and sdists and add an explicit native
+  execution policy (`off`, `prefer`, `required`). The native lifecycle kernel now projects a
+  bounded typed history of epochs, candidates, evidence, dispositions, freezes, and evaluations,
+  including lineage and candidate freshness, into the Forge lifecycle view. Projection and
+  preflight caches include full Forge/language/compiler/runtime content identities; required mode
+  fails closed and project inspection exposes native selection status. A cross-repository native
+  CI lane builds `mncs-language`, runs the native Forge tests, and verifies both distributions.
+
 - Advance the MNCS-native Forge spine from an additive probe to a runtime lifecycle
   gate. The typed MNCS lifecycle kernel now preflights first-epoch creation,
   first-candidate registration, candidate disposition, and freeze before the

@@ -1827,6 +1827,7 @@
       "commands",
       "environment_allowlist",
       "limits",
+      "native",
       "paths",
       "policies",
       "project",
@@ -1848,7 +1849,7 @@
       "version",
       "workflows"
     ],
-    "semantic_sha256": "8b2724ebc7fd9059c5b1f789dd8d2c7cdd3982cd247208bd42ebc4cbd9977f77"
+    "semantic_sha256": "1ed0cca64c36eb081a1586f7523c7ae43b7183094982ee006800227a4dc46e6d"
   },
   "intentional_exclusions": [
     "human-readable help and error prose",

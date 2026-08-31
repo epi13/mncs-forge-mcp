@@ -10,6 +10,7 @@ from mncs_forge.errors import ForgeError
 from mncs_forge.mncs_native import (
     NativeForgeAdapter,
     NativeInvocation,
+    NativeLifecycleProjection,
     NativeLifecycleResult,
     canonical_candidate_digest,
     canonical_candidate_material,
@@ -18,6 +19,7 @@ from mncs_forge.ports import ExecutionResult
 from mncs_forge.serialization import read_json
 
 ROOT = Path(__file__).resolve().parents[1]
+pytestmark = pytest.mark.native
 
 
 def _sequence_value(values: Iterable[int]) -> dict[str, object]:
@@ -69,8 +71,7 @@ def test_json_reader_rejects_duplicate_members_and_invalid_utf8(tmp_path: Path) 
 
 def test_native_response_rejects_duplicate_members(monkeypatch: pytest.MonkeyPatch) -> None:
     adapter = NativeForgeAdapter(ROOT)
-    if not adapter.available:
-        pytest.skip("mncs-language checkout is not available")
+    adapter.ensure_available()
 
     monkeypatch.setattr(
         mncs_native,
@@ -92,11 +93,10 @@ def test_native_response_rejects_duplicate_members(monkeypatch: pytest.MonkeyPat
 
 def test_native_body_execution_returns_language_owned_status() -> None:
     adapter = NativeForgeAdapter(ROOT)
-    if not adapter.available:
-        pytest.skip("mncs-language checkout is not available")
+    adapter.ensure_available()
 
     result = adapter.execute(
-        ROOT / "mncs/forge/core.mncs",
+        adapter.native_source,
         ROOT / "examples/execution/native-status-probe.json",
     )
 
@@ -108,11 +108,10 @@ def test_native_body_execution_returns_language_owned_status() -> None:
 
 def test_native_canonical_material_matches_host_materialization() -> None:
     adapter = NativeForgeAdapter(ROOT)
-    if not adapter.available:
-        pytest.skip("mncs-language checkout is not available")
+    adapter.ensure_available()
 
     result = adapter.execute(
-        ROOT / "mncs/forge/core.mncs",
+        adapter.native_source,
         ROOT / "examples/execution/native-canonical-probe.json",
     )
 
@@ -128,11 +127,10 @@ def test_native_canonical_material_matches_host_materialization() -> None:
 
 def test_native_backend_execution_accepts_no_argument_status_probe() -> None:
     adapter = NativeForgeAdapter(ROOT)
-    if not adapter.available:
-        pytest.skip("mncs-language checkout is not available")
+    adapter.ensure_available()
 
     result = adapter.execute(
-        ROOT / "mncs/forge/core.mncs",
+        adapter.native_source,
         ROOT / "examples/execution/native-status-probe.json",
         backend=True,
     )
@@ -162,8 +160,7 @@ def test_native_lifecycle_preflight_matches_typed_kernel(
     reason: int,
 ) -> None:
     adapter = NativeForgeAdapter(ROOT)
-    if not adapter.available:
-        pytest.skip("mncs-language checkout is not available")
+    adapter.ensure_available()
 
     result = adapter.lifecycle_preflight(stage, operation, evidence)
 
@@ -174,8 +171,7 @@ def test_native_lifecycle_preflight_rejects_malformed_structured_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     adapter = NativeForgeAdapter(ROOT)
-    if not adapter.available:
-        pytest.skip("mncs-language checkout is not available")
+    adapter.ensure_available()
 
     monkeypatch.setattr(
         adapter,
@@ -192,3 +188,74 @@ def test_native_lifecycle_preflight_rejects_malformed_structured_result(
 
     with pytest.raises(ForgeError, match="did not return a record"):
         adapter.lifecycle_preflight("NoEpoch", "BeginEpoch")
+
+
+def test_native_lifecycle_projection_is_typed_and_bounded() -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+
+    result = adapter.lifecycle_projection([], current_candidate=None, required_evidence=1)
+
+    assert isinstance(result, NativeLifecycleProjection)
+    assert result.stage == "NoEpoch"
+    assert result.status == "UNKNOWN"
+    assert result.lineage_ok is True
+    assert result.epoch_count == 0
+    assert result.candidate_count == 0
+    assert result.evidence_count == 0
+    with pytest.raises(ForgeError, match="32-event bound"):
+        adapter.lifecycle_projection(
+            [{"kind": "Empty"}] * 33, current_candidate=None, required_evidence=1
+        )
+
+
+def test_native_lifecycle_projection_covers_lineage_freshness_and_terminality() -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+    epoch = "epoch:" + ("01" * 32)
+    candidate = "forge-tree-sha256-v1:" + ("02" * 32)
+    events = [
+        {"kind": "EpochStarted", "epoch": epoch, "parent_epoch": None},
+        {
+            "kind": "CandidateRegistered",
+            "epoch": epoch,
+            "candidate": candidate,
+            "parent_candidate": None,
+        },
+        {"kind": "EvidenceObserved", "candidate": candidate, "status": "PASS"},
+        {"kind": "CandidateSelected", "candidate": candidate},
+        {"kind": "CandidateFrozen", "candidate": candidate},
+        {"kind": "EvaluationRecorded", "candidate": candidate, "status": "PASS"},
+    ]
+
+    result = adapter.lifecycle_projection(events, current_candidate=candidate, required_evidence=1)
+
+    assert result.stage == "EvaluationComplete"
+    assert result.freshness == "Current"
+    assert result.disposition == "Selected"
+    assert result.lineage_ok is True
+    assert result.epoch_count == 1
+    assert result.candidate_count == 1
+    assert result.evidence_count == 1
+    assert result.frozen is True
+    assert result.evaluated is True
+    assert result.status == "PASS"
+
+    ambiguous = adapter.lifecycle_projection(
+        [{"kind": "EpochStarted", "epoch": epoch, "parent_epoch": "epoch:" + ("03" * 32)}],
+        current_candidate=None,
+        required_evidence=1,
+    )
+    assert ambiguous.stage == "AmbiguousHistory"
+    assert ambiguous.lineage_ok is False
+    assert ambiguous.status == "UNKNOWN"
+
+
+def test_native_cache_identity_changes_with_content_even_at_same_path(tmp_path: Path) -> None:
+    source = tmp_path / "source.mncs"
+    source.write_text("one", encoding="utf-8")
+    first = NativeForgeAdapter._content_identity([source])
+    source.write_text("two", encoding="utf-8")
+    second = NativeForgeAdapter._content_identity([source])
+
+    assert first != second

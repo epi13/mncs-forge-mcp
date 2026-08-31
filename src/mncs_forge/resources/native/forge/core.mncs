@@ -34,6 +34,13 @@ fn lifecycle_step(current: lifelib.LifecycleState, input: lifelib.TransitionRequ
     return lifelib.apply(current, input);
 }
 
+// Project bounded ledger-derived history. The host provides typed events and
+// remains responsible for persistence, identity production, and evidence
+// custody; this function owns the lineage/stage projection over those events.
+fn lifecycle_project(input: lifelib.ProjectionInput) -> (result: lifelib.ProjectionResult) {
+    return lifelib.project(input);
+}
+
 // Typed host-boundary preflight. Forge supplies only the current logical
 // stage, requested transition, and evidence status; the lifecycle module owns
 // the transition semantics and returns the resulting typed state. Synthetic

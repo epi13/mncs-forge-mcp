@@ -106,6 +106,7 @@ def state_with_overrides(
     )
 
 
+@pytest.mark.native
 def test_valid_lifecycle_and_inspection_at_every_stage(config: ForgeConfig, project: Path) -> None:
     development = Forge(config)
     fresh = development.state_inspect()

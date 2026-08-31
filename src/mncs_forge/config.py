@@ -110,6 +110,26 @@ class ForgeConfig:
         return int(self.raw["limits"]["output_bytes"])
 
     @property
+    def native_execution_mode(self) -> str:
+        """Return the explicit native execution policy for this project.
+
+        The environment override is deliberately narrow and useful for release
+        validation/CI without changing a project's checked-in compatibility
+        configuration.  Invalid values fail closed at construction time rather
+        than silently selecting the compatibility implementation.
+        """
+
+        configured = str(self.raw.get("native", {}).get("mode", "prefer"))
+        override = os.environ.get("MNCS_FORGE_NATIVE_MODE")
+        mode = override if override is not None else configured
+        if mode not in {"off", "prefer", "required"}:
+            raise ForgeError(
+                "NATIVE_CONFIG_INVALID",
+                "native execution mode must be off, prefer, or required",
+            )
+        return mode
+
+    @property
     def verifier_limits(self) -> dict[str, int | float]:
         configured = self.raw.get("verifier_limits", {})
         return {
