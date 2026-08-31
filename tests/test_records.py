@@ -63,6 +63,14 @@ def _sample_fields(record_type: RecordType) -> dict[str, object]:
     if record_type is RecordType.VERIFIER_RESULT:
         fields["independent_evaluation"] = False
         fields["status"] = "UNKNOWN"
+    if record_type is RecordType.EXECUTION_ASSURANCE:
+        fields["requested_properties"] = ["network_isolation"]
+        fields["unmet_properties"] = ["network_isolation"]
+        fields["reasons"] = [
+            "requested property was not established by the runner: network_isolation"
+        ]
+        fields["assurance_status"] = "UNKNOWN"
+        fields["policy_identity"] = None
     if record_type is RecordType.EXECUTION_RECEIPT_BINDING:
         fields["status"] = "UNKNOWN"
         fields["receipt_completeness"] = "incomplete"

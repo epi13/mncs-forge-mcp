@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+- Add a rootless Podman sandbox-capable runner (Task 7C). Declared argv executes
+  inside a container with `--network=none`, a read-only root filesystem, a
+  read-only workspace mount, declared `rw,Z` writable mounts, dropped
+  capabilities, and optional resource bounds. Availability probes fail closed
+  (`RUNNER_UNAVAILABLE`) for missing binaries, non-rootless runtimes, missing
+  images, unsupported versions, and non-POSIX hosts; image digests are resolved
+  through `podman image inspect` and tags alone are never immutable identities.
+  Selection is additive through the optional `[runner]` configuration section;
+  the default remains `local-process`. See ADR 0016.
+
+- Extend execution-receipt lineage to verifier actions. Verifier provider
+  execution now flows through the runner observation path and persists an
+  `execution_receipt_binding` with `action_kind="verifier_action"` in the same
+  transaction as the terminal result. Incomplete terminations persist explicitly
+  incomplete bindings without synthesized stream totals. Disclosed verifier
+  results include a compact `execution_receipt` summary whose status stays
+  `UNKNOWN`.
+
+- Make execution assurance a first-class typed concept (ADR 0017). The new
+  versioned `execution_assurance` record assesses one receipt binding's
+  established properties against caller-declared requested properties from a
+  fixed vocabulary. Unmet or unobservable properties remain `UNKNOWN`,
+  incomplete executions cannot confirm any property, and isolation claims that
+  contradict the declared runner kind are `FAIL` laundering attempts. A
+  functional `PASS` never implies assurance `PASS`. Assessments are append-only;
+  conflicting assessments are retained side by side. New operations:
+  `execution.assurance.assess`, `execution.assurance.list`, plus read-only
+  Forge Cell surfaces `cell.documents.validate` and `cell.execution.assess`
+  and the `mncs-forge://execution/assessments` resource. Registry grows
+  44 → 48 operations.
+
+- Bind compiler-candidate validation evidence to artifact identities.
+  Validation records now carry the exact `validated_artifact_identity`; callers
+  can require `expected_artifact_identity` and fail closed on substitution.
+  Freshness is computed by Forge from bound identities: validation carried by a
+  candidate with a different artifact identity is `stale-artifact-mismatch`,
+  its effective semantic status collapses to `UNKNOWN`, and it cannot promote
+  in tournaments or selection. Copied `"PASS"` observations cannot authorize a
+  different candidate.
+
 - Persist bounded concept evaluations for Concept Experiments
   (`concept.evaluations.record` / `.list` / `.get`). Each record re-derives its
   `content_digest` and stable id from the stored evaluation material, keeps
