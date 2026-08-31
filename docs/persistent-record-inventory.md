@@ -38,3 +38,23 @@ than persisted records. The historical implementation has no persisted general w
   field participated in the old identity.
 - Ledger hashes authenticate the raw entry body, including the raw historical payload. Migration
   may occur only after sequence, link, and entry-hash verification.
+
+## Task 7B-2 current persistence
+
+Task 7B-2 added two current-schema ledger kinds that do not exist in the historical `0.1`
+fixtures:
+
+- `workflow_action` in `records/workflow-actions`, identity `action_id`;
+- `execution_receipt_binding` in `records/execution-receipt-bindings`, identity `binding_id`.
+
+The binding stores Forge linkage and completeness. The optional `mncs_receipt` object is excluded
+from the binding identity and is verified against `receipt_identity` on read. Binding `status`
+cannot be `PASS`. Historical state remains readable without these records.
+
+## Compiler experiment persistence
+
+The compiler-evolution increment adds `compiler_experiment` in
+`records/compiler-experiments`. Its `experiment_id` is record-derived from the exact
+language-owned study and normalized observation; `recorded_at` is non-material for idempotent
+retries. Required `null` assurance and conformance fields prevent the persistence envelope from
+laundering pass-local observations into stronger claims.

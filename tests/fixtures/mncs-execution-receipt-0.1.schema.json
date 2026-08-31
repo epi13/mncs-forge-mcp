@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mncs.dev/schema/experimental/0.1/mncs-execution-receipt.schema.json",
+  "title": "MNCS experimental typed execution receipt 0.1",
+  "description": "An immutable, runner-produced observation envelope. It is not an assurance, conformance, security, custody, independence, or promotion verdict.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "record_type", "record_id", "receipt_identity", "subject", "bundle", "policy", "runner", "environment", "challenge", "request", "lifecycle", "process", "termination_observations", "streams", "aggregate_output", "artifacts", "resources", "enforcement", "placement", "claim_boundary", "extensions"],
+  "properties": {
+    "schema_version": {"const": "0.1-experimental"},
+    "record_type": {"const": "mncs-execution-receipt"},
+    "record_id": {"$ref": "#/$defs/id"},
+    "receipt_identity": {"$ref": "#/$defs/sha256"},
+    "subject": {
+      "type": "object", "additionalProperties": false,
+      "required": ["family", "kind", "record_id", "canonical_sha256", "candidate_id"],
+      "properties": {
+        "family": {"enum": ["MNCS", "MNCDS"]},
+        "kind": {"enum": ["contract", "assurance", "threat", "measurement", "development-record"]},
+        "record_id": {"$ref": "#/$defs/id"},
+        "canonical_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]}
+      }
+    },
+    "bundle": {
+      "type": "object", "additionalProperties": false,
+      "required": ["test_bundle_identity", "harness_identity", "input_snapshot_identity"],
+      "properties": {
+        "test_bundle_identity": {"$ref": "#/$defs/sha256"},
+        "harness_identity": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+        "input_snapshot_identity": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]}
+      }
+    },
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["execution_policy_identity", "placement_policy_identity", "requested_limits", "result_semantics"],
+      "properties": {
+        "execution_policy_identity": {"$ref": "#/$defs/sha256"},
+        "placement_policy_identity": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+        "requested_limits": {"type": "array", "items": {"$ref": "#/$defs/limit"}, "uniqueItems": true},
+        "result_semantics": {"$ref": "#/$defs/text"}
+      }
+    },
+    "runner": {
+      "type": "object", "additionalProperties": false,
+      "required": ["runner_identity", "runner_version", "executable_identity", "runtime_identity", "command_identity"],
+      "properties": {
+        "runner_identity": {"$ref": "#/$defs/id"},
+        "runner_version": {"$ref": "#/$defs/text"},
+        "executable_identity": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+        "runtime_identity": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+        "command_identity": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "environment": {"type": "object", "additionalProperties": false, "required": ["environment_identity"], "properties": {"environment_identity": {"$ref": "#/$defs/id"}}},
+    "challenge": {
+      "type": "object", "additionalProperties": false, "required": ["nonce", "issued_at", "expires_at"],
+      "properties": {
+        "nonce": {"type": "string", "minLength": 16, "maxLength": 256, "pattern": "^[A-Za-z0-9._:-]+$"},
+        "issued_at": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "request": {"type": "object", "additionalProperties": false, "required": ["status", "observed_at"], "properties": {"status": {"enum": ["accepted", "rejected"]}, "observed_at": {"type": "string", "format": "date-time"}}},
+    "lifecycle": {
+      "type": "object", "additionalProperties": false,
+      "required": ["started_at", "ended_at", "duration_seconds", "termination_category"],
+      "properties": {
+        "started_at": {"oneOf": [{"type": "null"}, {"type": "string", "format": "date-time"}]},
+        "ended_at": {"oneOf": [{"type": "null"}, {"type": "string", "format": "date-time"}]},
+        "duration_seconds": {"oneOf": [{"type": "null"}, {"type": "number", "minimum": 0}]},
+        "termination_category": {"enum": ["completed", "nonzero-exit", "timeout", "signal", "crash", "resource-limit", "output-limit", "policy-rejected", "cancelled", "internal-runner-error"]}
+      }
+    },
+    "process": {
+      "type": "object", "additionalProperties": false,
+      "required": ["exit_code", "signal", "harness_status", "result_identity"],
+      "properties": {
+        "exit_code": {"oneOf": [{"type": "null"}, {"type": "integer"}]},
+        "signal": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1}]},
+        "harness_status": {"$ref": "#/$defs/status"},
+        "result_identity": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]}
+      }
+    },
+    "termination_observations": {
+      "type": "object", "additionalProperties": false, "required": ["timeout_seconds", "resource_name"],
+      "properties": {
+        "timeout_seconds": {"oneOf": [{"type": "null"}, {"type": "number", "minimum": 0}]},
+        "resource_name": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/text"}]}
+      }
+    },
+    "streams": {"type": "object", "additionalProperties": false, "required": ["stdout", "stderr"], "properties": {"stdout": {"$ref": "#/$defs/stream"}, "stderr": {"$ref": "#/$defs/stream"}}},
+    "aggregate_output": {"$ref": "#/$defs/aggregate_output"},
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
+    "resources": {"type": "array", "items": {"$ref": "#/$defs/resource"}},
+    "enforcement": {
+      "type": "object", "additionalProperties": false,
+      "required": ["command_binding", "environment_binding", "filesystem_restriction", "network_restriction", "process_restriction", "resource_limits", "test_bundle_integrity", "result_integrity"],
+      "properties": {
+        "command_binding": {"$ref": "#/$defs/enforcement_state"},
+        "environment_binding": {"$ref": "#/$defs/enforcement_state"},
+        "filesystem_restriction": {"$ref": "#/$defs/enforcement_state"},
+        "network_restriction": {"$ref": "#/$defs/enforcement_state"},
+        "process_restriction": {"$ref": "#/$defs/enforcement_state"},
+        "resource_limits": {"$ref": "#/$defs/enforcement_state"},
+        "test_bundle_integrity": {"$ref": "#/$defs/enforcement_state"},
+        "result_integrity": {"$ref": "#/$defs/enforcement_state"}
+      }
+    },
+    "placement": {
+      "type": "object", "additionalProperties": false, "required": ["execution_placement_reference"],
+      "properties": {
+        "execution_placement_reference": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/placement_reference"}]}
+      }
+    },
+    "claim_boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["conformance", "correctness", "security", "sandbox", "independence", "protected_custody", "promotion"],
+      "properties": {
+        "conformance": {"const": "not-asserted"}, "correctness": {"const": "not-asserted"}, "security": {"const": "not-asserted"}, "sandbox": {"const": "not-asserted"}, "independence": {"const": "not-asserted"}, "protected_custody": {"const": "not-asserted"}, "promotion": {"const": "not-asserted"}
+      }
+    },
+    "extensions": {"$ref": "#/$defs/extensions"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "status": {"enum": ["PASS", "FAIL", "UNKNOWN"]},
+    "text": {"type": "string", "minLength": 1},
+    "enforcement_state": {"enum": ["enforced", "not-enforced", "unknown"]},
+    "limit": {"type": "object", "additionalProperties": false, "required": ["resource", "value", "unit"], "properties": {"resource": {"enum": ["timeout", "output", "host-memory", "accelerator-memory", "workspace", "concurrency"]}, "value": {"type": "number", "minimum": 0}, "unit": {"enum": ["seconds", "bytes", "count"]}}},
+    "stream": {"type": "object", "additionalProperties": false, "required": ["total_bytes", "retained_bytes", "retained_sha256", "complete_sha256", "truncated", "limit_hit", "limit_bytes"], "properties": {"total_bytes": {"type": "integer", "minimum": 0}, "retained_bytes": {"type": "integer", "minimum": 0}, "retained_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]}, "complete_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]}, "truncated": {"type": "boolean"}, "limit_hit": {"type": "boolean"}, "limit_bytes": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}}},
+    "aggregate_output": {"type": "object", "additionalProperties": false, "required": ["total_bytes", "retained_bytes", "limit_bytes", "limit_hit"], "properties": {"total_bytes": {"type": "integer", "minimum": 0}, "retained_bytes": {"type": "integer", "minimum": 0}, "limit_bytes": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}, "limit_hit": {"type": "boolean"}}},
+    "artifact": {"type": "object", "additionalProperties": false, "required": ["identity", "kind", "size_bytes", "retained"], "properties": {"identity": {"$ref": "#/$defs/sha256"}, "kind": {"$ref": "#/$defs/text"}, "size_bytes": {"type": "integer", "minimum": 0}, "retained": {"type": "boolean"}}},
+    "resource": {"type": "object", "additionalProperties": false, "required": ["metric", "value", "unit", "source_identity", "phase"], "properties": {"metric": {"enum": ["wall-duration", "cpu-time", "process-rss-peak", "host-memory-peak", "accelerator-allocated-peak", "accelerator-reserved-peak", "process-count", "output-bytes", "transfer-bytes", "offload-count"]}, "value": {"type": "number", "minimum": 0}, "unit": {"enum": ["seconds", "bytes", "count"]}, "source_identity": {"$ref": "#/$defs/id"}, "phase": {"enum": ["whole-execution", "cold-load", "warm-execution"]}}},
+    "placement_reference": {"type": "object", "additionalProperties": false, "required": ["record_id", "identity", "subject_identity", "environment_identity"], "properties": {"record_id": {"$ref": "#/$defs/id"}, "identity": {"$ref": "#/$defs/sha256"}, "subject_identity": {"$ref": "#/$defs/sha256"}, "environment_identity": {"$ref": "#/$defs/id"}}},
+    "extensions": {"type": "object", "propertyNames": {"pattern": "^[a-z][a-z0-9.-]*:[A-Za-z0-9][A-Za-z0-9._-]*$"}, "additionalProperties": true}
+  }
+}

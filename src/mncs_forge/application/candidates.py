@@ -8,6 +8,7 @@ from ..paths import resolve_contained
 from ..ports import ProjectObserver, RecordCommitter
 from ..records import RecordType, new_record
 from .lifecycle import LifecycleContext
+from .rights_provenance import enforce_rights_provenance_selection, rights_provenance_status
 from .support import aggregate_status, now
 from .workflows import DevelopmentWorkflowService
 
@@ -115,6 +116,62 @@ class CandidateService:
         self.record_store.commit("candidates", "candidate", record)
         return record.to_object_dict()
 
+    def refresh(
+        self,
+        *,
+        hypothesis: str,
+        generator_identity: str,
+        generator_config_identity: str,
+        changed_files: list[str] | None = None,
+    ) -> dict[str, object]:
+        """Register a successor candidate when working-tree content drifted.
+
+        Prior evidence remains bound to the previous candidate identity. A
+        current, matching candidate is returned unchanged so callers can always
+        rebind before evaluation without inventing a new identity.
+        """
+
+        state_machine = self.lifecycle.machine()
+        existing = state_machine.projection.current_candidate
+        if existing is None:
+            raise ForgeError("NO_CANDIDATE", "no candidate exists in the active epoch")
+        current = self.observer.current_candidate_identity()
+        existing_id = str(existing["candidate_id"])
+        if state_machine.projection.candidate_freshness == "CURRENT" and existing_id == current:
+            return {
+                "refreshed": False,
+                "reason": "candidate already matches current content",
+                "previous_candidate_identity": existing_id,
+                "candidate_identity": existing_id,
+                "candidate": existing.to_object_dict(),
+                "note": "prior evidence remains bound to this candidate identity",
+            }
+        files = list(changed_files or [])
+        if not files:
+            previous = existing.get("changed_files")
+            if isinstance(previous, list):
+                files = [str(item) for item in previous if isinstance(item, str) and item]
+        if not files:
+            raise ForgeError(
+                "INVALID_CHANGED_FILE",
+                "candidate refresh requires changed files when none were previously declared",
+            )
+        record = self.register(
+            changed_files=files,
+            hypothesis=hypothesis,
+            generator_identity=generator_identity,
+            generator_config_identity=generator_config_identity,
+            parent_candidate=existing_id,
+        )
+        return {
+            "refreshed": True,
+            "reason": "working-tree content no longer matched the bound candidate",
+            "previous_candidate_identity": existing_id,
+            "candidate_identity": record["candidate_id"],
+            "candidate": record,
+            "note": "prior evidence remains bound to the previous candidate identity",
+        }
+
     def compare(self, candidate_ids: list[str]) -> dict[str, object]:
         if len(candidate_ids) < 2:
             raise ForgeError("COMPARE_INPUT", "at least two candidate identities are required")
@@ -153,6 +210,12 @@ class CandidateService:
                         item["workflow"] for item in results if item["status"] == "UNKNOWN"
                     ],
                     "environmental_comparability": "UNKNOWN",
+                    "rights_provenance": rights_provenance_status(
+                        config=self.config,
+                        lifecycle=self.lifecycle,
+                        development=self.development,
+                        candidate_identity=candidate_id,
+                    ),
                 }
             )
         return {
@@ -165,19 +228,27 @@ class CandidateService:
         }
 
     def dispose(self, candidate_id: str, *, disposition: str, reason: str) -> dict[str, object]:
+        rights: dict[str, object] | None = None
+        if disposition == "selected":
+            rights = enforce_rights_provenance_selection(
+                config=self.config,
+                lifecycle=self.lifecycle,
+                development=self.development,
+                candidate_identity=candidate_id,
+            )
         state_machine = self.lifecycle.machine()
         _, readiness = state_machine.authorize_candidate_disposition(candidate_id, disposition)
-        record = new_record(
-            RecordType.CANDIDATE_DISPOSITION,
-            {
-                "candidate_identity": candidate_id,
-                "disposition": disposition,
-                "reason": reason,
-                "selection_rule": str(self.config.raw["policies"]["selection"]),
-                "selection_policy_identity": state_machine.selection_policy_identity,
-                "evidence_status": readiness.status,
-                "recorded_at": now(),
-            },
-        )
+        fields: dict[str, object] = {
+            "candidate_identity": candidate_id,
+            "disposition": disposition,
+            "reason": reason,
+            "selection_rule": str(self.config.raw["policies"]["selection"]),
+            "selection_policy_identity": state_machine.selection_policy_identity,
+            "evidence_status": readiness.status,
+            "recorded_at": now(),
+        }
+        if rights is not None:
+            fields["extensions"] = {"rights_provenance": rights}
+        record = new_record(RecordType.CANDIDATE_DISPOSITION, fields)
         self.record_store.commit("dispositions", "disposition", record)
         return record.to_object_dict()

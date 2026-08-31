@@ -1,12 +1,16 @@
 # Forge Cell execution assurance foundation
 
 Forge Cell is the proposed execution boundary for running declared tests and evidence providers with
-stronger isolation than Forge's current bounded local subprocess runner. This document defines the
-reference artifacts and claim vocabulary added before any operating-system sandbox is implemented.
+stronger isolation than Forge's default bounded local process runner. This document defines the
+reference artifacts and claim vocabulary that precede the strongest backends (native namespace
+isolation, measured execution, confidential VMs, external custody).
 
-> The current implementation validates documents and assesses declared assurance. It does not
-> create namespaces, apply seccomp or Landlock, enable `fs-verity`, produce TPM quotes, launch a
-> confidential VM, or establish external custody.
+> The current implementation validates documents and assesses declared assurance, and Forge now
+> also persists its own typed `execution_assurance` assessments over receipt bindings. The rootless
+> Podman runner (ADR 0016) provides a first sandbox-capable execution path with recorded
+> network/filesystem/containerization properties. Nothing yet creates native namespaces with
+> seccomp/Landlock profiles, enables `fs-verity`, produces TPM quotes, launches a
+> confidential VM, or establishes external custody.
 
 ## Security objective
 

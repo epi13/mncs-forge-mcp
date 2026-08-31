@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 import re
 from collections.abc import Iterator, Mapping
@@ -9,15 +10,18 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
-from typing import TypeAlias, cast
+from typing import Any, TypeAlias, cast
 
+import rfc8785
+
+from .concept_experiments import CONCEPT_EVALUATION_INTERPRETATION
 from .errors import ForgeError
 from .serialization import local_json_identity, read_json
 
 CURRENT_SCHEMA_VERSION = "1"
 LEGACY_SCHEMA_VERSION = "0.1-unversioned"
 
-JsonScalar: TypeAlias = None | bool | int | float | str
+JsonScalar: TypeAlias = bool | int | float | str | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 JsonObject: TypeAlias = dict[str, JsonValue]
 FrozenJsonValue: TypeAlias = (
@@ -30,6 +34,8 @@ class RecordType(StrEnum):
     CANDIDATE = "candidate"
     PROVIDER_PROBE = "provider_probe"
     WORKFLOW_ACTION = "workflow_action"
+    EXECUTION_RECEIPT_BINDING = "execution_receipt_binding"
+    EXECUTION_ASSURANCE = "execution_assurance"
     WORKFLOW_RESULT = "workflow_result"
     VERIFIER_ACTION = "verifier_action"
     VERIFIER_RESULT = "verifier_result"
@@ -38,6 +44,9 @@ class RecordType(StrEnum):
     FINAL_EVALUATION = "final_evaluation"
     RECONCILIATION = "reconciliation"
     BUNDLE = "bundle"
+    COMPILER_EXPERIMENT = "compiler_experiment"
+    COMPILER_CANDIDATE = "compiler_candidate"
+    CONCEPT_EVALUATION = "concept_evaluation"
     LEDGER_ENTRY = "ledger_entry"
 
 
@@ -75,6 +84,14 @@ WORKFLOW_RESULT_FIELDS = frozenset(
         "recorded_at",
         "protocol_request_identity",
         "output_identity",
+    }
+)
+
+LEGACY_CANDIDATE_SUBJECT_RECORDS = frozenset(
+    {
+        RecordType.WORKFLOW_RESULT,
+        RecordType.FINAL_EVALUATION,
+        RecordType.BUNDLE,
     }
 )
 
@@ -167,8 +184,49 @@ RECORD_SPECS: dict[RecordType, RecordSpec] = {
                 "mode",
                 "protocol_request_identity",
                 "requested_at",
+                "action_id",
             }
-        )
+        ),
+        identity_field="action_id",
+        identity_prefix="workflow-action:",
+    ),
+    RecordType.EXECUTION_RECEIPT_BINDING: RecordSpec(
+        required=frozenset(
+            {
+                "project_identity",
+                "epoch_identity",
+                "candidate_identity",
+                "action_kind",
+                "action_identity",
+                "result_identity",
+                "request_identity",
+                "workflow_or_verifier",
+                "runner_identity",
+                "runner_kind",
+                "runner_version",
+                "worker_identity",
+                "host_identity",
+                "os_family",
+                "architecture",
+                "executable_identity",
+                "image_identity",
+                "environment_identity",
+                "execution_scope",
+                "termination_category",
+                "receipt_schema_version",
+                "receipt_identity",
+                "receipt_completeness",
+                "status",
+                "established_properties",
+                "mncs_receipt",
+                "recorded_at",
+                "binding_id",
+            }
+        ),
+        identity_field="binding_id",
+        identity_prefix="execution-receipt-binding:",
+        identity_exclusions=frozenset({"mncs_receipt"}),
+        status_field="status",
     ),
     RecordType.WORKFLOW_RESULT: RecordSpec(
         required=WORKFLOW_RESULT_FIELDS,
@@ -321,6 +379,110 @@ RECORD_SPECS: dict[RecordType, RecordSpec] = {
         identity_prefix="forge-json-sha256-v1:",
         status_field="status",
     ),
+    RecordType.COMPILER_EXPERIMENT: RecordSpec(
+        required=frozenset(
+            {
+                "language_contract_id",
+                "language_record_identity",
+                "run_identity",
+                "compiler_identity",
+                "pipeline_identity",
+                "compilation_status",
+                "language_record",
+                "observation",
+                "recorded_at",
+                "interpretation",
+                "assurance_status",
+                "conformance_status",
+                "experiment_id",
+            }
+        ),
+        identity_field="experiment_id",
+        identity_prefix="compiler-experiment:",
+        identity_exclusions=frozenset({"recorded_at"}),
+    ),
+    RecordType.COMPILER_CANDIDATE: RecordSpec(
+        required=frozenset(
+            {
+                "baseline_artifact_identity",
+                "candidate_artifact_identity",
+                "generator_identity",
+                "declared_transformation",
+                "claimed_relation",
+                "expected_benefit",
+                "protected_properties",
+                "target_envelope",
+                "required_validation",
+                "semantic_status",
+                "benchmark_observation",
+                "validation",
+                "policy_disposition",
+                "isolated",
+                "generator_certified",
+                "interpretation",
+                "assurance_status",
+                "conformance_status",
+                "recorded_at",
+                "candidate_id",
+            }
+        ),
+        identity_field="candidate_id",
+        identity_prefix="compiler-candidate:",
+        identity_exclusions=frozenset({"recorded_at"}),
+    ),
+    RecordType.CONCEPT_EVALUATION: RecordSpec(
+        required=frozenset(
+            {
+                "concept_experiment_id",
+                "candidate_identity",
+                "language_profile",
+                "compiler_identity",
+                "backend_identity",
+                "execution_identities",
+                "verifier_identity",
+                "verifier_version",
+                "obligation",
+                "evidence_identities",
+                "status",
+                "unresolved_obligations",
+                "generator_identity",
+                "evaluator_policy_identity",
+                "generator_certified",
+                "evaluation_material",
+                "stable_id",
+                "content_digest",
+                "interpretation",
+                "assurance_status",
+                "conformance_status",
+                "recorded_at",
+                "evaluation_id",
+            }
+        ),
+        identity_field="evaluation_id",
+        identity_prefix="concept-evaluation:",
+        identity_exclusions=frozenset({"recorded_at"}),
+    ),
+    RecordType.EXECUTION_ASSURANCE: RecordSpec(
+        required=frozenset(
+            {
+                "project_identity",
+                "candidate_identity",
+                "binding_identity",
+                "action_kind",
+                "action_identity",
+                "requested_properties",
+                "unmet_properties",
+                "reasons",
+                "assurance_status",
+                "policy_identity",
+                "assessed_at",
+                "assessment_id",
+            }
+        ),
+        identity_field="assessment_id",
+        identity_prefix="execution-assurance:",
+        status_field="assurance_status",
+    ),
 }
 
 LEDGER_REQUIRED = frozenset(
@@ -331,6 +493,9 @@ LEDGER_KIND_TYPES: dict[str, RecordType] = {
     "epoch": RecordType.EPOCH,
     "candidate": RecordType.CANDIDATE,
     "provider_probe": RecordType.PROVIDER_PROBE,
+    "workflow_action": RecordType.WORKFLOW_ACTION,
+    "execution_receipt_binding": RecordType.EXECUTION_RECEIPT_BINDING,
+    "execution_assurance": RecordType.EXECUTION_ASSURANCE,
     "result": RecordType.WORKFLOW_RESULT,
     "verifier_action": RecordType.VERIFIER_ACTION,
     "verifier_result": RecordType.VERIFIER_RESULT,
@@ -338,12 +503,18 @@ LEDGER_KIND_TYPES: dict[str, RecordType] = {
     "freeze": RecordType.FREEZE,
     "evaluation": RecordType.FINAL_EVALUATION,
     "bundle": RecordType.BUNDLE,
+    "compiler_experiment": RecordType.COMPILER_EXPERIMENT,
+    "compiler_candidate": RecordType.COMPILER_CANDIDATE,
+    "concept_evaluation": RecordType.CONCEPT_EVALUATION,
 }
 
 RECORD_GROUP_TYPES: dict[str, RecordType] = {
     "epochs": RecordType.EPOCH,
     "candidates": RecordType.CANDIDATE,
     "provider-probes": RecordType.PROVIDER_PROBE,
+    "workflow-actions": RecordType.WORKFLOW_ACTION,
+    "execution-receipt-bindings": RecordType.EXECUTION_RECEIPT_BINDING,
+    "assessments": RecordType.EXECUTION_ASSURANCE,
     "results": RecordType.WORKFLOW_RESULT,
     "verifier-actions": RecordType.VERIFIER_ACTION,
     "verifier-results": RecordType.VERIFIER_RESULT,
@@ -351,6 +522,9 @@ RECORD_GROUP_TYPES: dict[str, RecordType] = {
     "freezes": RecordType.FREEZE,
     "evaluations": RecordType.FINAL_EVALUATION,
     "bundles": RecordType.BUNDLE,
+    "compiler-experiments": RecordType.COMPILER_EXPERIMENT,
+    "concept-evaluations": RecordType.CONCEPT_EVALUATION,
+    "compiler-candidates": RecordType.COMPILER_CANDIDATE,
 }
 
 
@@ -372,6 +546,21 @@ PERSISTED_RECORD_CONTEXTS: dict[str, PersistedRecordContext] = {
     "provider_probe": PersistedRecordContext(
         "provider-probes", "provider_probe", RecordType.PROVIDER_PROBE, "output_identity"
     ),
+    "workflow_action": PersistedRecordContext(
+        "workflow-actions", "workflow_action", RecordType.WORKFLOW_ACTION, "action_id"
+    ),
+    "execution_receipt_binding": PersistedRecordContext(
+        "execution-receipt-bindings",
+        "execution_receipt_binding",
+        RecordType.EXECUTION_RECEIPT_BINDING,
+        "binding_id",
+    ),
+    "execution_assurance": PersistedRecordContext(
+        "assessments",
+        "execution_assurance",
+        RecordType.EXECUTION_ASSURANCE,
+        "assessment_id",
+    ),
     "result": PersistedRecordContext(
         "results", "result", RecordType.WORKFLOW_RESULT, "output_identity"
     ),
@@ -392,6 +581,24 @@ PERSISTED_RECORD_CONTEXTS: dict[str, PersistedRecordContext] = {
         "evaluations", "evaluation", RecordType.FINAL_EVALUATION, "output_identity"
     ),
     "bundle": PersistedRecordContext("bundles", "bundle", RecordType.BUNDLE, "output_identity"),
+    "compiler_experiment": PersistedRecordContext(
+        "compiler-experiments",
+        "compiler_experiment",
+        RecordType.COMPILER_EXPERIMENT,
+        "experiment_id",
+    ),
+    "compiler_candidate": PersistedRecordContext(
+        "compiler-candidates",
+        "compiler_candidate",
+        RecordType.COMPILER_CANDIDATE,
+        "candidate_id",
+    ),
+    "concept_evaluation": PersistedRecordContext(
+        "concept-evaluations",
+        "concept_evaluation",
+        RecordType.CONCEPT_EVALUATION,
+        "evaluation_id",
+    ),
 }
 
 
@@ -465,7 +672,40 @@ REQUIRED_STRING_FIELDS: dict[RecordType, frozenset[str]] = {
         }
     ),
     RecordType.WORKFLOW_ACTION: frozenset(
-        {"workflow", "candidate_identity", "mode", "requested_at"}
+        {"workflow", "candidate_identity", "mode", "requested_at", "action_id"}
+    ),
+    RecordType.EXECUTION_RECEIPT_BINDING: frozenset(
+        {
+            "project_identity",
+            "candidate_identity",
+            "action_kind",
+            "action_identity",
+            "workflow_or_verifier",
+            "runner_identity",
+            "runner_kind",
+            "runner_version",
+            "os_family",
+            "architecture",
+            "environment_identity",
+            "execution_scope",
+            "termination_category",
+            "receipt_completeness",
+            "status",
+            "recorded_at",
+            "binding_id",
+        }
+    ),
+    RecordType.EXECUTION_ASSURANCE: frozenset(
+        {
+            "project_identity",
+            "candidate_identity",
+            "binding_identity",
+            "action_kind",
+            "action_identity",
+            "assurance_status",
+            "assessed_at",
+            "assessment_id",
+        }
     ),
     RecordType.WORKFLOW_RESULT: frozenset(
         {
@@ -586,11 +826,59 @@ REQUIRED_STRING_FIELDS: dict[RecordType, frozenset[str]] = {
             "output_identity",
         }
     ),
+    RecordType.COMPILER_EXPERIMENT: frozenset(
+        {
+            "language_contract_id",
+            "language_record_identity",
+            "run_identity",
+            "compiler_identity",
+            "pipeline_identity",
+            "compilation_status",
+            "recorded_at",
+            "interpretation",
+            "experiment_id",
+        }
+    ),
+    RecordType.CONCEPT_EVALUATION: frozenset(
+        {
+            "concept_experiment_id",
+            "candidate_identity",
+            "language_profile",
+            "compiler_identity",
+            "backend_identity",
+            "verifier_identity",
+            "verifier_version",
+            "obligation",
+            "stable_id",
+            "content_digest",
+            "recorded_at",
+            "interpretation",
+            "evaluation_id",
+        }
+    ),
+    RecordType.COMPILER_CANDIDATE: frozenset(
+        {
+            "baseline_artifact_identity",
+            "candidate_artifact_identity",
+            "generator_identity",
+            "declared_transformation",
+            "claimed_relation",
+            "expected_benefit",
+            "target_envelope",
+            "required_validation",
+            "semantic_status",
+            "policy_disposition",
+            "interpretation",
+            "recorded_at",
+            "candidate_id",
+        }
+    ),
 }
 
 REQUIRED_OBJECT_FIELDS: dict[RecordType, frozenset[str]] = {
     RecordType.EPOCH: frozenset({"visible_partition_identities", "authority_identities"}),
     RecordType.CANDIDATE: frozenset({"current_file_identities"}),
+    RecordType.EXECUTION_RECEIPT_BINDING: frozenset({"established_properties"}),
     RecordType.WORKFLOW_RESULT: frozenset({"environment"}),
     RecordType.VERIFIER_ACTION: frozenset({"input_identities"}),
     RecordType.VERIFIER_RESULT: frozenset({"input_identities", "dependency_envelope"}),
@@ -598,6 +886,8 @@ REQUIRED_OBJECT_FIELDS: dict[RecordType, frozenset[str]] = {
     RecordType.FINAL_EVALUATION: frozenset({"environment"}),
     RecordType.RECONCILIATION: frozenset({"categories"}),
     RecordType.BUNDLE: frozenset({"environment"}),
+    RecordType.COMPILER_EXPERIMENT: frozenset({"language_record", "observation"}),
+    RecordType.CONCEPT_EVALUATION: frozenset({"evaluation_material"}),
 }
 
 
@@ -721,6 +1011,11 @@ class WorkflowActionRecord(ForgeRecord):
 
 
 @dataclass(frozen=True, slots=True)
+class ExecutionReceiptBindingRecord(ForgeRecord):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
 class WorkflowResultRecord(ForgeRecord):
     pass
 
@@ -760,11 +1055,33 @@ class BundleRecord(ForgeRecord):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class CompilerExperimentRecord(ForgeRecord):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateRecord(ForgeRecord):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class ConceptEvaluationRecord(ForgeRecord):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionAssuranceRecord(ForgeRecord):
+    pass
+
+
 MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.EPOCH: EpochRecord,
     RecordType.CANDIDATE: CandidateRecord,
     RecordType.PROVIDER_PROBE: ProviderProbeRecord,
     RecordType.WORKFLOW_ACTION: WorkflowActionRecord,
+    RecordType.EXECUTION_RECEIPT_BINDING: ExecutionReceiptBindingRecord,
+    RecordType.EXECUTION_ASSURANCE: ExecutionAssuranceRecord,
     RecordType.WORKFLOW_RESULT: WorkflowResultRecord,
     RecordType.VERIFIER_ACTION: VerifierActionRecord,
     RecordType.VERIFIER_RESULT: VerifierResultRecord,
@@ -773,6 +1090,9 @@ MODEL_TYPES: dict[RecordType, type[ForgeRecord]] = {
     RecordType.FINAL_EVALUATION: FinalEvaluationRecord,
     RecordType.RECONCILIATION: ReconciliationRecord,
     RecordType.BUNDLE: BundleRecord,
+    RecordType.COMPILER_EXPERIMENT: CompilerExperimentRecord,
+    RecordType.COMPILER_CANDIDATE: CompilerCandidateRecord,
+    RecordType.CONCEPT_EVALUATION: ConceptEvaluationRecord,
 }
 
 
@@ -845,6 +1165,251 @@ def _validate_fields(record_type: RecordType, fields: JsonObject) -> None:
         raise ForgeError(
             "RECORD_AUTHORITY",
             "local verifier records cannot claim independent evaluation",
+        )
+    if record_type is RecordType.EXECUTION_RECEIPT_BINDING:
+        _validate_execution_receipt_binding(fields)
+    if record_type is RecordType.EXECUTION_ASSURANCE:
+        _validate_execution_assurance(fields)
+    if record_type is RecordType.COMPILER_EXPERIMENT:
+        if fields["language_contract_id"] not in {
+            "mncs:language:compilation-study-result:0.1",
+            "mncs:language:experiment-result:0.1",
+        }:
+            raise ForgeError(
+                "RECORD_CONTRACT",
+                "compiler experiment record uses an unsupported language contract",
+            )
+        if fields["interpretation"] != "observation_only_not_assurance_or_conformance":
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler experiment records must remain observation-only",
+            )
+        if fields["assurance_status"] is not None or fields["conformance_status"] is not None:
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler experiment records cannot claim assurance or conformance",
+            )
+    if record_type is RecordType.COMPILER_CANDIDATE:
+        if fields["interpretation"] != "search_observation_not_language_correctness":
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler candidate records must remain search observations",
+            )
+        if fields["assurance_status"] is not None or fields["conformance_status"] is not None:
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler candidate records cannot claim assurance or conformance",
+            )
+        if fields["isolated"] is not True or fields["generator_certified"] is not False:
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "compiler candidates must stay isolated and uncertified by their generator",
+            )
+        if fields["baseline_artifact_identity"] == fields["candidate_artifact_identity"]:
+            raise ForgeError(
+                "COMPILER_CANDIDATE_NOT_ISOLATED",
+                "a compiler candidate cannot share the trusted baseline artifact identity",
+            )
+        if fields["semantic_status"] not in {"UNVALIDATED", "PASS", "FAIL", "UNKNOWN"}:
+            raise ForgeError(
+                "RECORD_STATUS",
+                "compiler candidate semantic_status must be UNVALIDATED, PASS, FAIL, or UNKNOWN",
+            )
+        if fields["policy_disposition"] not in {"accept", "reject", "retain_unresolved"}:
+            raise ForgeError(
+                "RECORD_MALFORMED",
+                "compiler candidate policy_disposition is invalid",
+            )
+    if record_type is RecordType.CONCEPT_EVALUATION:
+        material = fields["evaluation_material"]
+        if not isinstance(material, Mapping):
+            raise ForgeError(
+                "RECORD_MALFORMED",
+                "concept evaluation evaluation_material must be an object",
+            )
+        if material.get("schema_version") != "mncs-forge.concept-evaluation.v0.1":
+            raise ForgeError(
+                "RECORD_CONTRACT",
+                "concept evaluation records use an unsupported evaluation contract",
+            )
+        if fields["status"] not in {"PASS", "FAIL", "UNKNOWN"}:
+            raise ForgeError(
+                "RECORD_STATUS",
+                "concept evaluation status must be PASS, FAIL, or UNKNOWN",
+            )
+        if (
+            fields["interpretation"] != CONCEPT_EVALUATION_INTERPRETATION
+            or fields["assurance_status"] is not None
+            or fields["conformance_status"] is not None
+        ):
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "concept evaluations cannot claim assurance, conformance, or universal truth",
+            )
+        if fields["generator_certified"] is not False:
+            raise ForgeError(
+                "RECORD_AUTHORITY",
+                "concept evaluations must stay uncertified by their generator",
+            )
+        digest = fields["content_digest"]
+        stable_id = fields["stable_id"]
+        if not isinstance(digest, str) or not digest.startswith("sha256:") or len(digest) != 71:
+            raise ForgeError(
+                "RECORD_IDENTITY",
+                "concept evaluation content_digest must be a sha256 identity",
+            )
+        if stable_id != f"mncs-forge://evaluation/{digest[7:]}":
+            raise ForgeError(
+                "RECORD_IDENTITY",
+                "concept evaluation stable id must match its content digest",
+            )
+
+
+RECEIPT_COMPLETENESS = frozenset(
+    {"complete", "incomplete", "malformed", "unsupported", "unavailable"}
+)
+RECEIPT_ACTION_KINDS = frozenset({"workflow_action", "verifier_action"})
+ESTABLISHED_PROPERTY_STATES = frozenset({"established", "not-established", "unknown"})
+ESTABLISHED_PROPERTY_KEYS = (
+    "execution_completed",
+    "local_result_validity",
+    "runner_capability",
+    "filesystem_isolation",
+    "network_isolation",
+    "containerization",
+    "same_operator_execution",
+    "external_anchoring",
+    "witnessing",
+    "protected_custody",
+    "evaluator_independence",
+    "governance_certification",
+)
+
+ASSURANCE_REQUEST_PROPERTIES = frozenset(
+    {
+        "runner_capability",
+        "filesystem_isolation",
+        "network_isolation",
+        "containerization",
+        "same_operator_execution",
+    }
+)
+
+
+def _validate_execution_assurance(fields: JsonObject) -> None:
+    if fields["action_kind"] not in RECEIPT_ACTION_KINDS:
+        raise ForgeError("RECORD_MALFORMED", "execution assurance action_kind is invalid")
+    requested = fields["requested_properties"]
+    if (
+        not isinstance(requested, list)
+        or not requested
+        or not all(isinstance(item, str) and item for item in requested)
+        or len(set(requested)) != len(requested)
+    ):
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            "execution assurance requires unique non-empty requested properties",
+        )
+    requested_keys = {str(item) for item in requested}
+    outside = sorted(requested_keys - ASSURANCE_REQUEST_PROPERTIES)
+    if outside:
+        raise ForgeError(
+            "RECORD_AUTHORITY",
+            "requested execution-assurance properties are outside the declared vocabulary: "
+            + ", ".join(outside),
+        )
+    unmet = fields["unmet_properties"]
+    if not isinstance(unmet, list) or not all(isinstance(item, str) for item in unmet):
+        raise ForgeError("RECORD_MALFORMED", "execution assurance unmet properties are invalid")
+    if not set(unmet) <= set(requested):
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            "unmet execution-assurance properties must be a subset of requested properties",
+        )
+    reasons = fields["reasons"]
+    if not isinstance(reasons, list) or not all(isinstance(item, str) and item for item in reasons):
+        raise ForgeError("RECORD_MALFORMED", "execution assurance reasons must be text")
+    if fields["assurance_status"] == "PASS" and (unmet or reasons):
+        raise ForgeError(
+            "RECORD_AUTHORITY",
+            "execution assurance PASS cannot carry unmet properties or reasons",
+        )
+    if fields["assurance_status"] == "FAIL" and not reasons:
+        raise ForgeError("RECORD_MALFORMED", "execution assurance FAIL requires recorded reasons")
+
+
+def _validate_execution_receipt_binding(fields: JsonObject) -> None:
+    if fields["action_kind"] not in RECEIPT_ACTION_KINDS:
+        raise ForgeError("RECORD_MALFORMED", "execution receipt action_kind is invalid")
+    completeness = fields["receipt_completeness"]
+    if completeness not in RECEIPT_COMPLETENESS:
+        raise ForgeError("RECORD_MALFORMED", "execution receipt completeness is invalid")
+    properties = fields["established_properties"]
+    if not isinstance(properties, dict) or set(properties) != set(ESTABLISHED_PROPERTY_KEYS):
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            "execution receipt established_properties must declare every authority dimension",
+        )
+    invalid_states = sorted(
+        key for key, value in properties.items() if value not in ESTABLISHED_PROPERTY_STATES
+    )
+    if invalid_states:
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            "execution receipt established_properties have invalid states: "
+            + ", ".join(invalid_states),
+        )
+    if fields["status"] == "PASS":
+        raise ForgeError(
+            "RECORD_AUTHORITY",
+            "execution receipt bindings cannot claim evidence PASS",
+        )
+    receipt = fields.get("mncs_receipt")
+    receipt_identity = fields.get("receipt_identity")
+    if completeness == "complete":
+        if not isinstance(receipt, dict):
+            raise ForgeError(
+                "RECORD_MALFORMED", "complete execution receipt bindings require mncs_receipt"
+            )
+        if not isinstance(receipt_identity, str) or not receipt_identity:
+            raise ForgeError(
+                "RECORD_MALFORMED",
+                "complete execution receipt bindings require receipt_identity",
+            )
+        expected_identity = hashlib.sha256(
+            rfc8785.dumps(
+                cast(
+                    Any,
+                    {key: value for key, value in receipt.items() if key != "receipt_identity"},
+                )
+            )
+        ).hexdigest()
+        if (
+            receipt.get("receipt_identity") != receipt_identity
+            or expected_identity != receipt_identity
+        ):
+            raise ForgeError(
+                "RECORD_IDENTITY",
+                "receipt_identity does not match the stored MNCS receipt envelope",
+            )
+        if receipt.get("record_type") != "mncs-execution-receipt":
+            raise ForgeError("RECORD_MALFORMED", "mncs_receipt must be an MNCS execution receipt")
+        schema_version = fields.get("receipt_schema_version")
+        if schema_version != receipt.get("schema_version"):
+            raise ForgeError(
+                "RECORD_MALFORMED",
+                "receipt_schema_version does not match the stored MNCS receipt envelope",
+            )
+        return
+    if completeness in {"incomplete", "unavailable"} and receipt is not None:
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            f"{completeness} execution receipt bindings cannot embed an MNCS envelope",
+        )
+    if completeness in {"incomplete", "unavailable"} and receipt_identity is not None:
+        raise ForgeError(
+            "RECORD_MALFORMED",
+            f"{completeness} execution receipt bindings cannot claim a receipt identity",
         )
 
 
@@ -1001,15 +1566,32 @@ class MigrationRegistry:
         spec = RECORD_SPECS[record_type]
         if spec.identity_field is not None:
             supplied = data.get(spec.identity_field)
-            if supplied != _legacy_identity(
+            identity_matches = supplied == _legacy_identity(
                 record_type,
                 data,
                 restore_preserved_unknowns=restore_preserved_unknowns,
+            )
+            if (
+                not identity_matches
+                and record_type in LEGACY_CANDIDATE_SUBJECT_RECORDS
+                and data.get("subject_type") == "candidate"
             ):
+                without_compatibility_default = dict(data)
+                without_compatibility_default.pop("subject_type")
+                identity_matches = supplied == _legacy_identity(
+                    record_type,
+                    without_compatibility_default,
+                    restore_preserved_unknowns=restore_preserved_unknowns,
+                )
+            if not identity_matches:
                 raise ForgeError(
                     "RECORD_IDENTITY",
                     f"legacy {record_type.value} identity does not reproduce historically",
                 )
+        if record_type in LEGACY_CANDIDATE_SUBJECT_RECORDS and "subject_type" not in data:
+            # Before project-scoped workflows existed, every persisted workflow-like result was
+            # candidate-scoped. Do not infer broader project authority from an identity string.
+            data["subject_type"] = "candidate"
         unknown = sorted(set(data).difference(spec.allowed))
         if unknown:
             preserved = {key: data.pop(key) for key in unknown}

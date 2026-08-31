@@ -57,6 +57,29 @@
         "max_question_parameters": {"type": "integer", "minimum": 0, "maximum": 128}
       }
     },
+    "runner": {
+      "type": "object",
+      "description": "Optional execution-runner selection. The default local-process runner preserves historical behavior.",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["local-process", "podman-rootless"],
+          "default": "local-process"
+        },
+        "podman_path": {"type": "string", "minLength": 1},
+        "image": {"type": "string", "minLength": 1},
+        "writable_paths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "tmpfs_size": {"type": "string", "pattern": "^[0-9]+[kmgte]?$"},
+        "memory": {"type": "string", "pattern": "^[0-9]+[kmgte]?$"},
+        "cpus": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$"},
+        "pids_limit": {"type": "integer", "minimum": 1, "maximum": 4096}
+      }
+    },
     "commands": {
       "type": "object",
       "additionalProperties": false,
@@ -67,6 +90,14 @@
     },
     "environment_allowlist": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}},
     "required_capabilities": {"$ref": "#/$defs/stringList"},
+    "rights_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"enum": ["observe", "advisory", "enforced"]},
+        "manifest": {"$ref": "#/$defs/relativePath"}
+      }
+    },
     "authority": {
       "type": "object",
       "additionalProperties": false,
@@ -124,7 +155,19 @@
           "limitations": {"$ref": "#/$defs/stringList"},
           "executable_identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "descriptor": {"$ref": "#/$defs/relativePath"},
-          "environment": {"type": "object", "additionalProperties": {"type": "string"}}
+          "environment": {"type": "object", "additionalProperties": {"type": "string"}},
+          "module_roots": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1, "maxLength": 512}
+          },
+          "python_packages": {
+            "type": "array",
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}
+          }
         }
       }
     },
