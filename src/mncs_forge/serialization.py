@@ -35,4 +35,15 @@ def read_json(path: Path, *, byte_cap: int = 4_000_000) -> Any:
     data = path.read_bytes()
     if len(data) > byte_cap:
         raise ValueError(f"{path} exceeds the {byte_cap}-byte JSON read cap")
-    return json.loads(data)
+    return json.loads(data, object_pairs_hook=reject_duplicate_keys)
+
+
+def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Keep duplicate JSON members from silently changing a record's meaning."""
+
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object key: {key}")
+        result[key] = value
+    return result

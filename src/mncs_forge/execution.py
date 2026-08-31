@@ -13,7 +13,7 @@ from typing import Any
 
 from .errors import ForgeError
 from .execution_windows import collect_windows_pipes
-from .ports import ExecutionResult
+from .ports import ExecutionObservationSink, ExecutionResult
 
 STATUSES = {"PASS", "FAIL", "UNKNOWN"}
 
@@ -58,6 +58,11 @@ def _terminate(process: subprocess.Popen[bytes]) -> None:
         process.wait(timeout=2)
 
 
+def validate_limits(timeout: float, output_cap: int, stderr_cap: int | None) -> None:
+    if timeout <= 0 or output_cap <= 0 or (stderr_cap is not None and stderr_cap <= 0):
+        raise ForgeError("INVALID_LIMIT", "timeout and output cap must be positive")
+
+
 def run_bounded(
     command: object,
     *,
@@ -67,10 +72,10 @@ def run_bounded(
     stderr_cap: int | None = None,
     environment: dict[str, str],
     stdin: bytes = b"",
+    _observation: ExecutionObservationSink | None = None,
 ) -> ExecutionResult:
     argv = validate_argv(command)
-    if timeout <= 0 or output_cap <= 0 or (stderr_cap is not None and stderr_cap <= 0):
-        raise ForgeError("INVALID_LIMIT", "timeout and output cap must be positive")
+    validate_limits(timeout, output_cap, stderr_cap)
     caps = {"stdout": output_cap, "stderr": stderr_cap or output_cap}
     started = time.monotonic()
     try:
@@ -86,6 +91,8 @@ def run_bounded(
         )
     except OSError as exc:
         raise ForgeError("COMMAND_START", f"cannot start declared command: {exc}") from exc
+    if _observation is not None:
+        _observation.process_started()
     assert process.stdin is not None
     assert process.stdout is not None
     assert process.stderr is not None
@@ -100,6 +107,7 @@ def run_bounded(
             timeout=timeout,
             stdout_cap=caps["stdout"],
             stderr_cap=caps["stderr"],
+            observation=_observation,
         )
         return ExecutionResult(
             argv=argv,
@@ -128,9 +136,13 @@ def run_bounded(
                     selector.unregister(key.fileobj)
                     continue
                 target = chunks[str(key.data)]
+                if _observation is not None:
+                    _observation.feed(str(key.data), data)
                 target.extend(data)
                 cap = caps[str(key.data)]
                 if len(target) > cap:
+                    if _observation is not None:
+                        _observation.mark_limit(str(key.data), cap)
                     _terminate(process)
                     raise ForgeError("OUTPUT_LIMIT", f"{key.data} exceeded the {cap}-byte cap")
         returncode = process.wait(timeout=max(0.1, deadline - time.monotonic()))
@@ -147,6 +159,28 @@ def run_bounded(
         stdout=bytes(chunks["stdout"]),
         stderr=bytes(chunks["stderr"]),
         duration_seconds=round(time.monotonic() - started, 6),
+    )
+
+
+def run_provider(
+    command: object,
+    *,
+    cwd: Path,
+    timeout: float,
+    output_cap: int,
+    environment: dict[str, str],
+    stdin: bytes = b"",
+) -> ExecutionResult:
+    """Run a declared provider through the canonical bounded execution path."""
+
+    return run_bounded(
+        command,
+        cwd=cwd,
+        timeout=timeout,
+        output_cap=output_cap,
+        stderr_cap=output_cap,
+        environment=environment,
+        stdin=stdin,
     )
 
 

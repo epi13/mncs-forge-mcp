@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,15 @@ def test_configuration_defaults_remain_compatible(config: ForgeConfig) -> None:
     provider = config.providers["provider-pass"]
     assert provider.transport == "stdio-jsonl"
     assert provider.required is False
+
+
+def test_runtime_state_override_is_outside_source_tree(
+    config: ForgeConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runtime_root = tmp_path.parent / "forge-runtime-state"
+    monkeypatch.setenv("MNCS_FORGE_STATE_DIR", str(runtime_root))
+    assert config.state_dir == (runtime_root / config.project_identity).resolve()
+    assert config.root not in config.state_dir.parents
 
 
 def test_provider_defaults_are_applied_when_optional_fields_are_absent(project: Path) -> None:
@@ -156,3 +166,24 @@ def test_relative_provider_symlink_escape_is_unavailable(project: Path, tmp_path
     with pytest.raises(ForgeError) as issue:
         load_config(path)
     assert issue.value.code == "SYMLINK_ESCAPE"
+
+
+def test_family_module_root_resolves_sibling_and_rejects_escape(tmp_path: Path) -> None:
+    from mncs_forge.paths import FAMILY_MODULE_ROOTS_MECHANISM, resolve_family_module_root
+
+    workspace = tmp_path / "Projects"
+    project = workspace / "mncs-forge-project"
+    sibling = workspace / "machine-native-complexity-standard" / "src"
+    sibling.mkdir(parents=True)
+    (sibling / "mncs_validator").mkdir()
+    (sibling / "mncs_validator" / "__init__.py").write_text("", encoding="utf-8")
+    project.mkdir()
+    resolved = resolve_family_module_root(project, "../machine-native-complexity-standard/src")
+    assert resolved == sibling.resolve()
+    with pytest.raises(ForgeError) as escaped:
+        resolve_family_module_root(project, "../../outside")
+    assert escaped.value.code == "FAMILY_MODULE_ROOT_ESCAPE"
+    with pytest.raises(ForgeError) as absolute:
+        resolve_family_module_root(project, str(sibling))
+    assert absolute.value.code == "ABSOLUTE_PATH"
+    assert FAMILY_MODULE_ROOTS_MECHANISM.startswith("mncs-forge.family-module-roots")
