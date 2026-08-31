@@ -37,6 +37,7 @@ from .micro_verifiers import MicroVerifierService
 from .record_store import LocalRecordStore, RecordStore
 from .records import ForgeRecord, LedgerEntry
 from .state_machine import ForgeStateMachine
+from .verifier_support import recovered_terminal_unknown_result
 
 _redact = redact
 _now = now
