@@ -24,6 +24,7 @@ from .paths import (
     validate_scopes_do_not_overlap,
     validate_tree_containment,
 )
+from .serialization import local_json_identity
 
 
 @dataclass(frozen=True)
@@ -189,8 +190,7 @@ class ForgeConfig:
         if roots:
             existing = result.get("PYTHONPATH", "")
             result["PYTHONPATH"] = os.pathsep.join(
-                [str(path) for path, _identity in roots]
-                + ([existing] if existing else [])
+                [str(path) for path, _identity in roots] + ([existing] if existing else [])
             )
         return result
 
@@ -212,6 +212,11 @@ class ForgeConfig:
     @property
     def required_capabilities(self) -> list[str]:
         return list(self.raw.get("required_capabilities", []))
+
+    @property
+    def runner_settings(self) -> dict[str, Any]:
+        value = self.raw.get("runner", {})
+        return dict(value) if isinstance(value, dict) else {}
 
     def public_commands(self) -> dict[str, list[str]]:
         commands = self.raw.get("commands", {})
@@ -266,6 +271,17 @@ def load_config(path: Path | str = Path("mncs-forge.toml")) -> ForgeConfig:
         for value in path_values[key]
     ]
     validate_scopes_do_not_overlap(writable, protected)
+    runner_settings = raw.get("runner", {})
+    if str(runner_settings.get("kind", "local-process")) == "podman-rootless":
+        if not str(runner_settings.get("image", "")).strip():
+            raise ForgeError(
+                "CONFIG_INVALID",
+                "runner kind podman-rootless requires a declared image",
+            )
+        runner_writable = [
+            validate_relative_path(value) for value in runner_settings.get("writable_paths", [])
+        ]
+        validate_scopes_do_not_overlap(runner_writable, protected)
     for policy in raw["policies"].values():
         resolve_contained(root, str(policy), must_exist=False)
     workflows: dict[str, Workflow] = {}

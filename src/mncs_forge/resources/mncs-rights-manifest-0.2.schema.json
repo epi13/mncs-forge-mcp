@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mncs.dev/schemas/rights-provenance/v0.2.0/manifest.schema.json",
+  "title": "MNCS Rights & Provenance Manifest v0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact", "provenance", "rights", "review"],
+  "properties": {
+    "schema_version": {"const": "0.2.0"},
+    "manifest_identity": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 over the RFC 8785 canonical JSON of this manifest with manifest_identity and any signature fields removed."
+    },
+    "spec_profile": {
+      "enum": ["development", "canonical-release"],
+      "description": "Which release policy profile this manifest is being evaluated under."
+    },
+    "artifact": {"$ref": "#/$defs/artifact"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "rights": {"$ref": "#/$defs/rights"},
+    "review": {"$ref": "#/$defs/review"},
+    "attestations": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/attestation"},
+      "description": "Contribution attestations. Each is an assertion/evidence item, not unquestionable truth; conflicting attestations may coexist."
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile_id": {"type": "string", "minLength": 1},
+        "last_evaluation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outcome"],
+          "properties": {
+            "outcome": {"$ref": "#/$defs/outcome"},
+            "evaluated_at": {"$ref": "#/$defs/timestamp"},
+            "validator": {"type": "string"},
+            "result_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+          }
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced extension point (keys like 'mncs-fabric:...'). Unknown extensions must be preserved, never interpreted.",
+      "propertyNames": {"pattern": "^[a-z0-9-]+:"},
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "timestamp": {"type": "string", "format": "date-time"},
+    "outcome": {"enum": ["pass", "pass-with-findings", "review-required", "blocked", "invalid"]},
+    "sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+    "producer_reference": {
+      "type": "object",
+      "description": "The family-standard producer reference shape (commons.mncs.dev/producer-reference/v0alpha1).",
+      "required": ["producer", "recordKind", "schemaVersion", "stableId"],
+      "properties": {
+        "producer": {"type": "string", "minLength": 1},
+        "recordKind": {"type": "string", "minLength": 1},
+        "schemaVersion": {"type": "string", "minLength": 1},
+        "stableId": {"type": "string", "minLength": 1},
+        "contentDigest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "scope": {"type": "object"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "class"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "class": {"$ref": "#/$defs/artifactClass"},
+        "artifacts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/artifactRef"},
+          "description": "Concrete artifact members when the primary id names a group (e.g. a release)."
+        },
+        "hashes": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/hashRef"}
+        },
+        "repository": {"type": "string"},
+        "commit": {"type": "string"},
+        "paths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    },
+    "artifactClass": {"enum": ["source-code", "documentation", "dataset", "model-weights", "configuration", "experiment-output", "receipt", "binary", "other"]},
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "class"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "class": {"$ref": "#/$defs/artifactClass"},
+        "path": {"type": "string"},
+        "hashes": {"type": "array", "items": {"$ref": "#/$defs/hashRef"}}
+      }
+    },
+    "hashRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {"enum": ["sha256"]},
+        "value": {"$ref": "#/$defs/sha256"},
+        "scope": {"enum": ["file", "tree", "record"]}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin_classification", "participants", "process_evidence"],
+      "properties": {
+        "origin_classification": {"$ref": "#/$defs/originClassification"},
+        "participants": {"type": "array", "items": {"$ref": "#/$defs/participant"}},
+        "process_evidence": {"type": "array", "items": {"$ref": "#/$defs/evidenceRef"}},
+        "graph": {"$ref": "#/$defs/graph"},
+        "notes": {"type": "string"}
+      }
+    },
+    "originClassification": {"enum": ["human-authored", "human-ai-assisted", "human-directed-machine-generated", "autonomous-machine-generated", "mixed-machine-origin", "third-party-derived", "generated-from-licensed-source", "generated-from-public-domain-source", "origin-uncertain"]},
+    "participant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "role"],
+      "properties": {
+        "type": {"enum": ["human", "model", "agent", "tool", "organization", "unknown"]},
+        "role": {"type": "string", "minLength": 1},
+        "name": {"type": "string"},
+        "model": {"type": "string"},
+        "provider": {"type": "string"},
+        "runtime": {"type": "string"},
+        "digest": {"type": "string"},
+        "participant_ref": {"type": "string", "description": "Stable external identity for this participant (e.g. mncs-harness actor-route digest URI)."}
+      }
+    },
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference"],
+      "properties": {
+        "kind": {"enum": ["fabric-receipt", "fabric-execution-record", "forge-analysis", "validation-receipt", "prompt", "tool-log", "commit", "external-record", "rights-evidence-record", "other"]},
+        "reference": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "producer_reference": {"$ref": "#/$defs/producer_reference"}
+      }
+    },
+    "graph": {
+      "type": "object",
+      "description": "Bounded provenance DAG summary. Nodes are artifacts/actions; edges carry transformation and evidence references. Full evidence lives in referenced records, not here.",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/graphNode"}
+        },
+        "edges": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {"$ref": "#/$defs/graphEdge"}
+        }
+      }
+    },
+    "graphNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "kind": {"enum": ["artifact", "action", "transformation", "validation", "external"]},
+        "label": {"type": "string", "maxLength": 256},
+        "artifact_class": {"$ref": "#/$defs/artifactClass"},
+        "hashes": {"type": "array", "items": {"$ref": "#/$defs/hashRef"}},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidenceRef"}},
+        "external_ref": {"type": "string", "maxLength": 512}
+      }
+    },
+    "graphEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "relation"],
+      "properties": {
+        "from": {"type": "string", "minLength": 1, "maxLength": 256},
+        "to": {"type": "string", "minLength": 1, "maxLength": 256},
+        "relation": {"enum": ["derived-from", "transformed-by", "validated-by", "executed-by", "attested-by", "referenced"]},
+        "transformation": {"type": "string", "maxLength": 256},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidenceRef"}},
+        "timestamp": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution_license", "copyright_status", "rights_basis", "third_party_material", "sources"],
+      "properties": {
+        "distribution_license": {"type": "string", "minLength": 1, "description": "SPDX expression preferred."},
+        "copyright_status": {"enum": ["human-authorship-confirmed", "human-authorship-material", "mixed-or-undetermined", "machine-originated-unresolved", "third-party-licensed", "public-domain-asserted", "unresolved"]},
+        "rights_basis": {"enum": ["project-owned-or-controlled", "contributor-attested", "third-party-license", "public-domain-basis", "no-exclusive-right-asserted", "unknown-needs-review"]},
+        "third_party_material": {"enum": ["none-known", "present", "possible", "unknown"]},
+        "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+        "notes": {"type": "string"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference", "license_status"],
+      "properties": {
+        "kind": {"enum": ["repository", "file", "dataset", "model", "documentation", "conversation", "package", "other"]},
+        "reference": {"type": "string", "minLength": 1},
+        "license_status": {"enum": ["compatible", "incompatible", "unknown", "not-applicable"]},
+        "license": {"type": "string"},
+        "confidence": {"enum": ["observed-declaration", "analysis", "heuristic", "asserted", "unknown"]},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidenceRef"}},
+        "notes": {"type": "string"}
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["technical_validation", "provenance_validation", "human_acceptance"],
+      "properties": {
+        "technical_validation": {"enum": ["passed", "failed", "not-run", "not-applicable"]},
+        "provenance_validation": {"enum": ["passed", "failed", "incomplete", "not-run"]},
+        "human_acceptance": {"enum": ["accepted", "rejected", "not-reviewed", "not-required"]},
+        "reviewer": {"type": "string"},
+        "reviewed_at": {"$ref": "#/$defs/timestamp"},
+        "commons_refs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/producer_reference"},
+          "description": "Relevant Commons findings/decisions. Historical material is context, not automatically current policy."
+        },
+        "notes": {"type": "string"}
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assertion_type", "assertedBy", "assertedAt", "statement"],
+      "properties": {
+        "assertion_type": {"enum": ["contribution-scope", "origin-knowledge", "machine-assistance-disclosure", "third-party-disclosure", "license-basis", "uncertainty-acknowledgement", "evidence-integrity", "other"]},
+        "assertedBy": {"type": "string", "minLength": 1},
+        "assertedByIdentity": {"type": "string"},
+        "assertedAt": {"$ref": "#/$defs/timestamp"},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "appliesTo": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidenceRef"}},
+        "supersedes": {"type": "array", "items": {"type": "string"}, "description": "Digests or ids of attestations this one supersedes."},
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional detached signature block. Absence is normal in v0.2; presence must be verified by the consumer's own trust policy.",
+          "required": ["algorithm", "keyIdentifier", "value"],
+          "properties": {
+            "algorithm": {"enum": ["ed25519"]},
+            "keyIdentifier": {"type": "string", "minLength": 1},
+            "value": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    }
+  }
+}

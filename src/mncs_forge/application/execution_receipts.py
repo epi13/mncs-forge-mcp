@@ -247,61 +247,62 @@ def _receipt_context(
     )
 
 
-def bind_workflow_execution(
+def _envelope(
+    *,
+    observation: ExecutionObservation,
+    completeness: ReceiptCompleteness,
+    context: ReceiptContext,
+) -> tuple[dict[str, object] | None, str | None, str | None, ReceiptCompleteness]:
+    """Build the upstream MNCS envelope or explain why it cannot be built."""
+
+    if completeness != "complete":
+        return None, None, None, completeness
+    try:
+        receipt = build_mncs_execution_receipt(observation, context)
+    except ForgeError as exc:
+        if exc.code in {"RECEIPT_CONTEXT", "RECEIPT_OBSERVATION"}:
+            return (
+                None,
+                None,
+                None,
+                ("malformed" if exc.code == "RECEIPT_CONTEXT" else "incomplete"),
+            )
+        raise
+    identity = receipt.get("receipt_identity")
+    if not isinstance(identity, str) or not _SHA256.fullmatch(identity):
+        return None, None, None, "malformed"
+    version = receipt.get("schema_version")
+    schema_version = version if isinstance(version, str) else None
+    return receipt, identity, schema_version, completeness
+
+
+def _binding_record(
     *,
     config: ForgeConfig,
-    execution: WorkflowExecution,
+    epoch_identity: str | None,
+    candidate_identity: object,
+    action_kind: Literal["workflow_action", "verifier_action"],
+    action_identity: str,
+    request_identity: object,
+    workflow_or_verifier: str,
+    result_identity: str | None,
+    observation: ExecutionObservation,
+    receipt: dict[str, object] | None,
+    receipt_identity: str | None,
+    schema_version: str | None,
+    completeness: ReceiptCompleteness,
 ) -> ExecutionReceiptBindingRecord:
-    """Build one identity-bound Forge receipt record from a workflow execution."""
-
-    observation = execution.session.observation
-    completeness = _completeness(observation)
-    receipt: dict[str, object] | None = None
-    receipt_identity: str | None = None
-    schema_version: str | None = None
-    if completeness == "complete":
-        try:
-            receipt = build_mncs_execution_receipt(
-                observation,
-                _receipt_context(
-                    config=config,
-                    workflow=execution.workflow,
-                    action=execution.action,
-                    observation=observation,
-                    result=execution.result,
-                ),
-            )
-        except ForgeError as exc:
-            if exc.code in {"RECEIPT_CONTEXT", "RECEIPT_OBSERVATION"}:
-                completeness = "malformed" if exc.code == "RECEIPT_CONTEXT" else "incomplete"
-                receipt = None
-            else:
-                raise
-        else:
-            identity = receipt.get("receipt_identity")
-            if not isinstance(identity, str) or not _SHA256.fullmatch(identity):
-                completeness = "malformed"
-                receipt = None
-            else:
-                receipt_identity = identity
-                version = receipt.get("schema_version")
-                schema_version = version if isinstance(version, str) else None
-    result_identity = None
-    if execution.result is not None:
-        output = execution.result.get("output_identity")
-        result_identity = output if isinstance(output, str) else None
-    request_identity = execution.action.get("protocol_request_identity")
     record = new_record(
         RecordType.EXECUTION_RECEIPT_BINDING,
         {
             "project_identity": config.project_identity,
-            "epoch_identity": execution.epoch_identity,
-            "candidate_identity": execution.action["candidate_identity"],
-            "action_kind": "workflow_action",
-            "action_identity": execution.action["action_id"],
+            "epoch_identity": epoch_identity,
+            "candidate_identity": candidate_identity,
+            "action_kind": action_kind,
+            "action_identity": action_identity,
             "result_identity": result_identity,
             "request_identity": request_identity if isinstance(request_identity, str) else None,
-            "workflow_or_verifier": execution.workflow.name,
+            "workflow_or_verifier": workflow_or_verifier,
             "runner_identity": observation.runner_identity,
             "runner_kind": observation.capabilities.runner_kind,
             "runner_version": observation.runner_version,
@@ -329,6 +330,146 @@ def bind_workflow_execution(
     if not isinstance(properties, Mapping) or set(properties) != set(ESTABLISHED_PROPERTY_KEYS):
         raise ForgeError("INTERNAL_RECORD", "execution receipt properties are incomplete")
     return record
+
+
+def bind_workflow_execution(
+    *,
+    config: ForgeConfig,
+    execution: WorkflowExecution,
+) -> ExecutionReceiptBindingRecord:
+    """Build one identity-bound Forge receipt record from a workflow execution."""
+
+    observation = execution.session.observation
+    completeness = _completeness(observation)
+    receipt, receipt_identity, schema_version, completeness = _envelope(
+        observation=observation,
+        completeness=completeness,
+        context=_receipt_context(
+            config=config,
+            workflow=execution.workflow,
+            action=execution.action,
+            observation=observation,
+            result=execution.result,
+        ),
+    )
+    result_identity = None
+    if execution.result is not None:
+        output = execution.result.get("output_identity")
+        result_identity = output if isinstance(output, str) else None
+    return _binding_record(
+        config=config,
+        epoch_identity=execution.epoch_identity,
+        candidate_identity=execution.action["candidate_identity"],
+        action_kind="workflow_action",
+        action_identity=str(execution.action["action_id"]),
+        request_identity=execution.action.get("protocol_request_identity"),
+        workflow_or_verifier=execution.workflow.name,
+        result_identity=result_identity,
+        observation=observation,
+        receipt=receipt,
+        receipt_identity=receipt_identity,
+        schema_version=schema_version,
+        completeness=completeness,
+    )
+
+
+def bind_verifier_execution(
+    *,
+    config: ForgeConfig,
+    session: ExecutionSession,
+    action: Mapping[str, object],
+    result_identity: str | None,
+    verifier_id: str,
+    verifier_version: str,
+    provider_id: str,
+) -> ExecutionReceiptBindingRecord:
+    """Build one identity-bound Forge receipt record from a verifier execution.
+
+    The binding records execution provenance only. It never upgrades the
+    underlying verifier status and it cannot become evidence ``PASS``.
+    """
+
+    observation = session.observation
+    action_identity = str(action["action_id"])
+    candidate_identity = str(action["candidate_identity"])
+    completeness = _completeness(observation)
+    requested_at = _parse_timestamp(str(action["requested_at"])) or datetime.now(UTC)
+    timeout = timedelta(seconds=max(observation.timeout_seconds, 0))
+    bundle_identity = content_digest(
+        {
+            "kind": "forge-verifier-action",
+            "project_identity": config.project_identity,
+            "verifier_id": verifier_id,
+            "verifier_version": verifier_version,
+            "provider_id": provider_id,
+            "method": action.get("method"),
+        }
+    )
+    policy_identity = content_digest(
+        {
+            "timeout_seconds": observation.timeout_seconds,
+            "stdout_limit": observation.stdout_limit,
+            "stderr_limit": observation.stderr_limit,
+            "shell": False,
+            "environment_identity": str(action.get("environment_identity") or ""),
+            "filesystem_policy": observation.filesystem_policy,
+            "network_policy": observation.network_policy,
+        }
+    )
+    harness_identity = content_digest(
+        {
+            "runner_identity": observation.runner_identity,
+            "runner_version": observation.runner_version,
+            "runner_kind": observation.capabilities.runner_kind,
+        }
+    )
+    context = ReceiptContext(
+        record_id=_bounded_id("receipt.", f"verifier:{action_identity}"),
+        subject_family="MNCS",
+        subject_kind="development-record",
+        subject_record_id=_bounded_id("subject.", f"verifier:{action_identity}"),
+        subject_canonical_sha256=_subject_digest(candidate_identity),
+        candidate_id=_candidate_receipt_id(candidate_identity),
+        test_bundle_identity=bundle_identity,
+        harness_identity=harness_identity,
+        input_snapshot_identity=None,
+        execution_policy_identity=policy_identity,
+        placement_policy_identity=sha256_digest(observation.placement_identity),
+        result_semantics=(
+            "Forge records verifier execution provenance only; the bound verifier "
+            "result retains its own PASS/FAIL/UNKNOWN semantics and this receipt "
+            "does not establish sandbox, independence, or custody."
+        ),
+        challenge_nonce=_bounded_id("challenge.", f"verifier:{action_identity}"),
+        challenge_issued_at=_iso(requested_at),
+        challenge_expires_at=_iso(requested_at + timeout + timedelta(seconds=1)),
+        observed_at=observation.ended_at or _iso(datetime.now(UTC)),
+        harness_status="UNKNOWN",
+        command_binding="enforced",
+        environment_binding="enforced",
+        test_bundle_integrity="unknown",
+        result_integrity="unknown",
+    )
+    receipt, receipt_identity, schema_version, completeness = _envelope(
+        observation=observation,
+        completeness=completeness,
+        context=context,
+    )
+    return _binding_record(
+        config=config,
+        epoch_identity=str(action["epoch_identity"]) if action.get("epoch_identity") else None,
+        candidate_identity=action["candidate_identity"],
+        action_kind="verifier_action",
+        action_identity=action_identity,
+        request_identity=action.get("protocol_request_identity"),
+        workflow_or_verifier=verifier_id,
+        result_identity=result_identity,
+        observation=observation,
+        receipt=receipt,
+        receipt_identity=receipt_identity,
+        schema_version=schema_version,
+        completeness=completeness,
+    )
 
 
 RESULT_COMMIT_CONTEXTS: dict[RecordType, tuple[str, str]] = {
@@ -366,6 +507,9 @@ def persist_workflow_execution(
 
 
 def summarize_binding(record: Mapping[str, object]) -> dict[str, object]:
+    established = record.get("established_properties")
+    if isinstance(established, Mapping):
+        established = dict(established)
     return {
         "binding_id": record.get("binding_id"),
         "action_identity": record.get("action_identity"),
@@ -376,7 +520,7 @@ def summarize_binding(record: Mapping[str, object]) -> dict[str, object]:
         "termination_category": record.get("termination_category"),
         "runner_kind": record.get("runner_kind"),
         "execution_scope": record.get("execution_scope"),
-        "established_properties": record.get("established_properties"),
+        "established_properties": established,
     }
 
 

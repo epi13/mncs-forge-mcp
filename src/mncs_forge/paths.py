@@ -7,6 +7,39 @@ from pathlib import Path, PurePosixPath
 
 from .errors import ForgeError
 
+FAMILY_MODULE_ROOTS_MECHANISM = "mncs-forge.family-module-roots.v0.1"
+
+
+def resolve_family_module_root(project_root: Path, value: str) -> Path:
+    """Resolve one declared sibling/package import root.
+
+    Conventional provider isolation cannot see undeclared sibling checkouts.
+    This named mechanism allows a project to declare import roots that stay
+    inside the workspace parent of the Forge project. The path is hashed and
+    recorded by the caller; it is not a silent ``sys.path`` insertion.
+    """
+
+    if not isinstance(value, str) or not value or "\x00" in value:
+        raise ForgeError("INVALID_PATH", "family module roots must be non-empty strings")
+    if Path(value).is_absolute():
+        raise ForgeError("ABSOLUTE_PATH", f"absolute family module root is forbidden: {value}")
+    root_real = project_root.resolve(strict=True)
+    workspace = root_real.parent
+    candidate = (root_real / value).resolve(strict=False)
+    try:
+        candidate.relative_to(workspace)
+    except ValueError as exc:
+        raise ForgeError(
+            "FAMILY_MODULE_ROOT_ESCAPE",
+            f"family module root escapes the workspace parent: {value}",
+        ) from exc
+    if not candidate.is_dir() or candidate.is_symlink():
+        raise ForgeError(
+            "FAMILY_MODULE_ROOT_MISSING",
+            f"family module root is not a real directory: {value}",
+        )
+    return candidate
+
 
 FAMILY_MODULE_ROOTS_MECHANISM = "mncs-forge.family-module-roots.v0.1"
 

@@ -7,8 +7,15 @@ set -euo pipefail
 repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 python="$repository_root/.venv/bin/python"
 
+# Prefer the repository-managed environment in operator deployments. During
+# development/CI an editable Forge installation may instead live in the active
+# interpreter, so fall back to a Python already present on PATH rather than
+# making the wrapper depend on a checkout-local .venv.
 if [[ ! -x "$python" ]]; then
-  echo "MNCS Forge Python environment is not installed or executable: $python" >&2
+  python="$(command -v python3 || command -v python || true)"
+fi
+if [[ -z "$python" || ! -x "$python" ]]; then
+  echo "MNCS Forge Python environment is not installed or executable." >&2
   echo "Run $repository_root/scripts/install-codex-mcp.sh [path/to/mncs-forge.toml]" >&2
   exit 78
 fi

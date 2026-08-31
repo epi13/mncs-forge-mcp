@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from mncs_forge.records import (
+    ASSURANCE_REQUEST_PROPERTIES,
     CURRENT_SCHEMA_VERSION,
     LEDGER_KIND_TYPES,
     LEDGER_REQUIRED,
@@ -70,6 +71,59 @@ for required_fields in REQUIRED_STRING_FIELDS.values():
 
 def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
     spec = RECORD_SPECS[record_type]
+    if record_type is RecordType.COMPILER_EXPERIMENT and field in {
+        "assurance_status",
+        "conformance_status",
+    }:
+        return {"type": "null"}
+    if record_type is RecordType.CONCEPT_EVALUATION and field in {
+        "generator_identity",
+        "evaluator_policy_identity",
+        "assurance_status",
+        "conformance_status",
+    }:
+        if field in {"generator_identity", "evaluator_policy_identity"}:
+            return {"type": ["string", "null"]}
+        return {"type": "null"}
+    if record_type is RecordType.COMPILER_EXPERIMENT and field == "language_contract_id":
+        return {
+            "enum": [
+                "mncs:language:compilation-study-result:0.1",
+                "mncs:language:experiment-result:0.1",
+            ]
+        }
+    if record_type is RecordType.COMPILER_EXPERIMENT and field == "interpretation":
+        return {"const": "observation_only_not_assurance_or_conformance"}
+    if record_type is RecordType.COMPILER_EXPERIMENT and field == "compilation_status":
+        return {"enum": ["completed", "completed_with_unresolved_obligations", "failed"]}
+    if record_type is RecordType.COMPILER_CANDIDATE and field in {
+        "assurance_status",
+        "conformance_status",
+        "benchmark_observation",
+        "validation",
+    }:
+        return (
+            {"type": ["object", "null"]}
+            if field
+            in {
+                "benchmark_observation",
+                "validation",
+            }
+            else {"type": "null"}
+        )
+    if record_type is RecordType.COMPILER_CANDIDATE and field == "interpretation":
+        return {"const": "search_observation_not_language_correctness"}
+    if record_type is RecordType.COMPILER_CANDIDATE and field == "semantic_status":
+        return {"enum": ["UNVALIDATED", "PASS", "FAIL", "UNKNOWN"]}
+    if record_type is RecordType.COMPILER_CANDIDATE and field == "policy_disposition":
+        return {"enum": ["accept", "reject", "retain_unresolved"]}
+    if record_type is RecordType.COMPILER_CANDIDATE and field == "protected_properties":
+        return {"type": "array", "items": {"type": "string"}}
+    if record_type is RecordType.COMPILER_CANDIDATE and field in {
+        "isolated",
+        "generator_certified",
+    }:
+        return {"type": "boolean"}
     if field == "protocol_request_identity" and record_type in {
         RecordType.WORKFLOW_ACTION,
         RecordType.WORKFLOW_RESULT,
@@ -79,6 +133,23 @@ def property_schema(record_type: RecordType, field: str) -> dict[str, object]:
         return {"type": ["string", "null"]}
     if field == "epoch_identity" and record_type is RecordType.EXECUTION_RECEIPT_BINDING:
         return {"type": ["string", "null"]}
+    if record_type is RecordType.EXECUTION_ASSURANCE and field == "policy_identity":
+        return {"type": ["string", "null"]}
+    if record_type is RecordType.EXECUTION_ASSURANCE and field == "requested_properties":
+        return {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": True,
+            "items": {"enum": sorted(ASSURANCE_REQUEST_PROPERTIES)},
+        }
+    if record_type is RecordType.EXECUTION_ASSURANCE and field in {
+        "unmet_properties",
+        "reasons",
+    }:
+        items: dict[str, object] = {"type": "string"}
+        if field == "reasons":
+            items["minLength"] = 1
+        return {"type": "array", "items": items}
     if field in NULLABLE_STRING_FIELDS:
         return {"type": ["string", "null"]}
     if field == "mncs_receipt":
