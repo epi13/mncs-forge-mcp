@@ -2,6 +2,77 @@
 
 ## Unreleased
 
+- Add a rootless Podman sandbox-capable runner (Task 7C). Declared argv executes
+  inside a container with `--network=none`, a read-only root filesystem, a
+  read-only workspace mount, declared `rw,Z` writable mounts, dropped
+  capabilities, and optional resource bounds. Availability probes fail closed
+  (`RUNNER_UNAVAILABLE`) for missing binaries, non-rootless runtimes, missing
+  images, unsupported versions, and non-POSIX hosts; image digests are resolved
+  through `podman image inspect` and tags alone are never immutable identities.
+  Selection is additive through the optional `[runner]` configuration section;
+  the default remains `local-process`. See ADR 0016.
+
+- Extend execution-receipt lineage to verifier actions. Verifier provider
+  execution now flows through the runner observation path and persists an
+  `execution_receipt_binding` with `action_kind="verifier_action"` in the same
+  transaction as the terminal result. Incomplete terminations persist explicitly
+  incomplete bindings without synthesized stream totals. Disclosed verifier
+  results include a compact `execution_receipt` summary whose status stays
+  `UNKNOWN`.
+
+- Make execution assurance a first-class typed concept (ADR 0017). The new
+  versioned `execution_assurance` record assesses one receipt binding's
+  established properties against caller-declared requested properties from a
+  fixed vocabulary. Unmet or unobservable properties remain `UNKNOWN`,
+  incomplete executions cannot confirm any property, and isolation claims that
+  contradict the declared runner kind are `FAIL` laundering attempts. A
+  functional `PASS` never implies assurance `PASS`. Assessments are append-only;
+  conflicting assessments are retained side by side. New operations:
+  `execution.assurance.assess`, `execution.assurance.list`, plus read-only
+  Forge Cell surfaces `cell.documents.validate` and `cell.execution.assess`
+  and the `mncs-forge://execution/assessments` resource. Registry grows
+  44 → 48 operations.
+
+- Bind compiler-candidate validation evidence to artifact identities.
+  Validation records now carry the exact `validated_artifact_identity`; callers
+  can require `expected_artifact_identity` and fail closed on substitution.
+  Freshness is computed by Forge from bound identities: validation carried by a
+  candidate with a different artifact identity is `stale-artifact-mismatch`,
+  its effective semantic status collapses to `UNKNOWN`, and it cannot promote
+  in tournaments or selection. Copied `"PASS"` observations cannot authorize a
+  different candidate.
+
+- Persist bounded concept evaluations for Concept Experiments
+  (`concept.evaluations.record` / `.list` / `.get`). Each record re-derives its
+  `content_digest` and stable id from the stored evaluation material, keeps
+  `generator_certified` pinned to `false`, and cannot claim assurance,
+  conformance, or universal truth. Registry grows 41 → 44 operations.
+
+- Accept and persist the language-owned `mncs:language:experiment-result:0.1` contract alongside
+  the earlier compilation-study record. Forge projects backend, realization-request/plan, typed
+  artifact, experiment-status, and validator observations for listing and comparison while
+  retaining the exact language record. These are bounded observations, not Forge assurance,
+  conformance, or compiler-legality verdicts.
+
+- Add an isolated compiler-candidate search protocol. Forge can register, list,
+  compare, attach independent PASS/FAIL/UNKNOWN validation, run a bounded
+  tournament, and select only under an explicit protected-property policy.
+  Candidate generation is not validity. A faster FAIL candidate loses. UNKNOWN
+  does not promote when validation is required. Search records cannot claim
+  assurance or conformance. Companion language work owns backend lowering and
+  translation validation.
+
+- Add Task 7B-2 identity-bound persistent execution-receipt integration. Declared workflow
+  execution now persists `workflow_action` and `execution_receipt_binding` records that reference
+  the experimental MNCS `mncs-execution-receipt` envelope without forking it. Incomplete
+  timeout/output-limit executions persist explicit `UNKNOWN` bindings. Binding status cannot be
+  evidence `PASS`. Add `receipts list` / `receipts get` operations and a Fabric execution-adapter
+  seam that does not import or duplicate Fabric fleet mechanics.
+- Add Task 7B-1 raw `LocalProcessRunner` observations and an adapter-ready seam for the
+  experimental MNCS `mncs-execution-receipt` `0.1-experimental` contract. The adapter uses pinned
+  RFC 8785 identities, bounded stream facts, explicit termination/enforcement mapping, and fixed
+  non-claim fields without persisting receipts or asserting assurance. Persistent receipt authority,
+  Podman, and sandbox work remain deferred.
 - Repair the Task 9B Windows test-harness portability regressions without changing raw local-runner
   output semantics or shrinking the oversized Provider Protocol corpus. Add the Task 9C
   implementation-mapped stable-local threat model, executable evidence mapping, and explicit

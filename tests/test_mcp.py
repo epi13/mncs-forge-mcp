@@ -16,7 +16,19 @@ def test_mcp_tool_names_modes_and_schemas_come_from_registry(project: Path) -> N
     development_by_name = {tool.name: tool for tool in development}
     evaluator_names = {tool.name for tool in evaluator}
     assert "mncs_forge_final_evaluation_run" not in development_by_name
-    assert evaluator_names == set(development_by_name) | {"mncs_forge_final_evaluation_run"}
+    assert evaluator_names == (
+        set(development_by_name)
+        - {
+            "mncs_forge_compiler_experiment_record",
+            "mncs_forge_concept_evaluation_record",
+            "mncs_forge_compiler_candidate_register",
+            "mncs_forge_compiler_candidate_attach",
+            "mncs_forge_compiler_tournament",
+            "mncs_forge_compiler_candidate_select",
+            "mncs_forge_execution_assurance_assess",
+        }
+        | {"mncs_forge_final_evaluation_run"}
+    )
 
     match_schema = development_by_name["mncs_forge_verifier_match"].inputSchema
     assert match_schema["required"] == ["uncertainty_classes"]
@@ -38,7 +50,10 @@ def test_mcp_tool_names_modes_and_schemas_come_from_registry(project: Path) -> N
         "generator_config_identity",
     }
     resources = asyncio.run(development_server.list_resources())
-    assert "mncs-forge://operations" in {str(resource.uri) for resource in resources}
+    resource_uris = {str(resource.uri) for resource in resources}
+    assert "mncs-forge://operations" in resource_uris
+    assert "mncs-forge://compiler/experiments" in resource_uris
+    assert "mncs-forge://compiler/candidates" in resource_uris
 
 
 def test_mcp_generated_wrapper_preserves_result_compatibility(project: Path) -> None:

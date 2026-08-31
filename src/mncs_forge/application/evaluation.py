@@ -10,6 +10,7 @@ from ..paths import resolve_contained
 from ..ports import ProjectObserver, RecordCommitter
 from ..records import FinalEvaluationRecord, RecordType, new_record
 from ..serialization import read_json
+from .execution_receipts import persist_workflow_execution, summarize_binding
 from .lifecycle import LifecycleContext
 from .support import aggregate_status, now
 from .workflows import WorkflowExecutor
@@ -95,16 +96,26 @@ class EvaluationService:
             observe_epoch_authority=False
         ).authorize_evaluator_entry()
         results: list[FinalEvaluationRecord] = []
+        receipts: list[dict[str, object]] = []
         for name in workflow_names:
             workflow = self.workflows.workflow(name, "evaluator")
             before = self.observer.current_authority_identities()
             candidate_before = self.observer.current_candidate_identity()
-            result = self.workflows.run(
+            execution = self.workflows.execute(
                 workflow,
                 candidate,
                 evaluator=True,
                 record_type=RecordType.FINAL_EVALUATION,
             )
+            binding = persist_workflow_execution(
+                config=self.config,
+                records=self.lifecycle.records,
+                record_store=self.record_store,
+                execution=execution,
+            )
+            if execution.error is not None:
+                raise execution.error
+            result = execution.result
             if not isinstance(result, FinalEvaluationRecord):
                 raise ForgeError("INTERNAL_RECORD", "evaluation produced an invalid record model")
             if before != self.observer.current_authority_identities():
@@ -112,8 +123,8 @@ class EvaluationService:
             if candidate_before != self.observer.current_candidate_identity():
                 raise ForgeError("EVALUATION_DRIFT", "candidate changed during evaluation")
             self.lifecycle.verify_freeze(freeze)
-            self.record_store.commit("evaluations", "evaluation", result)
             results.append(result)
+            receipts.append(summarize_binding(binding))
         return {
             "freeze_id": freeze["freeze_id"],
             "candidate_identity": freeze["candidate_identity"],
@@ -126,6 +137,7 @@ class EvaluationService:
                 }
                 for item in results
             ],
+            "execution_receipts": receipts,
             "aggregate_status": aggregate_status(str(item["status"]) for item in results),
             "repair_feedback_withheld": True,
             "dominance": "FAIL > UNKNOWN > PASS",

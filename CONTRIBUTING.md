@@ -43,7 +43,7 @@ separated and the PR explains why.
 
 Changes to control flow, data flow, authorization, validation, error handling, or process cleanup
 require an appropriate declared provider when structural evidence is needed. Use the same provider
-and method before and after when comparative evidence is claimed. Joern is optional. Source
+and method before and after when comparative evidence is claimed. Providers are optional. Source
 reading, grep, and line counts do not replace an unavailable capability; preserve `UNKNOWN` or
 report a blocker.
 

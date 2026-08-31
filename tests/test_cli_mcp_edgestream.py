@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -15,8 +16,9 @@ from mncs_forge.edgestream import inspect
 
 def installed_mcp_executable() -> Path:
     executable = shutil.which("mncs-forge-mcp")
-    assert executable is not None
-    return Path(executable)
+    if executable is not None:
+        return Path(executable)
+    return Path(__file__).parents[1] / ".venv" / "bin" / "mncs-forge-mcp"
 
 
 def test_cli_smoke(project: Path) -> None:
@@ -44,6 +46,64 @@ def test_direct_mcp_protocol_smoke(project: Path) -> None:
         timeout=30,
     )
     assert '"expected_tools_present": true' in result.stdout
+
+
+def test_mcp_health_probe_reports_healthy(project: Path) -> None:
+    root = Path(__file__).parents[1]
+    executable = installed_mcp_executable()
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(root / "scripts/mcp-health.py"),
+            str(executable),
+            str(project / "mncs-forge.toml"),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert '"status": "healthy"' in result.stdout
+    assert '"reachable": true' in result.stdout
+
+
+def test_mcp_startup_reports_missing_configuration(tmp_path: Path) -> None:
+    executable = installed_mcp_executable()
+    result = subprocess.run(
+        [str(executable), "--config", str(tmp_path / "missing.toml"), "--mode", "development"],
+        input="",
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 2
+    assert "MNCS Forge startup failed [CONFIG_READ]" in result.stderr
+
+
+def test_codex_launcher_uses_relocatable_module_entrypoint(project: Path) -> None:
+    root = Path(__file__).parents[1]
+    launcher = root / "scripts" / "codex-mcp"
+    command = [
+        str(launcher),
+        "--config",
+        str(project / "mncs-forge.toml"),
+        "--mode",
+        "development",
+    ]
+    if sys.platform == "win32":
+        bash = shutil.which("bash")
+        if bash is None:
+            pytest.skip("the Codex launcher is a Bash entry point")
+        command.insert(0, bash)
+    result = subprocess.run(
+        command,
+        input="",
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0
+    assert "bad interpreter" not in result.stderr
 
 
 async def _provider_mcp_calls(executable: Path, config: Path) -> None:
