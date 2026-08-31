@@ -66,6 +66,10 @@ execution path — declared workflows and verifier providers — persists identi
 Remaining Task 7 follow-ups are optional Docker/SSH adapters; Forge Cell Linux isolation remains
 ordered Cell work below.
 
+Task 5 completed the service and dependency decomposition without changing public CLI/MCP
+dispatch. Task 6's shared typed operation registry is the current `0.1.0b1` priority. Full runner
+receipts, sandbox-capable adapters, and execution assurance remain Task 7.
+
 ## `0.2.0` — stable local Forge
 
 Goal: make Forge a dependable local control plane before distributed execution is introduced.
