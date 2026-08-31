@@ -15,7 +15,6 @@ from jsonschema import Draft202012Validator
 
 from .errors import ForgeError
 from .execution import validate_argv
-from .serialization import local_json_identity
 from .paths import (
     FAMILY_MODULE_ROOTS_MECHANISM,
     resolve_contained,
