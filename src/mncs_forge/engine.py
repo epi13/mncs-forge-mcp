@@ -498,6 +498,7 @@ class Forge:
             "schema_version": "0.1",
             "note": "The document satisfies its packaged Forge Cell 0.1 schema.",
         }
+        return new_record(RecordType.RECONCILIATION, fields).to_object_dict()
 
     def cell_execution_assess(
         self,
