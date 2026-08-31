@@ -580,7 +580,7 @@ A security-oriented provider should return:
 - confidence only as metadata, never as a replacement for status; and
 - no claim broader than the declared method.
 
-Forge should continue to keep analyzer brands replaceable. A Joern-backed data-flow verifier, a
+Forge should continue to keep analyzer brands replaceable. A graph-backed data-flow verifier, a
 Clang-based undefined-behavior verifier, a sanitizer harness, a symbolic executor, or a custom
 micro-provider can all participate without making their brand the stable interface.
 

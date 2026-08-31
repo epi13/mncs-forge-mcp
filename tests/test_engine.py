@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from mncs_forge.config import ForgeConfig, Provider
+from mncs_forge.config import ForgeConfig
 from mncs_forge.engine import Forge, aggregate_status
 from mncs_forge.errors import ForgeError
 
@@ -41,52 +41,6 @@ def test_no_providers_configured_is_explicit(config: ForgeConfig) -> None:
     blockers = forge.capability_blockers()
     assert blockers["status"] == "PASS"
     assert blockers["no_requirement_note"]
-
-
-def test_optional_joern_absent_is_informational(config: ForgeConfig) -> None:
-    joern = Provider(
-        provider_id="joern-legacy",
-        name="Joern legacy adapter",
-        identity=None,
-        version=None,
-        command=["definitely-not-a-real-joern-adapter"],
-        transport="stdio-jsonl",
-        required=False,
-        capabilities=["control-flow"],
-        supported_constructs=[],
-        unsupported_constructs=[],
-        limitations=["legacy optional provider"],
-        executable_identity=None,
-        descriptor=None,
-        environment={},
-    )
-    forge = Forge(replace(config, providers={"joern-legacy": joern}))
-    listing = forge.provider_list()
-    provider = listing["providers"][0]  # type: ignore[index]
-    assert provider["availability"] == "UNAVAILABLE"
-    blockers = forge.capability_blockers()
-    assert blockers["blocked"] is False
-    assert blockers["informational_limitations"]
-
-
-def test_optional_joern_adapter_available_after_probe(config: ForgeConfig) -> None:
-    joern = replace(
-        config.providers["provider-pass"],
-        provider_id="joern-legacy",
-        name="Joern legacy adapter fixture",
-    )
-    forge = Forge(replace(config, providers={"joern-legacy": joern}))
-    result = forge.provider_probe("joern-legacy")
-    assert result["status"] == "PASS"
-    assert result["probed_capabilities"] == ["bounded-structural"]
-    listing = forge.provider_list()
-    provider = next(
-        item
-        for item in listing["providers"]  # type: ignore[union-attr]
-        if item["provider_id"] == "joern-legacy"
-    )
-    assert provider["availability"] == "AVAILABLE"
-    assert provider["status"] == "PASS"
 
 
 def test_required_capability_absent_is_unknown_blocker(config: ForgeConfig) -> None:

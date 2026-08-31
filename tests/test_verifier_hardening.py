@@ -130,7 +130,7 @@ def test_started_action_receives_terminal_unknown_on_authority_drift(
 ) -> None:
     forge = Forge(config)
     begin_and_register(forge)
-    original = forge._current_authority_identities
+    original = forge._observer.current_authority_identities
     calls = 0
 
     def drifting_authority() -> dict[str, str]:
@@ -140,7 +140,7 @@ def test_started_action_receives_terminal_unknown_on_authority_drift(
             return original()
         return {"drift": "sha256:" + "0" * 64}
 
-    monkeypatch.setattr(forge, "_current_authority_identities", drifting_authority)  # type: ignore[attr-defined]
+    monkeypatch.setattr(forge._observer, "current_authority_identities", drifting_authority)
     result = forge.verifier_run(
         "verify-pass",
         changed_paths=["candidate/main.py"],

@@ -31,9 +31,8 @@ flowchart LR
   Records --> Validators[Offline MNCS / MNCDS validators]
 ```
 
-Forge is orchestration, not analysis. Joern is an optional legacy provider rather than a default
-dependency. Compilers, analyzers, benchmarks, mutation systems, sanitizers, and runtime harnesses
-remain replaceable providers.
+Forge is orchestration, not analysis. Compilers, analyzers, benchmarks, mutation systems,
+sanitizers, and runtime harnesses remain replaceable providers.
 
 ## Quick start
 
@@ -56,9 +55,12 @@ minimal controlled workflow.
 - [Forge Cell execution assurance](docs/forge-cell.md)
 - [Configuration](docs/configuration.md)
 - [CLI and MCP interfaces](docs/interfaces.md)
+- [Canonical operation registry](docs/operation-registry.md)
 - [Provider Protocol integration](docs/provider-protocol.md)
 - [Machine-native micro-verifiers](docs/micro-verifiers.md)
 - [Query-driven micro-debugging](docs/micro-debugging.md)
+- [Compiler evolution observations](docs/compiler-evolution.md)
+- [MNCS-native Forge spine](docs/mncs-native-spine.md)
 - [Evidence and identity model](docs/evidence-model.md)
 - [Lifecycle state machine](docs/lifecycle.md)
 - [Transactional local storage](docs/storage.md)
@@ -69,16 +71,40 @@ minimal controlled workflow.
 
 ## Current development priority
 
-The next release should stabilize the internal architecture before adding more verifier types,
-distributed execution, or sandbox backends. The verifier lifecycle now has one explicit service,
-and persistent evidence now crosses a frozen typed, versioned boundary with deterministic legacy
-migration. Explicit state transitions derive from append-only typed history, and authorized
-record-plus-ledger changes now commit through one recoverable local transaction boundary. The
-immediate priority is splitting the control plane behind stable interfaces. Forge Cell schemas and
-fail-closed assurance
-assessment are available as a specification foundation; the actual Linux isolation and attestation
-backends remain ordered follow-up work. Query-driven micro-debugging now also has an architecture,
-versioned reference vocabulary, and a separate implementation queue; runtime sessions and reusable
-analyzer snapshots remain future work after the core typed-record and service boundaries stabilize.
+The next release should stabilize the internal architecture before adding more verifier types or
+additional sandbox backends. Distributed execution should consume `mncs-fabric` rather than a second
+Forge fleet. The verifier lifecycle now has one explicit service, and persistent evidence now crosses a
+frozen typed, versioned boundary with deterministic legacy migration. Explicit state transitions
+derive from append-only typed history, authorized record-plus-ledger changes commit through one
+recoverable local transaction boundary, and the compatibility facade delegates to explicit services
+through typed storage, execution, and identity ports. CLI and MCP dispatch now share one typed
+operation registry and deterministic interface inventory. Declared workflow and verifier-provider
+execution both persist identity-bound receipt bindings that reference the experimental MNCS
+execution-receipt envelope without claiming sandbox, independence, or custody.
+
+Forge now includes a sandbox-capable rootless Podman runner (ADR 0016) selected through an optional
+`[runner]` configuration section. It enforces network isolation, a read-only root filesystem and
+workspace mount, declared writable mounts, and digest-resolved image identity; availability probes
+fail closed rather than downgrading assurance claims. Execution assurance is a first-class typed
+record (ADR 0017): `execution.assurance.assess` evaluates receipt bindings against requested
+properties fail-closed so a functional `PASS` can never imply isolation or custody, and Forge Cell
+document validation is available read-only through the shared registry. Compiler-candidate
+validation evidence is now bound to exact artifact identities; substituted or copied validation
+cannot promote a candidate.
+
+Remaining work for the stable local Forge milestone: an adversarial study of the Podman runner
+path, challenge-bound assessment freshness, and Fabric-backed replication seams. Query-driven
+micro-debugging retains its architecture, versioned reference vocabulary, and separate
+implementation queue; runtime sessions remain future work.
+
+Compiler experiment persistence accepts both the original language compilation-study record and the
+new language-owned bounded experiment result. Forge can compare realization requests, backend and
+typed artifact identities, and copied validator observations while leaving experiment status,
+semantic legality, assurance, and conformance under their declared owners.
+
+Compiler experiment persistence accepts both the original language compilation-study record and the
+new language-owned bounded experiment result. Forge can compare realization requests, backend and
+typed artifact identities, and copied validator observations while leaving experiment status,
+semantic legality, assurance, and conformance under their declared owners.
 
 Licensed under Apache-2.0.

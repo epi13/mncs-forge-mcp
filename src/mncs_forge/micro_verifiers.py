@@ -6,16 +6,28 @@ import time
 from collections.abc import Mapping
 from math import isfinite
 from pathlib import Path
-from tempfile import TemporaryDirectory
-from typing import Any, Protocol
+from typing import Any
 
+from .application.execution_receipts import (
+    bind_verifier_execution,
+    binding_for_action,
+    summarize_binding,
+)
+from .application.lifecycle import LifecycleContext
+from .application.support import now, redact
 from .config import ForgeConfig, Provider, Verifier, Workflow
 from .errors import ForgeError
-from .execution import ExecutionResult, parse_provider_response, run_bounded
-from .identity import content_identity
-from .ledger import Ledger
+from .execution import parse_provider_response
 from .paths import is_within, resolve_contained, validate_relative_path
-from .record_store import RecordStore
+from .ports import (
+    ExecutionResult,
+    ExecutionSession,
+    ProjectObserver,
+    RecordCommitter,
+    RecordReader,
+    Runner,
+    record_by_id,
+)
 from .records import (
     ForgeRecord,
     LedgerEntry,
@@ -49,36 +61,6 @@ RESERVED_PARAMETER_KEYS = {
 }
 
 
-class ForgeHost(Protocol):
-    config: ForgeConfig
-    mode: str
-    ledger: Ledger
-    record_store: RecordStore
-
-    def _state_machine(
-        self,
-        *,
-        observe_epoch_authority: bool = True,
-        observe_freeze_bindings: bool = True,
-        observe_policy: bool = True,
-        history_kinds: frozenset[str] | None = None,
-    ) -> ForgeStateMachine: ...
-
-    def _current_authority_identities(self) -> dict[str, str]: ...
-
-    def _current_candidate_identity(self) -> str: ...
-
-    def _provider_executable(self, provider: Provider) -> tuple[Path, str]: ...
-
-    def _provider_workspace(self, *, evaluator: bool = False) -> TemporaryDirectory[str]: ...
-
-    def _record_by_id(self, kind: str, identity: str, key: str) -> ForgeRecord: ...
-
-    def _records(self, kind: str) -> list[LedgerEntry]: ...
-
-    def _verify_freeze(self, freeze: Mapping[str, object]) -> None: ...
-
-
 def _aggregate_status(statuses: list[str]) -> str:
     values = [value for value in statuses if value in STATUS_ORDER]
     return max(values, key=STATUS_ORDER.__getitem__) if values else "UNKNOWN"
@@ -91,17 +73,30 @@ def _string_list(value: object, *, limit: int = 20) -> list[str]:
 
 
 def _redact(text: str, *, limit: int) -> str:
-    from .engine import _redact as engine_redact
-
-    return engine_redact(text, limit)
+    return redact(text, limit)
 
 
 class MicroVerifierService:
     """Operate declared verifier capabilities without introducing another runner."""
 
-    def __init__(self, forge: ForgeHost) -> None:
-        self.forge = forge
-        self.config = forge.config
+    def __init__(
+        self,
+        *,
+        config: ForgeConfig,
+        mode: str,
+        records: RecordReader,
+        record_store: RecordCommitter,
+        lifecycle: LifecycleContext,
+        observer: ProjectObserver,
+        executor: Runner,
+    ) -> None:
+        self.config = config
+        self.mode = mode
+        self.records = records
+        self.record_store = record_store
+        self.lifecycle = lifecycle
+        self.observer = observer
+        self.executor = executor
 
     def _public(self, verifier: Verifier) -> dict[str, object]:
         provider = self.config.providers[verifier.provider_id]
@@ -134,7 +129,7 @@ class MicroVerifierService:
         return {
             "verifiers": verifiers,
             "configured_count": len(verifiers),
-            "mode": self.forge.mode,
+            "mode": self.mode,
             "inspection_executed_providers": False,
             "limitations": [
                 "declared capability is not evidence that a verifier will PASS",
@@ -173,11 +168,11 @@ class MicroVerifierService:
     ) -> dict[str, object]:
         if maximum_cost not in COST_ORDER:
             raise ForgeError("VERIFIER_MATCH", "maximum_cost must be low, medium, or high")
-        mode = active_mode or self.forge.mode
-        if mode != self.forge.mode:
+        mode = active_mode or self.mode
+        if mode != self.mode:
             raise ForgeError(
                 "MODE_FORBIDDEN",
-                f"match mode {mode} differs from active Forge mode {self.forge.mode}",
+                f"match mode {mode} differs from active Forge mode {self.mode}",
             )
         requested_uncertainties: list[str] = sorted(set(uncertainty_classes))
         validated_paths = self._validate_changed_paths(changed_paths or [], require_files=False)
@@ -285,20 +280,20 @@ class MicroVerifierService:
         timeout_cap: float | None = None,
     ) -> dict[str, object]:
         verifier = self._verifier(verifier_id)
-        if self.forge.mode not in verifier.modes:
+        if self.mode not in verifier.modes:
             raise ForgeError(
                 "VERIFIER_MODE",
-                f"verifier {verifier_id} is not declared for {self.forge.mode} mode",
+                f"verifier {verifier_id} is not declared for {self.mode} mode",
             )
         workflow = self.config.workflows[verifier.workflow]
         provider = self.config.providers[verifier.provider_id]
-        state_machine = self.forge._state_machine(
+        state_machine = self.lifecycle.machine(
             observe_epoch_authority=False,
-            observe_freeze_bindings=self.forge.mode == "evaluator",
+            observe_freeze_bindings=self.mode == "evaluator",
             observe_policy=False,
             history_kinds=frozenset({"epoch", "candidate", "disposition", "freeze"}),
         )
-        if self.forge.mode == "development":
+        if self.mode == "development":
             if not bool(self.config.raw["authority"]["development"]["may_run_providers"]):
                 raise ForgeError(
                     "VERIFIER_AUTHORITY",
@@ -345,7 +340,7 @@ class MicroVerifierService:
         }
         environment = self.config.environment(workflow)
         identities = self._material_identities(verifier, provider, workflow, environment)
-        prior_verifier_results = self.forge._records("verifier_result")
+        prior_verifier_results = self.records.records("verifier_result")
         supersedes_output_identity = self._superseded_result(
             verifier.verifier_id,
             str(candidate["candidate_id"]),
@@ -359,7 +354,7 @@ class MicroVerifierService:
             "provider_id": provider.provider_id,
             "provider_configuration_identity": identities["provider_configuration_identity"],
             "method": verifier.method,
-            "mode": self.forge.mode,
+            "mode": self.mode,
             "epoch_identity": candidate["source_epoch"],
             "candidate_identity": candidate["candidate_id"],
             "candidate_parent_identity": candidate.get("parent_candidate"),
@@ -398,11 +393,12 @@ class MicroVerifierService:
         )
         if not isinstance(action, VerifierActionRecord):
             raise ForgeError("INTERNAL_RECORD", "verifier action produced an invalid model")
-        with self.forge.record_store.action_execution(str(action["action_id"])):
-            self.forge.record_store.commit("verifier-actions", "verifier_action", action)
+        with self.record_store.action_execution(str(action["action_id"])):
+            self.record_store.commit("verifier-actions", "verifier_action", action)
             started = time.monotonic()
+            session: ExecutionSession | None = None
             try:
-                result = self._execute(
+                session, result = self._execute(
                     verifier,
                     workflow,
                     provider,
@@ -439,6 +435,25 @@ class MicroVerifierService:
                         "INTERNAL_RECORD", "terminal verifier result model is invalid"
                     ) from exc
                 result = terminal_record
+            binding = None
+            if session is not None:
+                if binding_for_action(self.records, str(action["action_id"])) is not None:
+                    raise ForgeError(
+                        "RECEIPT_DUPLICATE",
+                        f"execution receipt binding already exists for {action['action_id']}",
+                    )
+                binding = bind_verifier_execution(
+                    config=self.config,
+                    session=session,
+                    action=action,
+                    result_identity=str(result["output_identity"]),
+                    verifier_id=verifier.verifier_id,
+                    verifier_version=verifier.version,
+                    provider_id=provider.provider_id,
+                )
+                self.record_store.commit(
+                    "execution-receipt-bindings", "execution_receipt_binding", binding
+                )
             ForgeStateMachine.authorize_terminal_result_for_recorded_action(
                 action,
                 prior_verifier_results,
@@ -447,8 +462,11 @@ class MicroVerifierService:
                 freeze_id=(str(result["freeze_identity"]) if result["freeze_identity"] else None),
                 mode=str(result["mode"]),
             )
-            self.forge.record_store.commit("verifier-results", "verifier_result", result)
-            return self._disclose_result(result)
+            self.record_store.commit("verifier-results", "verifier_result", result)
+            disclosed = self._disclose_result(result)
+            if binding is not None:
+                disclosed["execution_receipt"] = summarize_binding(binding)
+            return disclosed
 
     def batch(
         self,
@@ -552,7 +570,7 @@ class MicroVerifierService:
         }
 
     def _contract_identity(self) -> str:
-        return content_identity(self.config.root, self.config.paths("contracts"))
+        return self.observer.content_identity(self.config.paths("contracts"))
 
     def _superseded_result(
         self,
@@ -568,14 +586,14 @@ class MicroVerifierService:
             payload = entry.payload
             if (
                 payload.get("verifier_id") == verifier_id
-                and payload.get("mode") == self.forge.mode
+                and payload.get("mode") == self.mode
                 and payload.get("candidate_identity") in lineage
             ):
                 return str(payload["output_identity"])
         return None
 
     def explain(self, output_identity: str) -> dict[str, object]:
-        result = self.forge._record_by_id("verifier_result", output_identity, "output_identity")
+        result = record_by_id(self.records, "verifier_result", output_identity, "output_identity")
         status_only = result.get("disclosure") == "status-only"
         exposed = result.to_object_dict()
         base: dict[str, object] = {
@@ -584,7 +602,7 @@ class MicroVerifierService:
             "claim": exposed["claim"],
             "status": exposed["status"],
             "mode": exposed["mode"],
-            "repair_allowed": result["mode"] == "development" and self.forge.mode == "development",
+            "repair_allowed": result["mode"] == "development" and self.mode == "development",
             "independent_evaluation": False,
             "freshness": self._freshness(result, allow_protected=not status_only),
         }
@@ -624,9 +642,7 @@ class MicroVerifierService:
 
     @staticmethod
     def _now() -> str:
-        from .engine import _now as engine_now
-
-        return engine_now()
+        return now()
 
     @staticmethod
     def _scope(verifier: Verifier, scope: str | None) -> str:
@@ -848,7 +864,7 @@ class MicroVerifierService:
             "configuration_identity": local_json_identity(self.config.raw),
             "provider_configuration_identity": local_json_identity(provider_configuration),
             "verifier_identity": local_json_identity(verifier_configuration),
-            "policy_identity": content_identity(self.config.root, policy_paths),
+            "policy_identity": self.observer.content_identity(policy_paths),
             "environment_identity": local_json_identity(environment),
         }
 
@@ -910,9 +926,10 @@ class MicroVerifierService:
         freeze: ForgeRecord | None,
         timeout_cap: float | None,
         prior_verifier_results: list[LedgerEntry],
-    ) -> VerifierResultRecord:
+    ) -> tuple[ExecutionSession | None, VerifierResultRecord]:
         started = time.monotonic()
         execution: ExecutionResult | None = None
+        session: ExecutionSession | None = None
         response: dict[str, Any] | None = None
         status = "UNKNOWN"
         summary = "verifier did not establish PASS or FAIL"
@@ -931,10 +948,10 @@ class MicroVerifierService:
         provider_identity: dict[str, Any] | None = None
         provider_response_identity: str | None = None
         provider_executable_identity: str | None = None
-        authority_before = self.forge._current_authority_identities()
-        candidate_before = self.forge._current_candidate_identity()
+        authority_before = self.observer.current_authority_identities()
+        candidate_before = self.observer.current_candidate_identity()
         try:
-            executable, executable_identity = self.forge._provider_executable(provider)
+            executable, executable_identity = self.observer.provider_executable(provider)
             timeout = min(
                 verifier.timeout_seconds,
                 timeout_cap if timeout_cap is not None else verifier.timeout_seconds,
@@ -943,11 +960,10 @@ class MicroVerifierService:
                 raise ForgeError(
                     "VERIFIER_BATCH_LIMIT", "batch duration exhausted before verifier run"
                 )
-            temporary = self.forge._provider_workspace(evaluator=self.forge.mode == "evaluator")
-            try:
-                execution = run_bounded(
+            with self.observer.provider_workspace(evaluator=self.mode == "evaluator") as workspace:
+                session = self.executor.run(
                     [str(executable), *provider.command[1:]],
-                    cwd=Path(temporary.name),
+                    cwd=Path(workspace),
                     timeout=timeout,
                     output_cap=min(
                         self.config.output_cap,
@@ -960,8 +976,12 @@ class MicroVerifierService:
                     environment=environment,
                     stdin=request_bytes,
                 )
-            finally:
-                temporary.cleanup()
+                if session.result is None:
+                    raise ForgeError(
+                        session.error_code or "COMMAND_START",
+                        session.error_message or "verifier provider produced no execution result",
+                    )
+                execution = session.result
             if execution.returncode != 0:
                 raise ForgeError(
                     "PROVIDER_EXIT",
@@ -1018,18 +1038,18 @@ class MicroVerifierService:
             status = "UNKNOWN"
             operational_error = {"code": exc.code, "message": exc.message}
             limitations.append(f"operational verifier failure {exc.code}: {exc.message}")
-        if authority_before != self.forge._current_authority_identities():
+        if authority_before != self.observer.current_authority_identities():
             raise ForgeError(
-                "EVALUATION_DRIFT" if self.forge.mode == "evaluator" else "PROVIDER_MUTATION",
+                "EVALUATION_DRIFT" if self.mode == "evaluator" else "PROVIDER_MUTATION",
                 "authority files changed during verifier execution",
             )
-        if candidate_before != self.forge._current_candidate_identity():
+        if candidate_before != self.observer.current_candidate_identity():
             raise ForgeError(
-                "EVALUATION_DRIFT" if self.forge.mode == "evaluator" else "PROVIDER_MUTATION",
+                "EVALUATION_DRIFT" if self.mode == "evaluator" else "PROVIDER_MUTATION",
                 "candidate changed during verifier execution",
             )
         if freeze is not None:
-            self.forge._verify_freeze(freeze)
+            self.lifecycle.verify_freeze(freeze)
         iterative_overlap = any(
             entry.payload.get("mode") == "development"
             and entry.payload.get("candidate_identity") == candidate["candidate_id"]
@@ -1050,11 +1070,9 @@ class MicroVerifierService:
             "provider_identity": provider_identity,
             "provider_response_identity": provider_response_identity,
             "method": verifier.method,
-            "mode": self.forge.mode,
+            "mode": self.mode,
             "evidence_class": (
-                "development_evidence"
-                if self.forge.mode == "development"
-                else "local_evaluator_evidence"
+                "development_evidence" if self.mode == "development" else "local_evaluator_evidence"
             ),
             "independent_evaluation": False,
             "iterative_development_overlap": iterative_overlap,
@@ -1092,7 +1110,7 @@ class MicroVerifierService:
             "disclosure": disclosure,
             "recorded_at": self._now(),
         }
-        if self.forge.mode == "evaluator" and disclosure == "status-only":
+        if self.mode == "evaluator" and disclosure == "status-only":
             redact_status_only_result(fields)
         result = new_record(RecordType.VERIFIER_RESULT, fields)
         if not isinstance(result, VerifierResultRecord):
@@ -1120,7 +1138,7 @@ class MicroVerifierService:
                 "VERIFIER_RESULT_LIMIT",
                 "verifier result cannot fit the configured result byte limit",
             )
-        return result
+        return session, result
 
     def _bounded_witnesses(self, value: object) -> list[object]:
         if not isinstance(value, list):
@@ -1175,7 +1193,7 @@ class MicroVerifierService:
             "evaluators",
             "acceptance_policies",
         ]
-        if self.forge.mode == "evaluator":
+        if self.mode == "evaluator":
             visible_keys.append("protected")
         visible = self.config.relative_scopes(*visible_keys)
         protected = self.config.relative_scopes("protected")
@@ -1188,14 +1206,14 @@ class MicroVerifierService:
                     "PROVIDER_MALFORMED",
                     f"dependency path is outside declared visible scopes: {value_path}",
                 )
-            if self.forge.mode == "development" and is_within(relative, protected):
+            if self.mode == "development" and is_within(relative, protected):
                 raise ForgeError(
                     "PROTECTED_PATH",
                     "development verifier dependency envelope selected protected data",
                 )
             resolved = resolve_contained(self.config.root, value_path, must_exist=False)
             normalized.append(value_path)
-            path_identities[value_path] = content_identity(self.config.root, [resolved])
+            path_identities[value_path] = self.observer.content_identity([resolved])
         envelope_without_identity: dict[str, object] = {
             "paths": normalized,
             "path_identities": path_identities,
@@ -1238,7 +1256,7 @@ class MicroVerifierService:
             )
             if result.get(key) != identities[key]
         ]
-        if result.get("mode") != self.forge.mode:
+        if result.get("mode") != self.mode:
             changed_material.append("mode")
         if changed_material:
             return {
@@ -1271,7 +1289,7 @@ class MicroVerifierService:
                     "reason": "dependency impact cannot be established",
                 }
             resolved = resolve_contained(self.config.root, path, must_exist=False)
-            current = content_identity(self.config.root, [resolved])
+            current = self.observer.content_identity([resolved])
             if current != recorded[path]:
                 stale_paths.append(path)
         if stale_paths:
@@ -1280,7 +1298,7 @@ class MicroVerifierService:
                 "reason": "a declared dependency-envelope identity changed",
                 "changed_paths": stale_paths,
             }
-        if result.get("candidate_identity") == self.forge._current_candidate_identity():
+        if result.get("candidate_identity") == self.observer.current_candidate_identity():
             return {
                 "state": "CURRENT",
                 "reason": "all material and candidate identities still match",
