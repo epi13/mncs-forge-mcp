@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from .errors import ForgeError
+from .mncs_native import NativeForgeAdapter
 from .records import (
     BundleRecord,
     CandidateDispositionRecord,
@@ -173,6 +174,7 @@ class ForgeStateMachine:
         evidence_environment_keys: Mapping[str, Sequence[str]] | None = None,
         evidence_environment_identities: Mapping[str, str] | None = None,
         evidence_policy_identities: Mapping[str, str] | None = None,
+        native: NativeForgeAdapter | None = None,
     ) -> None:
         if mode not in {"development", "evaluator"}:
             raise ForgeError("INVALID_MODE", "mode must be development or evaluator")
@@ -191,6 +193,8 @@ class ForgeStateMachine:
         }
         self.evidence_environment_identities = dict(evidence_environment_identities or {})
         self.evidence_policy_identities = dict(evidence_policy_identities or {})
+        self.native = native
+        self._native_preflight_enabled = True
         self._indexed = tuple(enumerate(entry.payload for entry in self.history))
         self.projection = self._project()
 
@@ -599,6 +603,60 @@ class ForgeStateMachine:
                 f"operation requires {expected} mode; current mode is {self.mode}",
             )
 
+    def _native_transition(
+        self,
+        *,
+        operation: str,
+        next_stage: str,
+        status: str,
+        reason: int,
+        evidence: str = "UNKNOWN",
+    ) -> None:
+        """Require the covered transition to agree with the MNCS lifecycle kernel.
+
+        The Python projection remains responsible for Forge-specific history,
+        evidence, identity, and authority rules. The native call is a narrow
+        semantic gate for the transitions represented by the MNCS source. A
+        missing adapter is the explicit compatibility path; once an adapter is
+        selected, an execution or response problem is fail-closed.
+        """
+
+        if self.native is None or not self._native_preflight_enabled:
+            return
+        stage_names = {
+            LifecycleStage.NO_EPOCH: "NoEpoch",
+            LifecycleStage.EPOCH_ACTIVE: "EpochActive",
+            LifecycleStage.CANDIDATE_REGISTERED: "CandidateRegistered",
+            LifecycleStage.EVIDENCE_INCOMPLETE: "EvidenceIncomplete",
+            LifecycleStage.CANDIDATE_READY: "CandidateReady",
+            LifecycleStage.CANDIDATE_SELECTED: "CandidateSelected",
+            LifecycleStage.CANDIDATE_REJECTED: "CandidateRejected",
+            LifecycleStage.CANDIDATE_FROZEN: "CandidateFrozen",
+            LifecycleStage.EVALUATION_COMPLETE: "EvaluationComplete",
+            LifecycleStage.AMBIGUOUS_HISTORY: "AmbiguousHistory",
+        }
+        stage = stage_names.get(self.projection.stage)
+        if stage is None:
+            return
+        try:
+            observed = self.native.lifecycle_preflight(stage, operation, evidence)
+        except ForgeError as exc:
+            raise ForgeError(
+                "NATIVE_LIFECYCLE_UNKNOWN",
+                f"MNCS lifecycle preflight is unavailable: {exc.message}",
+            ) from exc
+        if (
+            observed.next_stage != next_stage
+            or observed.status != status
+            or observed.reason != reason
+        ):
+            raise ForgeError(
+                "NATIVE_LIFECYCLE_MISMATCH",
+                "MNCS lifecycle preflight disagrees with the Forge transition "
+                f"({stage} + {operation} -> {observed.next_stage}/{observed.status}/"
+                f"{observed.reason}, expected {next_stage}/{status}/{reason})",
+            )
+
     def _require_unambiguous(self) -> None:
         if self.projection.stage is LifecycleStage.AMBIGUOUS_HISTORY:
             blocker = self.projection.limitations[0]
@@ -633,6 +691,12 @@ class ForgeStateMachine:
         if active is None:
             if parent_epoch is not None:
                 raise ForgeError("EPOCH_PARENT_INVALID", "the first epoch cannot name a parent")
+            self._native_transition(
+                operation="BeginEpoch",
+                next_stage="EpochActive",
+                status="PASS",
+                reason=0,
+            )
             return
         active_id = str(active["epoch_id"])
         if parent_epoch is None:
@@ -678,6 +742,12 @@ class ForgeStateMachine:
                     "CANDIDATE_LINEAGE_CONFLICT",
                     "first candidate in an epoch cannot inherit from another epoch",
                 )
+            self._native_transition(
+                operation="RegisterCandidate",
+                next_stage="CandidateRegistered",
+                status="UNKNOWN",
+                reason=0,
+            )
         else:
             current_id = str(current["candidate_id"])
             if parent_candidate is None:
@@ -748,6 +818,21 @@ class ForgeStateMachine:
             blocker = self.projection.evidence.blocker
             if blocker is not None:
                 raise ForgeError(blocker.code, blocker.message)
+            self._native_transition(
+                operation="SelectCandidate",
+                next_stage="CandidateSelected",
+                status="PASS",
+                reason=0,
+                evidence="PASS",
+            )
+        else:
+            self._native_transition(
+                operation="RejectCandidate",
+                next_stage="CandidateRejected",
+                status="FAIL",
+                reason=9,
+                evidence=self.projection.evidence.status,
+            )
         return candidate, self.projection.evidence
 
     def authorize_candidate_freeze(
@@ -798,6 +883,13 @@ class ForgeStateMachine:
         ).blocker
         if plan_blocker is not None:
             raise ForgeError(plan_blocker.code, plan_blocker.message)
+        self._native_transition(
+            operation="FreezeCandidate",
+            next_stage="CandidateFrozen",
+            status="PASS",
+            reason=0,
+            evidence="PASS",
+        )
         return candidate, self.projection.disposition
 
     def _freeze_drift(self, freeze: FreezeRecord) -> list[str]:
@@ -1034,7 +1126,16 @@ class ForgeStateMachine:
 
     def inspect(self) -> dict[str, object]:
         projection = self.projection
-        blockers = self._operation_blockers()
+        # Inspection probes every prospective operation to explain blockers.
+        # Running a subprocess for each hypothetical transition would make a
+        # read-only query mutate latency and would not validate a real change.
+        # Actual mutation authorizers keep the native preflight enabled.
+        native_preflight_enabled = self._native_preflight_enabled
+        self._native_preflight_enabled = False
+        try:
+            blockers = self._operation_blockers()
+        finally:
+            self._native_preflight_enabled = native_preflight_enabled
         epoch = projection.active_epoch
         candidate = projection.current_candidate
         disposition = projection.disposition

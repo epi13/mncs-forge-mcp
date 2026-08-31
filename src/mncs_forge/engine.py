@@ -34,6 +34,7 @@ from .forge_cell import (
 from .learned_specialists import invoke_shadow_provider, read_artifact
 from .ledger import Ledger
 from .micro_verifiers import MicroVerifierService
+from .mncs_native import NativeForgeAdapter
 from .record_store import LocalRecordStore, RecordStore
 from .records import ForgeRecord, LedgerEntry
 from .state_machine import ForgeStateMachine
@@ -69,10 +70,13 @@ class Forge:
 
         self._executor = build_runner(config)
         self._observer = LocalProjectObserver(config)
+        native = NativeForgeAdapter(config.root)
+        self._native = native if native.available and native.source_available else None
         self._lifecycle = LifecycleContext(
             mode=mode,
             records=self.ledger,
             observer=self._observer,
+            native=self._native,
         )
         RecoveryService(records=self.ledger, record_store=self.record_store).recover(
             recover_storage=record_store is not None
@@ -498,7 +502,6 @@ class Forge:
             "schema_version": "0.1",
             "note": "The document satisfies its packaged Forge Cell 0.1 schema.",
         }
-        return new_record(RecordType.RECONCILIATION, fields).to_object_dict()
 
     def cell_execution_assess(
         self,

@@ -14,6 +14,14 @@ typed append-only ledger history
 providers, observes filesystem identities, and writes the ledger. CLI and MCP state inspection
 both call `Forge.state_inspect`; neither adapter implements lifecycle policy.
 
+For the transitions represented by the current MNCS lifecycle source, the state machine also
+requires a bounded language-owned preflight before authorization returns: first-epoch creation,
+first-candidate registration, candidate selection/rejection, and candidate freeze. The host keeps
+the richer Forge projection and identity/authority checks; the preflight is a semantic agreement
+gate, not an evidence or cryptographic authority. An unavailable sibling language checkout uses
+the explicit compatibility path, while a selected native adapter that times out, returns malformed
+data, or disagrees with the expected transition blocks the mutation.
+
 ## Projected dimensions and stages
 
 The projection keeps these dimensions separate:

@@ -34,6 +34,37 @@ fn lifecycle_step(current: lifelib.LifecycleState, input: lifelib.TransitionRequ
     return lifelib.apply(current, input);
 }
 
+// Typed host-boundary preflight. Forge supplies only the current logical
+// stage, requested transition, and evidence status; the lifecycle module owns
+// the transition semantics and returns the resulting typed state. Synthetic
+// non-zero identities keep this probe independent of Forge's cryptographic
+// identity format, which remains a host responsibility.
+fn lifecycle_preflight(
+    stage: lifelib.Stage,
+    operation: lifelib.Operation,
+    evidence: statlib.Status
+) -> (result: lifelib.TransitionResult) {
+    let epoch: [byte; 32] = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let candidate: [byte; 32] = [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let epoch_id: idlib.Digest32 = idlib.make(epoch);
+    let candidate_id: idlib.Digest32 = idlib.make(candidate);
+    let current: lifelib.LifecycleState = lifelib.state(
+        stage,
+        epoch_id,
+        candidate_id,
+        evidence
+    );
+    let input: lifelib.TransitionRequest = lifelib.request(
+        operation,
+        epoch_id,
+        candidate_id,
+        evidence
+    );
+    return lifelib.apply(current, input);
+}
+
 fn status_join(first: statlib.Status, second: statlib.Status, third: statlib.Status, fourth: statlib.Status) -> (result: statlib.Status) {
     return statlib.dominate4(first, second, third, fourth);
 }

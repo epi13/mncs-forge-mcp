@@ -4,7 +4,9 @@ Forge now carries a small MNCS-native source spine alongside the established
 Python compatibility surface. The source modules are an incremental authority
 boundary for identity-shaped values, canonical candidate material, typed
 candidate validation, and lifecycle transitions; the Python CLI and MCP server
-remain the stable integration surface during the migration.
+remain the stable integration surface during the migration. Forge now invokes
+the lifecycle module as a preflight gate for the transitions that the native
+kernel covers.
 
 | Module | Responsibility |
 | --- | --- |
@@ -36,6 +38,14 @@ python -c 'from pathlib import Path; from mncs_forge.mncs_native import NativeFo
 ```
 
 The adapter invokes `mncs-language` through Forge’s existing bounded, no-shell
-runner. It is intentionally not wired into legacy record creation yet: the first
-slice establishes explicit identity and lifecycle seams while keeping migration
-reversible and preserving the compatibility API.
+runner. First-epoch creation, first-candidate registration, candidate disposition,
+and candidate freeze are preflighted against the typed lifecycle kernel before
+their legacy-compatible records are committed. Forge-specific history projection,
+identity production, evidence envelopes, and evaluator/bundle states remain in
+the host boundary until the MNCS source has equivalent capabilities. A missing
+language checkout retains the explicit compatibility path; an available but
+malformed, timed-out, or semantically mismatching native result fails closed.
+
+The preflight is intentionally cached by source, CLI, stage, operation, and
+evidence inputs because the kernel is pure. The cache does not persist evidence
+or lifecycle authority and is invalidated when the Forge MNCS source changes.

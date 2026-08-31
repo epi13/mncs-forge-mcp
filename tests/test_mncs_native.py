@@ -6,8 +6,11 @@ from pathlib import Path
 import pytest
 
 from mncs_forge import mncs_native
+from mncs_forge.errors import ForgeError
 from mncs_forge.mncs_native import (
     NativeForgeAdapter,
+    NativeInvocation,
+    NativeLifecycleResult,
     canonical_candidate_digest,
     canonical_candidate_material,
 )
@@ -138,3 +141,54 @@ def test_native_backend_execution_accepts_no_argument_status_probe() -> None:
     assert result.payload is not None
     assert result.payload["status"] == "returned"
     assert result.payload["returned"][0]["finite"]["variant_identity"].endswith("::UNKNOWN")
+
+
+@pytest.mark.parametrize(
+    ("stage", "operation", "evidence", "next_stage", "status", "reason"),
+    [
+        ("NoEpoch", "BeginEpoch", "UNKNOWN", "EpochActive", "PASS", 0),
+        ("EpochActive", "RegisterCandidate", "UNKNOWN", "CandidateRegistered", "UNKNOWN", 0),
+        ("CandidateReady", "SelectCandidate", "PASS", "CandidateSelected", "PASS", 0),
+        ("CandidateReady", "RejectCandidate", "UNKNOWN", "CandidateRejected", "FAIL", 9),
+        ("CandidateSelected", "FreezeCandidate", "PASS", "CandidateFrozen", "PASS", 0),
+    ],
+)
+def test_native_lifecycle_preflight_matches_typed_kernel(
+    stage: str,
+    operation: str,
+    evidence: str,
+    next_stage: str,
+    status: str,
+    reason: int,
+) -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    if not adapter.available:
+        pytest.skip("mncs-language checkout is not available")
+
+    result = adapter.lifecycle_preflight(stage, operation, evidence)
+
+    assert result == NativeLifecycleResult(stage, operation, next_stage, status, reason)
+
+
+def test_native_lifecycle_preflight_rejects_malformed_structured_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    if not adapter.available:
+        pytest.skip("mncs-language checkout is not available")
+
+    monkeypatch.setattr(
+        adapter,
+        "execute",
+        lambda *args, **kwargs: NativeInvocation(
+            command=("fixture",),
+            returncode=0,
+            stdout=b"{}",
+            stderr=b"",
+            payload={"status": "returned", "returned": [{"not_a_record": {}}]},
+        ),
+    )
+    mncs_native._LIFECYCLE_CACHE.clear()
+
+    with pytest.raises(ForgeError, match="did not return a record"):
+        adapter.lifecycle_preflight("NoEpoch", "BeginEpoch")

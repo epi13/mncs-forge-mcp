@@ -66,6 +66,12 @@ execution path — declared workflows and verifier providers — persists identi
 Remaining Task 7 follow-ups are optional Docker/SSH adapters; Forge Cell Linux isolation remains
 ordered Cell work below.
 
+The MNCS-native spine is now consumed at runtime for the lifecycle transitions it can represent:
+first epoch, first candidate, disposition, and freeze. The host still owns Forge-specific history,
+identity, authority, evidence-envelope, evaluator, and bundle semantics. The next native tranche
+should expand the typed record/identity boundary and add an equivalent source-level projection for
+candidate refresh and successor epochs before attempting to replace the full Python state machine.
+
 Task 5 completed the service and dependency decomposition without changing public CLI/MCP
 dispatch. Task 6's shared typed operation registry is the current `0.1.0b1` priority. Full runner
 receipts, sandbox-capable adapters, and execution assurance remain Task 7.

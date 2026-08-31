@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from ..mncs_native import NativeForgeAdapter
 from ..ports import ProjectObserver, RecordReader, record_by_id
 from ..records import ForgeRecord, LedgerEntry
 from ..state_machine import ForgeStateMachine
@@ -18,10 +19,12 @@ class LifecycleContext:
         mode: str,
         records: RecordReader,
         observer: ProjectObserver,
+        native: NativeForgeAdapter | None = None,
     ) -> None:
         self.mode = mode
         self.records = records
         self.observer = observer
+        self.native = native
 
     def machine(
         self,
@@ -67,6 +70,7 @@ class LifecycleContext:
             evidence_environment_keys=environment_keys,
             evidence_environment_identities=environment_identities,
             evidence_policy_identities=policy_identities,
+            native=self.native,
         )
 
     def record_by_id(self, kind: str, identity: str, key: str) -> ForgeRecord:
