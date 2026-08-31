@@ -1,1 +1,2 @@
 tests/fixtures/legacy-0.1/** -text
+tests/fixtures/mncs-execution-receipt-0.1.schema.json -text

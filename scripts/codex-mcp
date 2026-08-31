@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Stable stdio entry point for Codex. Installation remains the repository's
+# existing editable .venv package; this wrapper only makes failures explicit
+# and removes any working-directory or activated-shell dependency.
+set -euo pipefail
+
+repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+python="$repository_root/.venv/bin/python"
+
+# Prefer the repository-managed environment in operator deployments. During
+# development/CI an editable Forge installation may instead live in the active
+# interpreter, so fall back to a Python already present on PATH rather than
+# making the wrapper depend on a checkout-local .venv.
+if [[ ! -x "$python" ]]; then
+  python="$(command -v python3 || command -v python || true)"
+fi
+if [[ -z "$python" || ! -x "$python" ]]; then
+  echo "MNCS Forge Python environment is not installed or executable." >&2
+  echo "Run $repository_root/scripts/install-codex-mcp.sh [path/to/mncs-forge.toml]" >&2
+  exit 78
+fi
+
+# Do not invoke the generated console script here. Its shebang can retain the
+# host checkout's absolute interpreter path, which is not visible when this
+# repository is mounted at /workspace inside Control's Bubblewrap sandbox.
+# The venv interpreter is relocatable across that mount and the source path
+# keeps editable checkouts working without relying on the caller's cwd.
+export PYTHONPATH="$repository_root/src${PYTHONPATH:+:$PYTHONPATH}"
+exec "$python" -m mncs_forge.server "$@"

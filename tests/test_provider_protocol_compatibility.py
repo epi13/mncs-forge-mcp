@@ -10,7 +10,14 @@ from mncs_forge.config import ForgeConfig
 from mncs_forge.engine import Forge
 from mncs_forge.errors import ForgeError
 from mncs_forge.execution import parse_provider_capabilities, parse_provider_response
-from mncs_forge.ports import ExecutionResult
+from mncs_forge.execution_observations import bytes_sha256, canonical_sha256
+from mncs_forge.ports import (
+    AggregateOutputObservation,
+    ExecutionObservation,
+    ExecutionResult,
+    ExecutionSession,
+    StreamObservation,
+)
 
 
 def _capture_provider_request(
@@ -79,6 +86,100 @@ def _capture_provider_request(
         )
 
     return execute
+
+
+def _stream(data: bytes) -> StreamObservation:
+    digest = bytes_sha256(data) if data else None
+    return StreamObservation(
+        total_bytes=len(data),
+        observed_bytes=len(data),
+        retained_bytes=len(data),
+        retained_sha256=digest,
+        complete_sha256=digest,
+        truncated=False,
+        limit_hit=False,
+        limit_bytes=max(len(data), 1),
+    )
+
+
+def _capture_provider_run(captured: list[dict[str, object]]):  # type: ignore[no-untyped-def]
+    execute = _capture_provider_request(captured)
+
+    def run(
+        self: LocalCommandExecutor,
+        command: object,
+        *,
+        cwd: Path,
+        timeout: float,
+        output_cap: int,
+        stderr_cap: int | None = None,
+        environment: dict[str, str],
+        stdin: bytes = b"",
+    ) -> ExecutionSession:
+        result = execute(
+            self,
+            command,
+            cwd=cwd,
+            timeout=timeout,
+            output_cap=output_cap,
+            stderr_cap=stderr_cap,
+            environment=environment,
+            stdin=stdin,
+        )
+        stdout = _stream(result.stdout)
+        stderr = _stream(result.stderr)
+        observation = ExecutionObservation(
+            argv=tuple(result.argv),
+            command_identity=canonical_sha256({"argv": result.argv}),
+            cwd_identity=canonical_sha256({"cwd": str(cwd)}),
+            environment_identity=canonical_sha256(
+                {"environment": {key: environment[key] for key in sorted(environment)}}
+            ),
+            stdin_identity=bytes_sha256(stdin),
+            timeout_seconds=timeout,
+            stdout_limit=output_cap,
+            stderr_limit=stderr_cap or output_cap,
+            started_at="2026-01-01T00:00:00.000000Z",
+            ended_at="2026-01-01T00:00:00.001000Z",
+            duration_seconds=result.duration_seconds,
+            returncode=result.returncode,
+            signal=None,
+            termination_category="completed",
+            stdout=stdout,
+            stderr=stderr,
+            aggregate_output=AggregateOutputObservation(
+                total_bytes=stdout.total_bytes + stderr.total_bytes
+                if stdout.total_bytes is not None and stderr.total_bytes is not None
+                else None,
+                observed_bytes=stdout.observed_bytes + stderr.observed_bytes,
+                retained_bytes=stdout.retained_bytes + stderr.retained_bytes,
+                limit_hit=False,
+                limit_bytes=None,
+            ),
+            capabilities=LocalCommandExecutor().inspect_capabilities(),
+            runner_identity=LocalCommandExecutor.runner_identity,
+            runner_version="1",
+            executable_identity=None,
+            runtime_identity="runtime.test",
+            error_code=None,
+            worker_identity=None,
+            host_identity=None,
+            image_identity=None,
+            placement_identity=None,
+            filesystem_policy="unrestricted-process-workspace",
+            network_policy="ambient-process-network",
+            same_operator=True,
+        )
+        return ExecutionSession(
+            observation=observation,
+            stdout=result.stdout,
+            stderr=result.stderr,
+            result=result,
+            error_code=None,
+            error_message=None,
+        )
+
+    return run
 
 
 def _candidate(forge: Forge) -> dict[str, object]:
@@ -167,8 +268,8 @@ def test_provider_protocol_0_1_workflow_request_shape_is_stable(
     captured: list[dict[str, object]] = []
     monkeypatch.setattr(
         LocalCommandExecutor,
-        "execute",
-        _capture_provider_request(captured),
+        "run",
+        _capture_provider_run(captured),
     )
 
     result = forge.development_checks_run(["provider-pass"])
@@ -203,8 +304,8 @@ def test_provider_protocol_0_1_verifier_extension_shape_is_stable(
     captured: list[dict[str, object]] = []
     monkeypatch.setattr(
         LocalCommandExecutor,
-        "execute",
-        _capture_provider_request(captured),
+        "run",
+        _capture_provider_run(captured),
     )
 
     result = forge.verifier_run(

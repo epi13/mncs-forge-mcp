@@ -30,6 +30,8 @@ characterized by executable field/value assertions in
 [`test_provider_protocol_compatibility.py`](../tests/test_provider_protocol_compatibility.py).
 No Provider Protocol version was added.
 
+The compiler-evolution increment is an intentional additive extension to this pre-release snapshot: it adds the `compiler_experiment` record definition, three canonical operations, three CLI leaves, three MCP tools, and one resource. Existing record fields, operation semantics, CLI leaves, MCP inputs, and historical-state migrations are unchanged. The regenerated snapshot makes that public surface explicit for review rather than treating it as an internal implementation detail.
+
 Generate or check the aggregate snapshot deterministically with:
 
 ```bash

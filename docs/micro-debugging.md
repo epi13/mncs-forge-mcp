@@ -22,7 +22,7 @@ structured uncertainty
 ```
 
 That is a sound evidence boundary, but repeated debugging can still fall back to expensive compiler,
-LLVM, sanitizer, Joern, or whole-test-suite output. Large output is costly for both the provider and
+LLVM, sanitizer, graph-analysis, or whole-test-suite output. Large output is costly for both the provider and
 the agent, mixes relevant and irrelevant observations, and makes it harder to preserve a precise
 claim boundary.
 
@@ -107,7 +107,7 @@ A diagnostic snapshot identifies a reusable provider representation such as:
 - Clang AST or semantic index;
 - LLVM IR, control-flow graph, dominator tree, or use-definition index;
 - symbol index;
-- Joern or other code-property graph;
+- a code-property graph;
 - sanitizer or runtime trace set;
 - test discovery or reduced reproducer corpus; or
 - a composite representation.
@@ -251,8 +251,9 @@ diagnostic_snapshot_close
 
 Those names are illustrative, not an accepted protocol change.
 
-A provider may implement the capabilities with Clang, LLVM, rustc, language servers, Joern,
-sanitizers, debuggers, fuzzers, test reducers, symbolic execution, or purpose-built analyzers.
+A provider may implement the capabilities with Clang, LLVM, rustc, language servers, graph
+analysis, sanitizers, debuggers, fuzzers, test reducers, symbolic execution, or purpose-built
+analyzers.
 Declarations must expose narrow methods such as:
 
 ```text

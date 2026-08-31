@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 
 from ..config import ForgeConfig
 from ..errors import ForgeError
 from ..ports import RecordCommitter
 from ..records import BundleRecord, RecordType, new_record
 from ..serialization import read_json
+from .execution_receipts import persist_workflow_execution, summarize_binding
 from .lifecycle import LifecycleContext
+from .rights_provenance import rights_provenance_status
 from .support import CLAIM_CLASSES, aggregate_status
 from .workflows import DevelopmentWorkflowService, WorkflowExecutor
 
@@ -92,6 +95,14 @@ class EvidenceService:
                     )
         return records
 
+    def _rights_status(self, candidate_id: str | None = None) -> dict[str, object]:
+        return rights_provenance_status(
+            config=self.config,
+            lifecycle=self.lifecycle,
+            development=self.development,
+            candidate_identity=candidate_id,
+        )
+
     def claim_status(self) -> dict[str, object]:
         source_records = self._structured_statuses()
         statuses: dict[str, str] = {}
@@ -109,12 +120,49 @@ class EvidenceService:
         return {
             "statuses": statuses,
             "sources": sources,
+            "rights_provenance": self._rights_status(),
             "dominance": "FAIL > UNKNOWN > PASS",
-            "promotion_note": "REVIEW_REQUIRED is a workflow disposition, not an MNCS result",
+            "promotion_note": (
+                "REVIEW_REQUIRED is a workflow disposition, not an MNCS result; rights/provenance "
+                "is reported as a separate evidence domain and affects promotion only when its "
+                "policy mode is explicitly enforced"
+            ),
             "missing_is_pass": False,
         }
 
     def claim_blockers(self, requested_claim: str) -> dict[str, object]:
+        rights = self._rights_status()
+        rights_blockers = rights.get("blockers")
+        rights_items = (
+            [str(item) for item in rights_blockers] if isinstance(rights_blockers, list) else []
+        )
+        rights_policy = rights.get("policy")
+        rights_blocking = (
+            isinstance(rights_policy, Mapping) and rights_policy.get("blocking") is True
+        )
+
+        if requested_claim in {"rights", "rights_provenance"}:
+            blockers = [
+                {
+                    "claim_class": "rights_provenance",
+                    "status": str(rights.get("evidence_status", "UNKNOWN")),
+                    "problem": item,
+                    "work_class": "governance_work",
+                }
+                for item in rights_items
+            ]
+            return {
+                "requested_claim": requested_claim,
+                "blockers": blockers,
+                "blocked": rights_blocking,
+                "review_required": bool(rights_items),
+                "rights_provenance": rights,
+                "boundary": (
+                    "Forge evaluates provenance evidence and configured policy; it does not make "
+                    "legal conclusions or create rights authority"
+                ),
+            }
+
         status = self.claim_status()
         raw_statuses = status["statuses"]
         if not isinstance(raw_statuses, dict):
@@ -153,6 +201,19 @@ class EvidenceService:
             for name in required
             if statuses.get(name, "UNKNOWN") != "PASS"
         ]
+        if requested_claim == "promotion" and rights_blocking:
+            blockers.append(
+                {
+                    "claim_class": "rights_provenance",
+                    "status": str(rights.get("evidence_status", "UNKNOWN")),
+                    "problem": (
+                        "; ".join(rights_items)
+                        if rights_items
+                        else "explicit enforced rights/provenance policy is unresolved"
+                    ),
+                    "work_class": "governance_work",
+                }
+            )
         return {
             "requested_claim": requested_claim,
             "blockers": blockers,
@@ -162,6 +223,7 @@ class EvidenceService:
                 for item in self._structured_statuses()
                 if item["status"] in {"FAIL", "UNKNOWN"}
             ][:20],
+            "rights_provenance": rights,
             "boundary": "Forge reports blockers; it cannot create external authority or promotion",
         }
 
@@ -200,6 +262,7 @@ class EvidenceService:
         aggregate = aggregate_status(
             str(value["status"]) for value in categories.values() if isinstance(value, dict)
         )
+        rights = self._rights_status(resolved_candidate)
         return new_record(
             RecordType.RECONCILIATION,
             {
@@ -220,6 +283,13 @@ class EvidenceService:
                 "normative_logic_delegated": (
                     "MNCS and MNCDS validators remain offline authorities"
                 ),
+                "extensions": {
+                    "rights_provenance": rights,
+                    "domain_boundary": (
+                        "required_gate_aggregation remains technical/development evidence; "
+                        "rights/provenance is separate unless explicitly enforced by policy"
+                    ),
+                },
             },
         ).to_object_dict()
 
@@ -230,15 +300,23 @@ class EvidenceService:
         workflow = self.workflows.workflow(workflow_name, self.mode)
         if workflow.category not in {"mncs_bundle_validation", "mncds_record_validation"}:
             raise ForgeError("WORKFLOW_CATEGORY", "bundle requires an MNCS or MNCDS workflow")
-        result = self.workflows.run(
+        execution = self.workflows.execute(
             workflow,
             candidate,
             evaluator=self.mode == "evaluator",
             record_type=RecordType.BUNDLE,
         )
+        binding = persist_workflow_execution(
+            config=self.config,
+            records=self.lifecycle.records,
+            record_store=self.record_store,
+            execution=execution,
+        )
+        if execution.error is not None:
+            raise execution.error
+        result = execution.result
         if not isinstance(result, BundleRecord):
             raise ForgeError("INTERNAL_RECORD", "bundle produced an invalid record model")
-        self.record_store.commit("bundles", "bundle", result)
         integrity = str(result["status"])
         return {
             "package_creation": "COMPLETED" if result["returncode"] == 0 else "FAILED",
@@ -249,5 +327,6 @@ class EvidenceService:
             "certification_eligibility": "UNKNOWN",
             "operational_disposition": "REVIEW_REQUIRED",
             "result_reference": result["output_identity"],
+            "execution_receipt": summarize_binding(binding),
             "note": "a valid package or signature is not proof of correctness",
         }

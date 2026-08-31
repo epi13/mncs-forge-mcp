@@ -45,6 +45,8 @@ Intentional asymmetries are explicit:
 - final evaluation remains a CLI command whose development invocation fails closed and an MCP
   tool registered only in evaluator mode.
 
+Compiler evolution adds one explicit asymmetry: `compiler.experiments.record` is a development-only mutation, while `compiler.experiments.list` and `compiler.experiments.compare` are read-only local-storage projections available in both server modes. The list operation owns the `mncs-forge://compiler/experiments` resource projection.
+
 ## Machine-readable inventory
 
 Run:

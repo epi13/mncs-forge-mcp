@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
+import sys
 from collections.abc import Callable, Mapping
 from dataclasses import MISSING, fields
 from pathlib import Path
@@ -14,6 +15,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .config import load_config
 from .engine import Forge
+from .errors import ForgeError
 from .operations import (
     DEFAULT_OPERATION_REGISTRY,
     OperationDefinition,
@@ -162,6 +164,30 @@ def build_server(forge: Forge) -> FastMCP:
             resource("operations.inventory", "mncs-forge://operations"), sort_keys=True
         )
 
+    @server.resource("mncs-forge://compiler/experiments")
+    def compiler_experiments() -> str:
+        return json.dumps(
+            resource("compiler.experiments.list", "mncs-forge://compiler/experiments"),
+            sort_keys=True,
+        )
+
+    @server.resource("mncs-forge://compiler/candidates")
+    def compiler_candidates() -> str:
+        return json.dumps(
+            resource("compiler.candidates.list", "mncs-forge://compiler/candidates"),
+            sort_keys=True,
+        )
+
+    @server.resource("mncs-forge://execution/assessments")
+    def execution_assessments() -> str:
+        return json.dumps(
+            resource(
+                "execution.assurance.list",
+                "mncs-forge://execution/assessments",
+            ),
+            sort_keys=True,
+        )
+
     @server.resource("mncs-forge://guide/usage")
     def usage_guide() -> str:
         return (
@@ -225,8 +251,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
-    forge = Forge(load_config(args.config), mode=args.mode)
-    build_server(forge).run(transport="stdio")
+    try:
+        forge = Forge(load_config(args.config), mode=args.mode)
+        build_server(forge).run(transport="stdio")
+    except ForgeError as exc:
+        print(f"MNCS Forge startup failed [{exc.code}]: {exc.message}", file=sys.stderr)
+        raise SystemExit(2) from exc
 
 
 if __name__ == "__main__":

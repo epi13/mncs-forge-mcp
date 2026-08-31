@@ -8,7 +8,18 @@ evaluator authority, selection/objective references, providers, and workflows.
 
 A provider can declare name, identity/version, argv command, `stdio-jsonl` transport,
 capabilities, required/optional status, supported and unsupported constructs, limitations,
-expected executable SHA-256 identity, descriptor, and allowlisted environment overrides.
+expected executable SHA-256 identity, descriptor, allowlisted environment overrides,
+`python_packages`, and `module_roots`.
+
+`module_roots` is the named **family module roots** mechanism
+(`mncs-forge.family-module-roots.v0.1`). Conventional provider isolation cannot
+see undeclared sibling checkouts. A declared root may walk to a sibling under
+the workspace parent of the Forge project; Forge resolves it, rejects escapes
+and missing directories, injects it into that provider's `PYTHONPATH`, and
+records a module-root observation identity on probe/execution evidence. This
+is not a silent `sys.path` insertion and is not package attestation.
+`python_packages` names importable packages that must be visible through those
+roots or the selected interpreter before a probe is treated as available.
 `required_capabilities` declares project capability policy. Providers are absent and optional by
 default; the configuration never infers a provider from PATH.
 
