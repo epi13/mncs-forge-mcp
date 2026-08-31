@@ -32,10 +32,11 @@ authorization, local project observation, bounded local execution, Provider Prot
 transactional local persistence, package/runtime integrity, and development/evaluator evidence
 classification.
 
-It does not model a future Podman, Docker, SSH, Forge Cell, persistent receipt, attestation,
-external-anchor, or distributed-worker implementation as though it exists. Task 7B-1's
-non-persistent observation adapter is modeled only as an observation boundary, not a control that
-creates assurance. Those stronger properties remain future controls. In
+It does not model a future Podman, Docker, SSH, Forge Cell, attestation, external-anchor, or
+Fabric-backed live runner as though those controls exist. Task 7B-2's persisted
+`execution_receipt_binding` is a local provenance/linkage record. It does not create sandbox,
+independence, custody, witnessing, or certification. A Fabric adapter seam can translate remote
+facts into the same observation type; it does not import Fabric or move the trust boundary. In
 particular, `LocalProcessRunner` executes trusted configured code with host permissions; it is not
 an operating-system, filesystem, process, memory, CPU, disk, or network sandbox.
 
@@ -169,7 +170,7 @@ the entire unanchored history.
 
 ## Review limitations
 
-This is a source-, test-, and configuration-mapped local review. Joern/static analysis is
-supplemental and cannot prove absence of dynamic bypasses, host-level attacks, secrecy, or
+This is a source-, test-, and configuration-mapped local review. Static analysis is supplemental
+and cannot prove absence of dynamic bypasses, host-level attacks, secrecy, or
 independence. Executable tests are authoritative only for the behavior they cover; untested paths
 remain residual risk, not PASS. Each supported CI OS/Python row must be reported separately.

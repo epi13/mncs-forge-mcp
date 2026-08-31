@@ -31,8 +31,11 @@ development planning. The root README remains a short project entrypoint.
 
 - [Provider Protocol integration](provider-protocol.md)
 - [Machine-native micro-verifiers](micro-verifiers.md)
+- [Property-oriented verifier fleet](verifier-fleet.md) — polyglot verifier families, Haskell
+  pilots, proof-strength separation, overlapping verification, and the Fabric placement boundary.
 - [Query-driven micro-debugging](micro-debugging.md)
-- [Forge and provider transition](provider-transition.md)
+- [Compiler evolution observations](compiler-evolution.md) — language-owned compiler study
+  persistence, IR comparison, pass records, and observation/assurance/conformance separation.
 - [EdgeStream integration](edgestream.md)
 - [Codex installation details](codex-cli.md)
 
@@ -52,17 +55,23 @@ development planning. The root README remains a short project entrypoint.
 - [Task 3 validation evidence](development-evidence/task-3-validation.md) — baseline, focused/full
   test results, benchmark comparison, graph-analysis limits, and the deferred storage seam.
 - [Task 4 validation evidence](development-evidence/task-4-validation.md) — transaction fault
-  matrix, recovery/concurrency validation, benchmark comparison, and Joern storage-flow review.
+  matrix, recovery/concurrency validation, benchmark comparison, and storage-flow review.
 - [Task 5 validation evidence](development-evidence/task-5-validation.md) — application-service
   boundaries, facade compatibility, dependency enforcement, and structural review.
 - [Task 6 dispatch inventory](development-evidence/task-6-dispatch-inventory.md) — pre-refactor
   CLI/MCP compatibility mapping and intentional asymmetries.
 - [Task 6 validation evidence](development-evidence/task-6-validation.md) — registry design,
-  compatibility enforcement, benchmark comparison, and Joern dispatch review.
+  compatibility enforcement, benchmark comparison, and dispatch review.
 - [`0.1.0b1` compatibility validation](development-evidence/0.1.0b1-compatibility-validation.md) —
-  semantic boundary, migration/wheel matrix, benchmark, and comparative Joern findings.
+  semantic boundary, migration/wheel matrix, benchmark, and comparative provider findings.
 - [Task 7B-1 MNCS receipt-adapter evidence](development-evidence/task-7b1-mncs-receipt-adapter.md) —
   pinned contract, dogfood scope, raw observations, adapter boundary, and validation classification.
+- [Task 7B-2 execution-receipt integration](development-evidence/task-7b2-execution-receipt-integration.md) —
+  identity-bound persistence, incomplete observations, and the Forge/Fabric adapter seam.
+- [Compiler evolution observation validation](development-evidence/compiler-evolution-observation-2026-08.md) —
+  full quality gate and comparative provider evidence for the language-owned compiler consumer.
+- [Compiler experiment persistence validation](development-evidence/compiler-experiment-persistence-2026-08.md) —
+  record/ledger/operation validation and comparative provider evidence for durable experiments.
 
 ## Documentation rules
 

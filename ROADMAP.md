@@ -57,11 +57,14 @@ registry, deterministic inventory, generated FastMCP tools, registry-bound argpa
 explicit asymmetries, and compatibility enforcement. The final compatibility review added one
 semantic cross-surface snapshot, early-`0.1` migration coverage, stable configuration read/parse
 errors, Provider Protocol request characterization, and installed-wheel upgrade verification. The
-[`0.1.0b1` compatibility boundary](docs/compatibility-boundary-0.1.0b1.md) is complete. Task 7
-is complete through Task 7A and Task 7B-1's raw local-runner observations plus adapter-ready seam
-for the experimental MNCS `mncs-execution-receipt` `0.1-experimental` envelope. Forge does not
-persist or interpret those observations as assurance. Persistent identity-bound Forge receipt
-integration, sandbox-capable adapters, and execution assurance remain outstanding Task 7 work.
+[`0.1.0b1` compatibility boundary](docs/compatibility-boundary-0.1.0b1.md) is complete.
+
+Task 7 is complete through 7A (local runner), 7B-1 (observations and MNCS receipt adapter),
+7B-2 (persistent identity-bound workflow receipts), and 7C (rootless Podman sandbox-capable
+runner, ADR 0016). Verifier-action receipt wiring is also complete, so every material local
+execution path — declared workflows and verifier providers — persists identity-bound receipts.
+Remaining Task 7 follow-ups are optional Docker/SSH adapters; Forge Cell Linux isolation remains
+ordered Cell work below.
 
 ## `0.2.0` — stable local Forge
 
@@ -86,24 +89,46 @@ complete in the current `main` baseline, subject to the supported matrix remaini
 Windows test-harness portability repair: built-wheel/sdist verification, clean-environment import
 checks, supported historical-state checks through the installed wheel, package/dependency audits,
 and non-normative benchmark capture/comparison are present. Task 9C is complete as this bounded
-implementation-mapped local threat-model and release-gate review increment. Task 9 and
-the full `0.2.0` gate remain incomplete; deferred Task 7 execution receipts and sandbox-capable
-runners remain outstanding.
+implementation-mapped local threat-model and release-gate review increment. The primary remaining
+`0.2.0` gate item is an adversarial study of the new sandbox-capable runner path (Cell Task 5
+scope applied to `PodmanRunner`); identity-bound receipts for workflows and verifier actions and
+the rootless Podman runner itself are now present.
+
+## `0.2.x` — execution assurance
+
+Goal: keep "what the program produced" and "what the execution environment established"
+architecturally separate and machine-checkable.
+
+Implemented:
+
+- versioned `execution_assurance` records over receipt bindings with a declared requestable
+  property vocabulary (ADR 0017);
+- fail-closed assessment: unmet or unobservable requested properties stay `UNKNOWN`, incomplete
+  executions confirm nothing, runner-kind contradictions (for example containerization claimed by
+  a local-process runner) are `FAIL`;
+- append-only retention of conflicting assessments;
+- read-only Forge Cell document validation and assurance assessment through
+  `cell.documents.validate` and `cell.execution.assess`.
+
+Remaining work: challenge-bound freshness for assessments (Cell Task 4), policy documents stored
+as first-class records rather than inline identities, and wiring assessments into selection gates
+so promotion policies can require specific established properties.
 
 ## `0.2.x` — execution and evidence adapters
 
 Goal: strengthen the execution environment and evidence anchoring without overstating authority.
 
-Planned adapters:
+Adapter status:
 
-- local process runner;
-- rootless Podman runner;
-- optional Docker runner;
-- Forge Cell Linux isolation runner;
-- SSH or remote-host runner;
-- periodic ledger checkpoints;
-- detached checkpoint signatures; and
-- optional external witness receipts or independently held checkpoint heads.
+- completed: local process runner (Task 7A);
+- completed: rootless Podman runner with network, filesystem, and digest-bound containerization
+  properties (Task 7C, ADR 0016);
+- outstanding: optional Docker runner;
+- outstanding: Forge Cell Linux isolation runner (Cell Task 2);
+- outstanding: SSH or remote-host runner;
+- outstanding: periodic ledger checkpoints;
+- outstanding: detached checkpoint signatures; and
+- outstanding: optional external witness receipts or independently held checkpoint heads.
 
 The Forge Cell specification foundation now includes versioned policy, test-bundle, and execution-
 record schemas; offline validation; a fail-closed assurance assessment; reference fixtures; and a
@@ -142,6 +167,36 @@ ordered implementation handoff in
 depends on the core typed-record, transaction, state-machine, modular-service, operation-registry,
 and runner tasks.
 
+## `0.2.x` — compiler evolution observations
+
+Goal: make compiler experiments comparable and evidence-addressable without allowing Forge to
+define language legality or conformance.
+
+The observation-only consumer and persistent control-plane path for
+`mncs:language:compilation-study-result:0.1` is implemented. It preserves language-owned compiler,
+pipeline, host, target, stage, pass, and obligation identities; localizes the earliest observed IR
+difference; records the exact language artifact through the versioned record store and ledger; and
+returns no assurance or conformance verdict. Record/list/compare are exposed through the shared
+CLI/MCP operation registry, with a read-only experiment resource.
+
+Planned work:
+
+- completed: identity-bound candidate validation — validation evidence is bound to the exact
+  validated artifact identity, substitution fails closed or collapses to `UNKNOWN`, and copied
+  observations cannot promote a different candidate;
+- policy-driven compiler/pass/IR regression gates backed by separate verifier results;
+- separate translation-validation verifier results and assurance policy;
+- language feature/profile compatibility matrices keyed by language-owned identities;
+- pass-order, optimization, and backend tournaments whose candidates cannot self-authorize
+  (the bounded tournament is implemented; language-contract-backed gates remain open);
+- benchmark observations kept separate from semantic assurance; and
+- Fabric execution across Linux, Windows, and Raspberry Pi environments with distinct host, build,
+  target, and run identities.
+
+See [compiler evolution observations](docs/compiler-evolution.md) and
+[ADR 0013](docs/adr/0013-language-owned-compiler-experiment-observations.md) plus
+[ADR 0014](docs/adr/0014-persistent-compiler-experiment-records.md).
+
 ## `0.3.x` — intent-aware security verification
 
 Goal: harden machine-native code without treating unfamiliar or non-orthodox implementation
@@ -173,24 +228,28 @@ by [ADR 0007](docs/adr/0007-intent-aware-security-verification.md). Implementati
 records, transactional storage, the shared operation registry, micro-verifier capability matching,
 query-driven diagnostics, and stable freshness semantics.
 
-## `0.3.0` — distributed Forge
+## `0.3.0` — Forge over Fabric
 
-Goal: coordinate bounded jobs across heterogeneous machines while preserving identities,
-capability constraints, partial failure, and evidence classification.
+Goal: evaluate distributed executions without Forge becoming a second execution fabric.
 
-Planned components:
+`mncs-fabric` is the persistent heterogeneous execution substrate. It owns worker inventory,
+`fleet.refresh`, detached jobs, capability declaration, availability windows, the work queue,
+containment reporting, and bounded artifact transport. Forge must not duplicate those mechanics.
 
-- coordinator and worker protocol;
-- immutable content-addressed job envelopes;
-- worker capability and environment declarations;
-- leases, retries, idempotency, and duplicate-result reconciliation;
-- artifact transfer identity verification;
-- cohort plans for cross-platform and different-performance hosts; and
-- explicit separation between replication, public reproduction, witnessing, and independent
-  evaluation.
+Forge-owned requirements remain:
+
+- immutable job/subject/action identity;
+- worker, runner, and environment identity binding;
+- capability-drift detection at the evidence layer;
+- retry/attempt lineage and duplicate-result reconciliation;
+- evidence classification;
+- reproduction semantics;
+- same-operator versus independent execution; and
+- challenge, freeze, and policy authority.
 
 The MCP server remains the agent-facing control plane. It should not become the distributed
-scheduler itself.
+scheduler. The principle is: Fabric decides where and how an eligible job executes; Forge decides
+what that execution proves. See [ADR 0011](docs/adr/0011-forge-fabric-execution-boundary.md).
 
 ## `0.3.x` — measured and externally held evaluation
 

@@ -435,10 +435,12 @@ is Task 7; none of its runner or isolation work is part of the compatibility clo
 **Target:** `0.2.x`  
 **Depends on:** Tasks 4 through 6
 
-**Status:** Task 7A is complete, and Task 7B-1 is complete as a focused raw-observation and MNCS
-experimental receipt-adapter-readiness increment. Task 7 remains incomplete: persistent
-identity-bound Forge receipt integration, Podman and other alternate adapters, and stronger
-execution-assurance semantics are still outstanding.
+**Status:** Task 7A, Task 7B-1, 7B-2, and 7C are complete. Remaining optional follow-ups are
+Docker/SSH adapters and an adversarial study of the Podman runner path (Cell Task 5 scope applied
+to the new adapter). Verifier-action receipt wiring is complete: verifier provider execution
+persists identity-bound `execution_receipt_binding` records with `action_kind="verifier_action"`.
+Typed execution-assurance assessments over bindings are implemented per ADR 0017
+(`execution.assurance.assess` / `.list`).
 
 ### Task 7A — Extract and harden the local runner
 
@@ -451,7 +453,7 @@ receipts are deliberately deferred.
 
 ### Task 7B-1 — Forge observations and MNCS receipt-adapter readiness
 
-This increment uses the experimental MNCS `mncs-execution-receipt` / `0.1-experimental` contract
+This increment used the experimental MNCS `mncs-execution-receipt` / `0.1-experimental` contract
 as the only receipt envelope. `LocalProcessRunner.observe()` collects bounded raw lifecycle,
 termination, identity, stream, aggregate-output, wall-duration, and capability facts through the
 same subprocess path used by `execute()`. Complete stream totals and hashes are emitted only when
@@ -463,8 +465,16 @@ policy, challenge, harness, and optional placement context. It uses RFC 8785 ide
 required context, preserves `FAIL > UNKNOWN > PASS` and the fixed MNCS claim boundary, and returns
 an unpersisted JSON envelope. It does not execute commands, write Forge records, create assurance,
 or claim sandboxing. The pinned upstream schema commit and digest are recorded in the focused
-development evidence note. Task 7B-2 must decide persistent identity-bound Forge integration;
-Task 7C remains the sandbox-capable rootless Podman runner.
+development evidence note.
+
+### Task 7B-2 — Persistent identity-bound receipt integration
+
+Declared workflow execution now persists a `workflow_action`, an `execution_receipt_binding`, and
+the existing result record. The binding stores Forge linkage and completeness separately from the
+upstream MNCS envelope. Incomplete timeout/output-limit executions persist an incomplete binding
+and re-raise the original error. Binding `status` cannot be `PASS`. A scripted Fabric adapter
+proves the `Runner` port can consume remote facts without Forge importing Fabric. Task 7C remains
+the sandbox-capable rootless Podman runner.
 
 ### Objective
 
@@ -510,6 +520,26 @@ Run the full suite plus adapter-specific tests. Container tests must skip explic
 runtime is unavailable and must not silently pass as though sandboxing was tested.
 
 ---
+
+### Task 7C — Rootless Podman runner (complete)
+
+`PodmanRunner` executes declared argv inside a rootless container with
+`--network=none`, `--read-only`, `--cap-drop=all`, a read-only workspace mount,
+declared writable mounts (`rw,Z`), and optional resource bounds. Availability
+probes fail closed with `RUNNER_UNAVAILABLE`; image digests come from
+`podman image inspect` and tags alone are never immutable identities. Runner
+selection is additive through the optional `[runner]` configuration section
+(default `local-process`). See ADR 0016. Container tests use a fake podman
+harness plus a real-podman integration test that verifies read-only rootfs,
+blocked networking, and persisted writable mounts.
+
+### Task 7D — Execution-assurance assessments (complete)
+
+Typed `execution_assurance` records assess receipt bindings against a fixed
+requestable property vocabulary, fail closed (ADR 0017), and are exposed as
+`execution.assurance.assess` / `.list` with an MCP resource. Forge Cell document
+validation is available read-only through `cell.documents.validate` and
+`cell.execution.assess`.
 
 ## Task 8 — Add ledger checkpoints and optional external anchoring
 
@@ -579,7 +609,7 @@ bash scripts/coverage-local-stability.sh
 This is development evidence for policy-branch discovery, not an assurance claim or a CI release
 threshold. Hypothesis settings are bounded and deterministic for this harness while preserving
 shrinking. Podman, execution receipts, external witnessing, and stronger execution authority stay
-deferred to later iterations.
+deferred to later iterations. Persistent identity-bound workflow receipts are present.
 
 Run the package artifact verification locally with:
 
@@ -669,7 +699,7 @@ A reusable result must bind every material identity, including:
 
 ---
 
-## Task 11 — Design and implement distributed Forge
+## Task 11 — Consume Fabric for distributed execution evidence
 
 **Priority:** P3  
 **Target:** `0.3.0`  
@@ -677,26 +707,23 @@ A reusable result must bind every material identity, including:
 
 ### Objective
 
-Coordinate bounded work across heterogeneous machines for cross-platform reproduction,
-performance cohorts, scaled RAVEL, and automated MNCS-family testing.
+Evaluate Fabric-placed executions for cross-platform reproduction, performance cohorts, scaled
+RAVEL, and automated MNCS-family testing without building a second Forge fleet.
 
 ### Architecture constraint
 
-The MCP server remains the agent-facing control plane. Implement a separate coordinator/worker
-layer rather than embedding a distributed scheduler inside MCP request handlers.
+The MCP server remains the agent-facing control plane. Do not implement a Forge coordinator,
+worker registry, lease system, heartbeat layer, or generic remote worker protocol. Use
+`mncs-fabric` for placement and execution. Forge records what that execution proves.
 
 ### Required components
 
-- immutable content-addressed job envelope;
-- coordinator state and scheduling policy;
-- worker registration and capability declarations;
-- runner, provider, toolchain, OS, architecture, and resource constraints;
-- leases and heartbeat expiry;
-- idempotent execution and retry rules;
-- duplicate-result reconciliation;
-- artifact transfer with identity verification;
-- partial-failure and disconnected-worker recovery;
-- cohort plans for faster/slower and heterogeneous hosts; and
+- a `FabricRunner` / `FabricExecutionAdapter` over the existing `Runner` port;
+- immutable job/subject/action identity on the Forge side;
+- worker, runner, and environment identity binding;
+- capability-drift detection at the evidence layer;
+- retry/attempt lineage and duplicate-result reconciliation;
+- reproduction semantics for heterogeneous hosts; and
 - evidence classifications for same-operator reproduction, public reproduction, witnessing,
   protected holdout, and independent evaluation.
 
@@ -707,11 +734,11 @@ layer rather than embedding a distributed scheduler inside MCP request handlers.
   required;
 - bind every result to the exact worker, runner, environment, input, provider, and job identity;
 - worker capability drift must invalidate leases or require re-registration; and
-- the coordinator must tolerate duplicate delivery without duplicate authoritative state.
+- Forge must tolerate duplicate delivery without duplicate authoritative evidence.
 
 ### Acceptance criteria
 
-- loss of any one worker does not corrupt coordinator history;
+- loss of any one worker does not corrupt Forge evidence history;
 - replaying a job is idempotent and produces linked attempts;
 - mismatched artifacts or worker identities are rejected;
 - faster and slower cohorts can be compared without treating performance difference as correctness;
@@ -722,7 +749,7 @@ rules.
 ### Recommended first distributed study
 
 Use the committed minimal provider and a non-promotional RAVEL regression workflow across two
-machines before attempting a full cluster scheduler. Record capability mismatch, network loss,
+Fabric workers before attempting a live Fabric runner. Record capability mismatch, network loss,
 retry, duplicate delivery, and environment drift as deliberate test cases.
 
 ---

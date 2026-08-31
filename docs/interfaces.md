@@ -27,6 +27,12 @@ MCP tools:
 - `mncs_forge_candidate_freeze`
 - `mncs_forge_evidence_reconcile`
 - `mncs_forge_bundle_build`
+- `mncs_forge_execution_receipts_list`
+- `mncs_forge_execution_receipts_get`
+- `mncs_forge_execution_assurance_assess`
+- `mncs_forge_execution_assurance_list`
+- `mncs_forge_cell_document_validate`
+- `mncs_forge_cell_execution_assess`
 
 The development inventory contains the tools above. A separately started evaluator-mode
 server additionally exposes `mncs_forge_final_evaluation_run`; the development registration
@@ -58,6 +64,7 @@ include:
 - `mncs-forge://providers/configured`
 - `mncs-forge://providers/capability-blockers`
 - `mncs-forge://verifiers/declared`
+- `mncs-forge://execution/assessments`
 - `mncs-forge://operations`
 
 They are read-model projections and invoke their registered operation through the same interface

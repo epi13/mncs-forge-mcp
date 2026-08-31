@@ -15,6 +15,8 @@ current hash projection includes ledger metadata and the versioned payload.
 | ledger `epoch`; `records/epochs` | `epoch` |
 | ledger `candidate`; `records/candidates` | `candidate` |
 | ledger `provider_probe`; `records/provider-probes` | `provider_probe` |
+| ledger `workflow_action`; `records/workflow-actions` | `workflow_action` |
+| ledger `execution_receipt_binding`; `records/execution-receipt-bindings` | `execution_receipt_binding` |
 | ledger `result`; `records/results` | `workflow_result` |
 | ledger `verifier_action`; `records/verifier-actions` | `verifier_action` |
 | ledger `verifier_result`; `records/verifier-results` | `verifier_result` |
@@ -22,13 +24,20 @@ current hash projection includes ledger metadata and the versioned payload.
 | ledger `freeze`; `records/freezes` | `freeze` |
 | ledger `evaluation`; `records/evaluations` | `final_evaluation` |
 | ledger `bundle`; `records/bundles` | `bundle` |
+| ledger `compiler_experiment`; `records/compiler-experiments` | `compiler_experiment` |
 | ledger line | `ledger_entry` |
 
-The public typed vocabulary also includes `workflow_action` and `reconciliation`. In historical
-`0.1` Forge, workflow actions were transient requests and reconciliation was a derived interface
-object. Task 2 versions those internal/interface boundaries without inventing new persistence
-events. Task 4 makes only the listed persisted contexts transactional; it does not invent
-persistence for workflow actions or reconciliation.
+The public typed vocabulary also includes `reconciliation`. In historical `0.1` Forge, workflow
+actions were transient requests and reconciliation was a derived interface object. Task 7B-2 now
+persists `workflow_action` and `execution_receipt_binding` as new current-schema records. Historical
+fixtures remain readable without those events. Reconciliation remains a derived interface object.
+
+Compiler experiments are current-schema observation records. They embed either an exact
+language-owned compilation-study record or `mncs:language:experiment-result:0.1`, plus a bounded
+Forge projection. The latter adds backend, realization-request/plan, typed artifact, experiment
+status, and validator observations. Forge validates the pinned language contract and fixed
+observation-only authority fields, but does not define the embedded compiler schema or infer
+assurance/conformance from it.
 
 ## Legacy migration
 
