@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Advance the MNCS-native Forge spine from an additive probe to a runtime lifecycle
+  gate. The typed MNCS lifecycle kernel now preflights first-epoch creation,
+  first-candidate registration, candidate disposition, and freeze before the
+  compatibility record path commits. Structured finite/record results are decoded
+  strictly, native execution failures fail closed, and pure preflight results are
+  bounded in-process by source/CLI/input identity. Forge-specific history and
+  identity authority remain explicit host boundaries.
+
 - Add a rootless Podman sandbox-capable runner (Task 7C). Declared argv executes
   inside a container with `--network=none`, a read-only root filesystem, a
   read-only workspace mount, declared `rw,Z` writable mounts, dropped

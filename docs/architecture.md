@@ -23,9 +23,11 @@ compatibility shell. `NativeForgeAdapter` invokes the language-owned CLI through
 Forge’s existing bounded runner and returns its structured observation. Host-side
 SHA-256 is explicit and limited to material declared by the MNCS module; no
 cryptographic authority is implied by the source helper. The migration is
-deliberately additive: native availability, backend support, and response validity
-are all independently observable, and missing or unsupported capabilities remain
-`UNKNOWN` rather than being treated as success.
+deliberately incremental: native availability, backend support, and response validity
+are all independently observable. Covered lifecycle mutations are gated by the
+typed native preflight, while missing or unsupported capabilities retain the
+compatibility path and malformed native results remain fail-closed `UNKNOWN`
+observations rather than being treated as success.
 
 ## Control-plane composition
 

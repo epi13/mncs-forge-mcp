@@ -57,22 +57,6 @@ def test_current_ledger_entry_round_trip_and_hash_projection_are_stable(
     )
 
 
-def test_current_ledger_entry_round_trip_and_hash_projection_are_stable(
-    tmp_path: Path,
-) -> None:
-    ledger = Ledger(tmp_path)
-    entry = ledger.append("candidate", candidate(1))
-    serialized = entry.to_json()
-    body = {key: value for key, value in serialized.items() if key != "entry_hash"}
-
-    assert serialized["record_type"] == "ledger_entry"
-    assert serialized["schema_version"] == "1"
-    assert entry.entry_hash == Ledger._entry_hash(body)
-    assert canonical_bytes(normalize_ledger_entry(serialized).to_json()) == canonical_bytes(
-        serialized
-    )
-
-
 def test_tamper_detected(tmp_path: Path) -> None:
     ledger = Ledger(tmp_path)
     ledger.append("candidate", candidate(1))

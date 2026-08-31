@@ -9,6 +9,7 @@ from mncs_forge.config import ForgeConfig
 from mncs_forge.engine import Forge
 from mncs_forge.errors import ForgeError
 from mncs_forge.ledger import Ledger
+from mncs_forge.mncs_native import NativeLifecycleResult
 from mncs_forge.records import RecordType, new_record
 from mncs_forge.state_machine import ForgeStateMachine
 
@@ -58,6 +59,29 @@ def assert_code(code: str, operation: object) -> None:
     with pytest.raises(ForgeError) as issue:
         operation()  # type: ignore[operator]
     assert issue.value.code == code
+
+
+def test_native_lifecycle_mismatch_fails_closed() -> None:
+    class MismatchingNative:
+        def lifecycle_preflight(
+            self, stage: str, operation: str, evidence: str = "UNKNOWN"
+        ) -> NativeLifecycleResult:
+            return NativeLifecycleResult(stage, operation, "NoEpoch", "PASS", 0)
+
+    machine = ForgeStateMachine(
+        mode="development",
+        history=(),
+        current_candidate_identity="",
+        current_authority_identities={},
+        current_freeze_bindings={},
+        selection_policy_identity="policy",
+        required_evidence=(),
+        native=MismatchingNative(),  # type: ignore[arg-type]
+    )
+
+    with pytest.raises(ForgeError, match="disagrees with the Forge transition") as issue:
+        machine.authorize_epoch_begin(None)
+    assert issue.value.code == "NATIVE_LIFECYCLE_MISMATCH"
 
 
 def state_with_overrides(
