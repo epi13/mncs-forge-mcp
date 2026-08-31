@@ -12,15 +12,12 @@ those tools plus `mncs_forge_final_evaluation_run`. The CLI exposes every regist
 including `receipts list` and `receipts get`, and `mncs-forge operations` remains the inventory.
 Final evaluation remains evaluator-only.
 
-Historical Joern records remain frozen; Joern is optional and disabled by default. The inspected
-host registration named `joern` resolved to a separately installed pipx
-`joern-agent-bridge`, not either project checkout, so it was left untouched. Compatibility is
-non-normative. Core MNCS validation never launches Forge or a provider, and MNCS CI does not
-depend on mutable Forge `main`.
+Compatibility is non-normative. Core MNCS validation never launches Forge or a provider, and
+MNCS CI does not depend on mutable Forge `main`.
 
 The micro-verifier configuration is optional. Version-1 project files without `[[verifiers]]` or
 `[verifier_limits]` continue to validate. The implementation uses Provider Protocol 0.1 extension
-objects and adds no runtime dependency or generic Joern dependency.
+objects and adds no runtime dependency on a specific analysis provider.
 
 Task 2 adds current persisted-record schema version `"1"` while retaining the historical
 unversioned `0.1` state format as `"0.1-unversioned"` during normalization. The committed

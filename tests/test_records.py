@@ -49,6 +49,10 @@ def _sample_fields(record_type: RecordType) -> dict[str, object]:
             fields[field] = "fixture"
         elif property_value.get("type") == "object":
             fields[field] = {}
+        elif property_value.get("type") == "boolean":
+            fields[field] = False
+        elif property_value.get("type") == "array":
+            fields[field] = []
         else:
             fields[field] = None
     if record_type is RecordType.CANDIDATE:
@@ -59,6 +63,14 @@ def _sample_fields(record_type: RecordType) -> dict[str, object]:
     if record_type is RecordType.VERIFIER_RESULT:
         fields["independent_evaluation"] = False
         fields["status"] = "UNKNOWN"
+    if record_type is RecordType.EXECUTION_ASSURANCE:
+        fields["requested_properties"] = ["network_isolation"]
+        fields["unmet_properties"] = ["network_isolation"]
+        fields["reasons"] = [
+            "requested property was not established by the runner: network_isolation"
+        ]
+        fields["assurance_status"] = "UNKNOWN"
+        fields["policy_identity"] = None
     if record_type is RecordType.EXECUTION_RECEIPT_BINDING:
         fields["status"] = "UNKNOWN"
         fields["receipt_completeness"] = "incomplete"
@@ -84,6 +96,44 @@ def _sample_fields(record_type: RecordType) -> dict[str, object]:
         fields["language_contract_id"] = "mncs:language:compilation-study-result:0.1"
         fields["interpretation"] = "observation_only_not_assurance_or_conformance"
         fields["compilation_status"] = "completed"
+    if record_type is RecordType.COMPILER_CANDIDATE:
+        fields["isolated"] = True
+        fields["generator_certified"] = False
+        fields["baseline_artifact_identity"] = "ssa:baseline"
+        fields["candidate_artifact_identity"] = "ssa:candidate"
+        fields["interpretation"] = "search_observation_not_language_correctness"
+        fields["semantic_status"] = "UNVALIDATED"
+        fields["policy_disposition"] = "retain_unresolved"
+        fields["protected_properties"] = ["return_value"]
+    if record_type is RecordType.CONCEPT_EVALUATION:
+        from mncs_forge.concept_experiments import build_concept_evaluation
+
+        evaluation = build_concept_evaluation(
+            concept_experiment_id="cre-tristate-sample",
+            candidate_identity="candidate:sample",
+            language_profile="mncs-language:source-profile:0.2",
+            compiler_identity="mncs:compiler:sample",
+            backend_identity="mncs:compiler:backend:sample",
+            execution_identities=["mncs-fabric://execution/sample/attempt/1"],
+            verifier_identity="forge:verifier:sample",
+            verifier_version="0.1",
+            obligation="bounded observation",
+            evidence_identities=["sha256:" + "a" * 64],
+            status="UNKNOWN",
+            unresolved_obligations=["independent-backend-reproduction"],
+        )
+        fields.update(
+            {
+                key: value
+                for key, value in evaluation.items()
+                if key not in {"schema_version", "producer", "claim_boundary"}
+            }
+        )
+        fields["evaluation_material"] = dict(evaluation)
+        fields["recorded_at"] = "2026-08-23T00:00:00Z"
+        fields["interpretation"] = "bounded_forge_evaluation_not_mncs_conformance"
+        fields["assurance_status"] = None
+        fields["conformance_status"] = None
     return fields
 
 
@@ -241,7 +291,10 @@ def test_compiler_experiment_schema_requires_null_verdict_fields() -> None:
     assert properties["assurance_status"] == {"type": "null"}
     assert properties["conformance_status"] == {"type": "null"}
     assert properties["language_contract_id"] == {
-        "const": "mncs:language:compilation-study-result:0.1"
+        "enum": [
+            "mncs:language:compilation-study-result:0.1",
+            "mncs:language:experiment-result:0.1",
+        ]
     }
     assert properties["interpretation"] == {
         "const": "observation_only_not_assurance_or_conformance"

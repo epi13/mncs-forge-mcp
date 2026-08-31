@@ -77,6 +77,7 @@ class OutputContract(StrEnum):
 
 class CliDecoder(StrEnum):
     VALUE = "value"
+    JSON_VALUE = "json-value"
     JSON_OBJECT = "json-object"
     DEPENDENCIES = "dependencies"
 
@@ -124,6 +125,16 @@ class ClaimBlockersInput(OperationInput):
 @dataclass(frozen=True, slots=True)
 class ProviderProbeInput(OperationInput):
     provider_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class LearnedSpecialistShadowInput(OperationInput):
+    artifact_path: str
+    provider_command: list[str]
+    source_records: list[dict[str, object]]
+    context_observations: list[dict[str, object]] | None = None
+    lineage_identity: str | None = None
+    timeout_seconds: float = 5.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,6 +283,89 @@ class CompilerExperimentCompareInput(OperationInput):
     right_experiment_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class ConceptEvaluationRecordInput(OperationInput):
+    evaluation: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class ConceptEvaluationGetInput(OperationInput):
+    evaluation_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateRegisterInput(OperationInput):
+    baseline_artifact_identity: str
+    candidate_artifact_identity: str
+    generator_identity: str
+    declared_transformation: str
+    claimed_relation: str
+    expected_benefit: str
+    protected_properties: list[str] | None = None
+    target_envelope: str = "unspecified"
+    required_validation: str = "translation-validation"
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateCompareInput(OperationInput):
+    left_candidate_id: str
+    right_candidate_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateAttachInput(OperationInput):
+    candidate_id: str
+    validator_identity: str
+    judgement: str
+    claimed_relation: str
+    counterexample: dict[str, object] | None = None
+    limitations: list[str] | None = None
+    stale: bool = False
+    expected_artifact_identity: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerTournamentInput(OperationInput):
+    candidate_ids: list[str]
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateSelectInput(OperationInput):
+    candidate_id: str
+    policy: str = "explicit-protected-property-policy"
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerCandidateInspectInput(OperationInput):
+    candidate_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AssuranceAssessInput(OperationInput):
+    binding_id: str
+    requested_properties: list[str]
+    policy_identity: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AssuranceListInput(OperationInput):
+    binding_identity: str | None = None
+    candidate_identity: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CellDocumentValidateInput(OperationInput):
+    kind: str
+    document: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class CellExecutionAssessInput(OperationInput):
+    policy: dict[str, object]
+    record: dict[str, object]
+    expected_nonce: str | None = None
+
+
 class ForgeOperationTarget(Protocol):
     """Facade surface consumed by registry handlers without importing the concrete facade."""
 
@@ -284,6 +378,16 @@ class ForgeOperationTarget(Protocol):
     def claim_blockers(self, requested_claim: str) -> JsonObject: ...
     def provider_list(self) -> JsonObject: ...
     def provider_probe(self, provider_id: str) -> JsonObject: ...
+    def learned_specialist_shadow(
+        self,
+        artifact_path: str,
+        provider_command: list[str],
+        source_records: list[dict[str, object]],
+        *,
+        context_observations: list[dict[str, object]] | None = None,
+        lineage_identity: str | None = None,
+        timeout_seconds: float = 5.0,
+    ) -> JsonObject: ...
     def capability_blockers(self, required_capabilities: list[str] | None = None) -> JsonObject: ...
     def verifier_list(self) -> JsonObject: ...
     def verifier_describe(self, verifier_id: str) -> JsonObject: ...
@@ -366,17 +470,72 @@ class ForgeOperationTarget(Protocol):
     def final_evaluation_run(self, workflow_names: list[str]) -> JsonObject: ...
     def evidence_reconcile(self, candidate_id: str | None = None) -> JsonObject: ...
     def bundle_build(self, workflow_name: str, candidate_id: str | None = None) -> JsonObject: ...
+    def license_evidence_scan(self) -> JsonObject: ...
     def execution_receipts_list(
         self,
         candidate_identity: str | None = None,
         action_identity: str | None = None,
     ) -> JsonObject: ...
     def execution_receipts_get(self, binding_id: str) -> JsonObject: ...
+    def execution_assurance_assess(
+        self,
+        *,
+        binding_id: str,
+        requested_properties: list[str],
+        policy_identity: str | None = None,
+    ) -> JsonObject: ...
+    def execution_assurance_list(
+        self,
+        binding_identity: str | None = None,
+        candidate_identity: str | None = None,
+    ) -> JsonObject: ...
+    def cell_document_validate(self, kind: str, document: Mapping[str, object]) -> JsonObject: ...
+    def cell_execution_assess(
+        self,
+        policy: Mapping[str, object],
+        record: Mapping[str, object],
+        expected_nonce: str | None = None,
+    ) -> JsonObject: ...
     def compiler_experiment_record(self, language_record: Mapping[str, object]) -> JsonObject: ...
     def compiler_experiments_list(self) -> JsonObject: ...
     def compiler_experiments_compare(
         self, left_experiment_id: str, right_experiment_id: str
     ) -> JsonObject: ...
+    def concept_evaluation_record(self, evaluation: Mapping[str, object]) -> JsonObject: ...
+    def concept_evaluations_list(self) -> JsonObject: ...
+    def concept_evaluation_get(self, evaluation_id: str) -> JsonObject: ...
+    def compiler_candidate_register(
+        self,
+        *,
+        baseline_artifact_identity: str,
+        candidate_artifact_identity: str,
+        generator_identity: str,
+        declared_transformation: str,
+        claimed_relation: str,
+        expected_benefit: str,
+        protected_properties: list[str] | None = None,
+        target_envelope: str = "unspecified",
+        required_validation: str = "translation-validation",
+    ) -> JsonObject: ...
+    def compiler_candidates_list(self) -> JsonObject: ...
+    def compiler_candidates_compare(
+        self, left_candidate_id: str, right_candidate_id: str
+    ) -> JsonObject: ...
+    def compiler_candidate_attach_validation(
+        self,
+        candidate_id: str,
+        *,
+        validator_identity: str,
+        judgement: str,
+        claimed_relation: str,
+        counterexample: dict[str, object] | None = None,
+        limitations: list[str] | None = None,
+        stale: bool = False,
+        expected_artifact_identity: str | None = None,
+    ) -> JsonObject: ...
+    def compiler_tournament(self, candidate_ids: list[str]) -> JsonObject: ...
+    def compiler_candidate_select(self, candidate_id: str, policy: str) -> JsonObject: ...
+    def compiler_candidate_inspect(self, candidate_id: str) -> JsonObject: ...
     def ledger_verify(self) -> JsonObject: ...
     def config_validate(self) -> JsonObject: ...
 
@@ -481,6 +640,18 @@ def _provider_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonOb
 def _provider_probe(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
     request = _typed(value, ProviderProbeInput)
     return forge.provider_probe(request.provider_id)
+
+
+def _learned_specialist_shadow(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, LearnedSpecialistShadowInput)
+    return forge.learned_specialist_shadow(
+        request.artifact_path,
+        request.provider_command,
+        request.source_records,
+        context_observations=request.context_observations,
+        lineage_identity=request.lineage_identity,
+        timeout_seconds=request.timeout_seconds,
+    )
 
 
 def _capability_blockers(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
@@ -632,6 +803,11 @@ def _bundle_build(forge: ForgeOperationTarget, value: OperationInput) -> JsonObj
     return forge.bundle_build(request.workflow_name, request.candidate_identity)
 
 
+def _license_evidence_scan(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    del value
+    return forge.license_evidence_scan()
+
+
 def _execution_receipts_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
     request = _typed(value, ExecutionReceiptListInput)
     return forge.execution_receipts_list(request.candidate_identity, request.action_identity)
@@ -640,6 +816,37 @@ def _execution_receipts_list(forge: ForgeOperationTarget, value: OperationInput)
 def _execution_receipts_get(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
     request = _typed(value, ExecutionReceiptGetInput)
     return forge.execution_receipts_get(request.binding_id)
+
+
+def _execution_assurance_assess(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, AssuranceAssessInput)
+    return forge.execution_assurance_assess(
+        binding_id=request.binding_id,
+        requested_properties=request.requested_properties,
+        policy_identity=request.policy_identity,
+    )
+
+
+def _execution_assurance_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, AssuranceListInput)
+    return forge.execution_assurance_list(
+        binding_identity=request.binding_identity,
+        candidate_identity=request.candidate_identity,
+    )
+
+
+def _cell_document_validate(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CellDocumentValidateInput)
+    return forge.cell_document_validate(request.kind, request.document)
+
+
+def _cell_execution_assess(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CellExecutionAssessInput)
+    return forge.cell_execution_assess(
+        request.policy,
+        request.record,
+        expected_nonce=request.expected_nonce,
+    )
 
 
 def _compiler_experiment_record(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
@@ -658,6 +865,75 @@ def _compiler_experiments_compare(forge: ForgeOperationTarget, value: OperationI
         request.left_experiment_id,
         request.right_experiment_id,
     )
+
+
+def _concept_evaluation_record(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, ConceptEvaluationRecordInput)
+    return forge.concept_evaluation_record(request.evaluation)
+
+
+def _concept_evaluations_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    _no_input(value)
+    return forge.concept_evaluations_list()
+
+
+def _concept_evaluation_get(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, ConceptEvaluationGetInput)
+    return forge.concept_evaluation_get(request.evaluation_id)
+
+
+def _compiler_candidate_register(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateRegisterInput)
+    return forge.compiler_candidate_register(
+        baseline_artifact_identity=request.baseline_artifact_identity,
+        candidate_artifact_identity=request.candidate_artifact_identity,
+        generator_identity=request.generator_identity,
+        declared_transformation=request.declared_transformation,
+        claimed_relation=request.claimed_relation,
+        expected_benefit=request.expected_benefit,
+        protected_properties=request.protected_properties,
+        target_envelope=request.target_envelope,
+        required_validation=request.required_validation,
+    )
+
+
+def _compiler_candidates_list(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    _no_input(value)
+    return forge.compiler_candidates_list()
+
+
+def _compiler_candidates_compare(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateCompareInput)
+    return forge.compiler_candidates_compare(request.left_candidate_id, request.right_candidate_id)
+
+
+def _compiler_candidate_attach(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateAttachInput)
+    return forge.compiler_candidate_attach_validation(
+        request.candidate_id,
+        validator_identity=request.validator_identity,
+        judgement=request.judgement,
+        claimed_relation=request.claimed_relation,
+        counterexample=request.counterexample,
+        limitations=request.limitations,
+        stale=request.stale,
+        expected_artifact_identity=request.expected_artifact_identity,
+    )
+
+
+def _compiler_tournament(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerTournamentInput)
+    return forge.compiler_tournament(request.candidate_ids)
+
+
+def _compiler_candidate_select(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateSelectInput)
+    return forge.compiler_candidate_select(request.candidate_id, request.policy)
+
+
+def _compiler_candidate_inspect(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
+    request = _typed(value, CompilerCandidateInspectInput)
+    return forge.compiler_candidate_inspect(request.candidate_id)
 
 
 def _ledger_verify(forge: ForgeOperationTarget, value: OperationInput) -> JsonObject:
@@ -805,6 +1081,35 @@ _OPERATIONS = (
         description="Explicitly probe one provider using bounded Provider Protocol capabilities.",
         cli=_cli("providers", "probe", bindings=(_binding("provider_id"),)),
         mcp=_mcp("mncs_forge_provider_probe"),
+    ),
+    _operation(
+        "providers.learned-shadow",
+        input_model=LearnedSpecialistShadowInput,
+        output=OutputContract.RECORD,
+        handler=_learned_specialist_shadow,
+        authority=AuthorityRequirement.DECLARED_PROVIDER,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Invoke an identity-bound MNEL specialist through the bounded provider boundary "
+            "and record a non-authoritative Forge shadow observation."
+        ),
+        cli=_cli(
+            "providers",
+            "learned-shadow",
+            bindings=(
+                _binding("artifact_path", "artifact"),
+                _binding("provider_command", "provider_command"),
+                _binding("source_records", "source_records", CliDecoder.JSON_VALUE),
+                _binding(
+                    "context_observations",
+                    "context_observations",
+                    CliDecoder.JSON_VALUE,
+                ),
+                _binding("lineage_identity", "lineage"),
+                _binding("timeout_seconds", "timeout"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_learned_specialist_shadow"),
     ),
     _operation(
         "providers.capability-blockers",
@@ -1210,6 +1515,198 @@ _OPERATIONS = (
         mcp=_mcp("mncs_forge_compiler_experiments_compare"),
     ),
     _operation(
+        "concept.evaluations.record",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=ConceptEvaluationRecordInput,
+        output=OutputContract.RECORD,
+        handler=_concept_evaluation_record,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Persist one bounded Forge concept evaluation for a Concept Experiment "
+            "without candidate self-certification or conformance authority."
+        ),
+        cli=_cli(
+            "evaluations",
+            "record",
+            bindings=(_binding("evaluation", "evaluation", CliDecoder.JSON_OBJECT),),
+        ),
+        mcp=_mcp("mncs_forge_concept_evaluation_record", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "concept.evaluations.list",
+        input_model=NoInput,
+        output=OutputContract.INVENTORY,
+        handler=_concept_evaluations_list,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="List persisted concept evaluations without strengthening any status.",
+        cli=_cli("evaluations", "list"),
+        mcp=_mcp("mncs_forge_concept_evaluations_list"),
+        resources=(ResourceExposure("mncs-forge://concept/evaluations"),),
+    ),
+    _operation(
+        "concept.evaluations.get",
+        input_model=ConceptEvaluationGetInput,
+        output=OutputContract.RECORD,
+        handler=_concept_evaluation_get,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="Fetch one persisted concept evaluation by record id, digest, or stable id.",
+        cli=_cli(
+            "evaluations",
+            "get",
+            bindings=(_binding("evaluation_id", "id"),),
+        ),
+        mcp=_mcp("mncs_forge_concept_evaluation_get"),
+    ),
+    _operation(
+        "compiler.candidates.register",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=CompilerCandidateRegisterInput,
+        output=OutputContract.RECORD,
+        handler=_compiler_candidate_register,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Register an isolated compiler-search candidate without treating "
+            "generation as validity."
+        ),
+        cli=_cli(
+            "compiler",
+            "candidate-register",
+            bindings=(
+                _binding("baseline_artifact_identity", "baseline"),
+                _binding("candidate_artifact_identity", "candidate_artifact"),
+                _binding("generator_identity", "generator"),
+                _binding("declared_transformation", "transformation"),
+                _binding("claimed_relation", "relation"),
+                _binding("expected_benefit", "benefit"),
+                _binding("protected_properties", "protected"),
+                _binding("target_envelope", "target"),
+                _binding("required_validation", "required_validation"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidate_register", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "compiler.candidates.list",
+        input_model=NoInput,
+        output=OutputContract.INVENTORY,
+        handler=_compiler_candidates_list,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="List isolated compiler-search candidates without creating a verdict.",
+        cli=_cli("compiler", "candidate-list"),
+        mcp=_mcp("mncs_forge_compiler_candidates_list"),
+        resources=(ResourceExposure("mncs-forge://compiler/candidates"),),
+    ),
+    _operation(
+        "compiler.candidates.compare",
+        input_model=CompilerCandidateCompareInput,
+        output=OutputContract.RESULT_SET,
+        handler=_compiler_candidates_compare,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="Compare two compiler-search candidates without promoting either.",
+        cli=_cli(
+            "compiler",
+            "candidate-compare",
+            bindings=(
+                _binding("left_candidate_id", "left"),
+                _binding("right_candidate_id", "right"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidates_compare"),
+    ),
+    _operation(
+        "compiler.candidates.attach-validation",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=CompilerCandidateAttachInput,
+        output=OutputContract.RECORD,
+        handler=_compiler_candidate_attach,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=("Attach an independent PASS/FAIL/UNKNOWN validation to a compiler candidate."),
+        cli=_cli(
+            "compiler",
+            "candidate-attach",
+            bindings=(
+                _binding("candidate_id"),
+                _binding("validator_identity", "validator"),
+                _binding("judgement"),
+                _binding("claimed_relation", "relation"),
+                _binding("counterexample", "counterexample", CliDecoder.JSON_OBJECT),
+                _binding("limitations"),
+                _binding("stale"),
+                _binding("expected_artifact_identity", "expected_artifact"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidate_attach", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "compiler.tournament.run",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.READ_ONLY,
+        input_model=CompilerTournamentInput,
+        output=OutputContract.RESULT_SET,
+        handler=_compiler_tournament,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Rank isolated compiler candidates; FAIL loses and UNKNOWN cannot be promoted."
+        ),
+        cli=_cli(
+            "compiler",
+            "tournament",
+            bindings=(_binding("candidate_ids", "candidates"),),
+        ),
+        mcp=_mcp("mncs_forge_compiler_tournament", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "compiler.candidates.select",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.READ_ONLY,
+        input_model=CompilerCandidateSelectInput,
+        output=OutputContract.RESULT_SET,
+        handler=_compiler_candidate_select,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="Select a compiler candidate only under an explicit protected-property policy.",
+        cli=_cli(
+            "compiler",
+            "candidate-select",
+            bindings=(
+                _binding("candidate_id"),
+                _binding("policy"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidate_select", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "compiler.candidates.inspect",
+        input_model=CompilerCandidateInspectInput,
+        output=OutputContract.RECORD,
+        handler=_compiler_candidate_inspect,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description="Inspect unresolved compiler-candidate validation obligations.",
+        cli=_cli(
+            "compiler",
+            "candidate-inspect",
+            bindings=(_binding("candidate_id"),),
+        ),
+        mcp=_mcp("mncs_forge_compiler_candidate_inspect"),
+    ),
+    _operation(
         "execution.receipts.list",
         input_model=ExecutionReceiptListInput,
         output=OutputContract.INVENTORY,
@@ -1231,6 +1728,24 @@ _OPERATIONS = (
         resources=(ResourceExposure("mncs-forge://execution/receipts"),),
     ),
     _operation(
+        "rights.license-evidence.scan",
+        input_model=NoInput,
+        output=OutputContract.RECORD,
+        handler=_license_evidence_scan,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Scan project license declarations into a rights/provenance evidence "
+            "record. Unknown states are explicit; this is not legal review."
+        ),
+        cli=_cli(
+            "license-evidence",
+            "scan",
+        ),
+        mcp=_mcp("mncs_forge_license_evidence_scan"),
+    ),
+    _operation(
         "execution.receipts.get",
         input_model=ExecutionReceiptGetInput,
         output=OutputContract.RECORD,
@@ -1246,6 +1761,97 @@ _OPERATIONS = (
             bindings=(_binding("binding_id"),),
         ),
         mcp=_mcp("mncs_forge_execution_receipts_get"),
+    ),
+    _operation(
+        "execution.assurance.assess",
+        modes=DEVELOPMENT_ONLY,
+        mutation=MutationClass.MUTATING,
+        input_model=AssuranceAssessInput,
+        output=OutputContract.RECORD,
+        handler=_execution_assurance_assess,
+        authority=AuthorityRequirement.DEVELOPMENT,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        disclosure=DisclosureClass.DEVELOPMENT_EVIDENCE,
+        description=(
+            "Assess requested execution-assurance properties for one receipt binding "
+            "fail-closed; a functional result never implies assurance."
+        ),
+        cli=_cli(
+            "assessments",
+            "request",
+            bindings=(
+                _binding("binding_id", "binding"),
+                _binding("requested_properties", "requested"),
+                _binding("policy_identity", "policy"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_execution_assurance_assess", DEVELOPMENT_ONLY),
+    ),
+    _operation(
+        "execution.assurance.list",
+        input_model=AssuranceListInput,
+        output=OutputContract.INVENTORY,
+        handler=_execution_assurance_list,
+        authority=AuthorityRequirement.LOCAL_STORAGE,
+        lifecycle=LifecycleRequirement.PROJECTION,
+        description=(
+            "List persisted execution-assurance assessments with explicit disagreement retention."
+        ),
+        cli=_cli(
+            "assessments",
+            "list",
+            bindings=(
+                _binding("binding_identity", "binding"),
+                _binding("candidate_identity", "candidate"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_execution_assurance_list"),
+        resources=(ResourceExposure("mncs-forge://execution/assessments"),),
+    ),
+    _operation(
+        "cell.documents.validate",
+        input_model=CellDocumentValidateInput,
+        output=OutputContract.DIAGNOSTIC,
+        handler=_cell_document_validate,
+        authority=AuthorityRequirement.NONE,
+        lifecycle=LifecycleRequirement.NONE,
+        disclosure=DisclosureClass.PUBLIC_METADATA,
+        description=(
+            "Validate an inline Forge Cell policy, test-bundle, or execution-record "
+            "document against its packaged schema without executing anything."
+        ),
+        cli=_cli(
+            "cell",
+            "validate",
+            bindings=(
+                _binding("kind"),
+                _binding("document", CliDecoder.JSON_OBJECT),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_cell_document_validate"),
+    ),
+    _operation(
+        "cell.execution.assess",
+        input_model=CellExecutionAssessInput,
+        output=OutputContract.RECORD,
+        handler=_cell_execution_assess,
+        authority=AuthorityRequirement.NONE,
+        lifecycle=LifecycleRequirement.NONE,
+        disclosure=DisclosureClass.PUBLIC_METADATA,
+        description=(
+            "Assess one inline Forge Cell execution record against one inline policy "
+            "fail-closed, keeping assurance separate from any test result."
+        ),
+        cli=_cli(
+            "cell",
+            "assess",
+            bindings=(
+                _binding("policy", CliDecoder.JSON_OBJECT),
+                _binding("record", CliDecoder.JSON_OBJECT),
+                _binding("expected_nonce", "nonce"),
+            ),
+        ),
+        mcp=_mcp("mncs_forge_cell_execution_assess"),
     ),
     _operation(
         "ledger.verify",

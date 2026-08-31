@@ -170,7 +170,7 @@ the entire unanchored history.
 
 ## Review limitations
 
-This is a source-, test-, and configuration-mapped local review. Joern/static analysis is
-supplemental and cannot prove absence of dynamic bypasses, host-level attacks, secrecy, or
+This is a source-, test-, and configuration-mapped local review. Static analysis is supplemental
+and cannot prove absence of dynamic bypasses, host-level attacks, secrecy, or
 independence. Executable tests are authoritative only for the behavior they cover; untested paths
 remain residual risk, not PASS. Each supported CI OS/Python row must be reported separately.

@@ -24,8 +24,9 @@ from .lifecycle import LifecycleContext
 from .support import aggregate_status
 from .workflows import DevelopmentWorkflowService
 
-RIGHTS_CONTRACT = "mncs-rights-provenance/manifest@0.1.0"
-RIGHTS_SCHEMA_VERSION = "0.1.0"
+RIGHTS_CONTRACT = "mncs-rights-provenance/manifest@0.2.0"
+RIGHTS_SCHEMA_VERSION = "0.2.0"
+SUPPORTED_MANIFEST_VERSIONS = ("0.2.0", "0.1.0")
 RIGHTS_SPEC_REPOSITORY = "https://github.com/epi13/mncs-rights-provenance"
 RIGHTS_MODES = frozenset({"observe", "advisory", "enforced"})
 
@@ -37,12 +38,31 @@ LEGAL_LIMITATIONS = [
 ]
 
 
-def _schema() -> dict[str, Any]:
-    path = files("mncs_forge.resources").joinpath("mncs-rights-manifest-0.1.schema.json")
+def _schema(schema_version: str = RIGHTS_SCHEMA_VERSION) -> dict[str, Any]:
+    if schema_version == "0.2.0":
+        resource_name = "mncs-rights-manifest-0.2.schema.json"
+    elif schema_version == "0.1.0":
+        resource_name = "mncs-rights-manifest-0.1.schema.json"
+    else:
+        raise ForgeError(
+            "RIGHTS_MANIFEST_UNSUPPORTED",
+            f"unsupported rights/provenance manifest schema_version: {schema_version}",
+        )
+    path = files("mncs_forge.resources").joinpath(resource_name)
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ForgeError("INTERNAL_SCHEMA", "packaged rights/provenance schema is invalid")
     return value
+
+
+def detect_manifest_schema_version(manifest: Mapping[str, object]) -> str:
+    declared = manifest.get("schema_version")
+    if isinstance(declared, str) and declared in SUPPORTED_MANIFEST_VERSIONS:
+        return declared
+    raise ForgeError(
+        "RIGHTS_MANIFEST_UNSUPPORTED",
+        f"unsupported rights/provenance manifest schema_version: {declared!r}",
+    )
 
 
 def _policy(config: ForgeConfig) -> tuple[str, Path | None]:
@@ -139,9 +159,10 @@ def draft_manifest(
 
     return {
         "schema_version": RIGHTS_SCHEMA_VERSION,
+        "spec_profile": "development",
         "artifact": {
             "id": candidate or f"project:{config.project_identity}",
-            "type": "source-code",
+            "class": "source-code",
             "paths": changed_paths,
         },
         "provenance": {
@@ -185,8 +206,12 @@ def _load_configured_manifest(config: ForgeConfig, path: Path) -> dict[str, obje
 
 
 def _validation_errors(manifest: Mapping[str, object]) -> list[str]:
+    try:
+        schema_version = detect_manifest_schema_version(manifest)
+    except ForgeError as exc:
+        return [f"schema_version: {exc.message}"]
     errors = sorted(
-        Draft202012Validator(_schema()).iter_errors(dict(manifest)),
+        Draft202012Validator(_schema(schema_version)).iter_errors(dict(manifest)),
         key=lambda item: [str(part) for part in item.absolute_path],
     )
     rendered: list[str] = []

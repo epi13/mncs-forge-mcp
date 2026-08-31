@@ -19,8 +19,7 @@ output overflow, or identity drift remains UNKNOWN.
 
 Capability blockers are satisfied only by a current successful probe whose returned analyses
 include the required capability and do not mark it unsupported. Declared capability without a
-current probe is not PASS. See the [provider transition](provider-transition.md) for the optional
-legacy Joern adapter profile.
+current probe is not PASS.
 
 Micro-verifiers use the same `analysis_request`/`analysis_response` framing. The declared verifier
 method must appear in the referenced provider's configured capabilities and becomes the request

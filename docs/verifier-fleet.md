@@ -116,8 +116,8 @@ explicitly and reject impossible or undeclared transitions.
 
 ### Capability- and authority-flow verifiers
 
-Likely implementation fit: Haskell, graph analysis, Datalog, SMT, Joern-backed analysis, or a
-purpose-built Rust graph verifier.
+Likely implementation fit: Haskell, graph analysis, Datalog, SMT, or a purpose-built Rust graph
+verifier.
 
 Candidate properties include:
 

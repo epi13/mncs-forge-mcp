@@ -116,6 +116,35 @@
           "namespace": "reason"
         }
       ],
+      "cell.documents.validate": [
+        {
+          "decoder": "value",
+          "input": "kind",
+          "namespace": "kind"
+        },
+        {
+          "decoder": "value",
+          "input": "document",
+          "namespace": "json-object"
+        }
+      ],
+      "cell.execution.assess": [
+        {
+          "decoder": "value",
+          "input": "policy",
+          "namespace": "json-object"
+        },
+        {
+          "decoder": "value",
+          "input": "record",
+          "namespace": "json-object"
+        },
+        {
+          "decoder": "value",
+          "input": "expected_nonce",
+          "namespace": "nonce"
+        }
+      ],
       "claims.blockers": [
         {
           "decoder": "value",
@@ -124,6 +153,127 @@
         }
       ],
       "claims.status": [],
+      "compiler.candidates.attach-validation": [
+        {
+          "decoder": "value",
+          "input": "candidate_id",
+          "namespace": "candidate_id"
+        },
+        {
+          "decoder": "value",
+          "input": "validator_identity",
+          "namespace": "validator"
+        },
+        {
+          "decoder": "value",
+          "input": "judgement",
+          "namespace": "judgement"
+        },
+        {
+          "decoder": "value",
+          "input": "claimed_relation",
+          "namespace": "relation"
+        },
+        {
+          "decoder": "json-object",
+          "input": "counterexample",
+          "namespace": "counterexample"
+        },
+        {
+          "decoder": "value",
+          "input": "limitations",
+          "namespace": "limitations"
+        },
+        {
+          "decoder": "value",
+          "input": "stale",
+          "namespace": "stale"
+        },
+        {
+          "decoder": "value",
+          "input": "expected_artifact_identity",
+          "namespace": "expected_artifact"
+        }
+      ],
+      "compiler.candidates.compare": [
+        {
+          "decoder": "value",
+          "input": "left_candidate_id",
+          "namespace": "left"
+        },
+        {
+          "decoder": "value",
+          "input": "right_candidate_id",
+          "namespace": "right"
+        }
+      ],
+      "compiler.candidates.inspect": [
+        {
+          "decoder": "value",
+          "input": "candidate_id",
+          "namespace": "candidate_id"
+        }
+      ],
+      "compiler.candidates.list": [],
+      "compiler.candidates.register": [
+        {
+          "decoder": "value",
+          "input": "baseline_artifact_identity",
+          "namespace": "baseline"
+        },
+        {
+          "decoder": "value",
+          "input": "candidate_artifact_identity",
+          "namespace": "candidate_artifact"
+        },
+        {
+          "decoder": "value",
+          "input": "generator_identity",
+          "namespace": "generator"
+        },
+        {
+          "decoder": "value",
+          "input": "declared_transformation",
+          "namespace": "transformation"
+        },
+        {
+          "decoder": "value",
+          "input": "claimed_relation",
+          "namespace": "relation"
+        },
+        {
+          "decoder": "value",
+          "input": "expected_benefit",
+          "namespace": "benefit"
+        },
+        {
+          "decoder": "value",
+          "input": "protected_properties",
+          "namespace": "protected"
+        },
+        {
+          "decoder": "value",
+          "input": "target_envelope",
+          "namespace": "target"
+        },
+        {
+          "decoder": "value",
+          "input": "required_validation",
+          "namespace": "required_validation"
+        }
+      ],
+      "compiler.candidates.select": [
+        {
+          "decoder": "value",
+          "input": "candidate_id",
+          "namespace": "candidate_id"
+        },
+        {
+          "decoder": "value",
+          "input": "policy",
+          "namespace": "policy"
+        }
+      ],
       "compiler.experiments.compare": [
         {
           "decoder": "value",
@@ -142,6 +292,28 @@
           "decoder": "json-object",
           "input": "language_record",
           "namespace": "record"
+        }
+      ],
+      "compiler.tournament.run": [
+        {
+          "decoder": "value",
+          "input": "candidate_ids",
+          "namespace": "candidates"
+        }
+      ],
+      "concept.evaluations.get": [
+        {
+          "decoder": "value",
+          "input": "evaluation_id",
+          "namespace": "id"
+        }
+      ],
+      "concept.evaluations.list": [],
+      "concept.evaluations.record": [
+        {
+          "decoder": "json-object",
+          "input": "evaluation",
+          "namespace": "evaluation"
         }
       ],
       "config.validate": [],
@@ -200,6 +372,35 @@
           "namespace": "candidate"
         }
       ],
+      "execution.assurance.assess": [
+        {
+          "decoder": "value",
+          "input": "binding_id",
+          "namespace": "binding"
+        },
+        {
+          "decoder": "value",
+          "input": "requested_properties",
+          "namespace": "requested"
+        },
+        {
+          "decoder": "value",
+          "input": "policy_identity",
+          "namespace": "policy"
+        }
+      ],
+      "execution.assurance.list": [
+        {
+          "decoder": "value",
+          "input": "binding_identity",
+          "namespace": "binding"
+        },
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate"
+        }
+      ],
       "execution.receipts.get": [
         {
           "decoder": "value",
@@ -231,6 +432,38 @@
           "namespace": "capabilities"
         }
       ],
+      "providers.learned-shadow": [
+        {
+          "decoder": "value",
+          "input": "artifact_path",
+          "namespace": "artifact"
+        },
+        {
+          "decoder": "value",
+          "input": "provider_command",
+          "namespace": "provider_command"
+        },
+        {
+          "decoder": "json-value",
+          "input": "source_records",
+          "namespace": "source_records"
+        },
+        {
+          "decoder": "json-value",
+          "input": "context_observations",
+          "namespace": "context_observations"
+        },
+        {
+          "decoder": "value",
+          "input": "lineage_identity",
+          "namespace": "lineage"
+        },
+        {
+          "decoder": "value",
+          "input": "timeout_seconds",
+          "namespace": "timeout"
+        }
+      ],
       "providers.list": [],
       "providers.probe": [
         {
@@ -239,6 +472,7 @@
           "namespace": "provider_id"
         }
       ],
+      "rights.license-evidence.scan": [],
       "verifiers.batch": [
         {
           "decoder": "value",
@@ -392,6 +626,59 @@
       ]
     },
     "commands": {
+      "assessments list": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "binding_identity",
+            "nargs": null,
+            "options": [
+              "--binding"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "candidate_identity",
+            "nargs": null,
+            "options": [
+              "--candidate"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "execution.assurance.list"
+      },
+      "assessments request": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "binding",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": [],
+            "destination": "requested",
+            "nargs": null,
+            "options": [
+              "--requested"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "policy",
+            "nargs": null,
+            "options": [
+              "--policy"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "execution.assurance.assess"
+      },
       "blockers": {
         "arguments": [
           {
@@ -579,6 +866,58 @@
         ],
         "operation_id": "candidates.select"
       },
+      "cell assess": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "policy",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "record",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "expected_nonce",
+            "nargs": null,
+            "options": [
+              "--nonce"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "cell.execution.assess"
+      },
+      "cell validate": {
+        "arguments": [
+          {
+            "choices": [
+              "policy",
+              "test-bundle",
+              "execution-record"
+            ],
+            "default": null,
+            "destination": "kind",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "document",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "cell.documents.validate"
+      },
       "check development": {
         "arguments": [
           {
@@ -599,6 +938,253 @@
           }
         ],
         "operation_id": "development.checks.run"
+      },
+      "compiler candidate-attach": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "validator",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "judgement",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "relation",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "counterexample",
+            "nargs": null,
+            "options": [
+              "--counterexample"
+            ],
+            "required": false
+          },
+          {
+            "default": [],
+            "destination": "limitations",
+            "nargs": null,
+            "options": [
+              "--limitations"
+            ],
+            "required": false
+          },
+          {
+            "const": true,
+            "default": false,
+            "destination": "stale",
+            "nargs": 0,
+            "options": [
+              "--stale"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "expected_artifact_identity",
+            "nargs": null,
+            "options": [
+              "--expected-artifact"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "compiler.candidates.attach-validation"
+      },
+      "compiler candidate-compare": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "left",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "right",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.candidates.compare"
+      },
+      "compiler candidate-inspect": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.candidates.inspect"
+      },
+      "compiler candidate-list": {
+        "arguments": [],
+        "operation_id": "compiler.candidates.list"
+      },
+      "compiler candidate-register": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "baseline",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "candidate_artifact",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "generator",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "transformation",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "relation",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "benefit",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": [],
+            "destination": "protected",
+            "nargs": null,
+            "options": [
+              "--protected"
+            ],
+            "required": false
+          },
+          {
+            "default": "unspecified",
+            "destination": "target",
+            "nargs": null,
+            "options": [
+              "--target"
+            ],
+            "required": false
+          },
+          {
+            "default": "translation-validation",
+            "destination": "required_validation",
+            "nargs": null,
+            "options": [
+              "--required-validation"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "compiler.candidates.register"
+      },
+      "compiler candidate-select": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidate_id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": "explicit-protected-property-policy",
+            "destination": "policy",
+            "nargs": null,
+            "options": [
+              "--policy"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "compiler.candidates.select"
+      },
+      "compiler compare": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "left",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "right",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.experiments.compare"
+      },
+      "compiler list": {
+        "arguments": [],
+        "operation_id": "compiler.experiments.list"
+      },
+      "compiler record": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "record",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.experiments.record"
+      },
+      "compiler tournament": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "candidates",
+            "nargs": "+",
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "compiler.tournament.run"
       },
       "compiler compare": {
         "arguments": [
@@ -696,6 +1282,34 @@
         ],
         "operation_id": "evaluation.final.run"
       },
+      "evaluations get": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "concept.evaluations.get"
+      },
+      "evaluations list": {
+        "arguments": [],
+        "operation_id": "concept.evaluations.list"
+      },
+      "evaluations record": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "evaluation",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "concept.evaluations.record"
+      },
       "explain": {
         "arguments": [
           {
@@ -748,6 +1362,10 @@
         "arguments": [],
         "operation_id": "ledger.verify"
       },
+      "license-evidence scan": {
+        "arguments": [],
+        "operation_id": "rights.license-evidence.scan"
+      },
       "operations": {
         "arguments": [],
         "operation_id": "operations.inventory"
@@ -763,6 +1381,64 @@
           }
         ],
         "operation_id": "providers.capability-blockers"
+      },
+      "providers learned-shadow": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "artifact",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "provider_command",
+            "nargs": null,
+            "options": [
+              "--provider-command"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "source_records",
+            "nargs": null,
+            "options": [
+              "--source-records"
+            ],
+            "required": true
+          },
+          {
+            "default": "[]",
+            "destination": "context_observations",
+            "nargs": null,
+            "options": [
+              "--context-observations"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "lineage",
+            "nargs": null,
+            "options": [
+              "--lineage"
+            ],
+            "required": false
+          },
+          {
+            "default": 5.0,
+            "destination": "timeout",
+            "nargs": null,
+            "options": [
+              "--timeout"
+            ],
+            "required": false,
+            "value_type": "float"
+          }
+        ],
+        "operation_id": "providers.learned-shadow"
       },
       "providers list": {
         "arguments": [],
@@ -1192,6 +1868,7 @@
       "providers",
       "required_capabilities",
       "rights_provenance",
+      "runner",
       "verifier_limits",
       "verifiers",
       "version",
@@ -1206,7 +1883,7 @@
       "version",
       "workflows"
     ],
-    "semantic_sha256": "72364b155b9f4c7d437529154f31f6185c9038a73a8716e8afa3337902bf6d57"
+    "semantic_sha256": "8b2724ebc7fd9059c5b1f789dd8d2c7cdd3982cd247208bd42ebc4cbd9977f77"
   },
   "intentional_exclusions": [
     "human-readable help and error prose",
@@ -1224,11 +1901,19 @@
         },
         {
           "mime_type": "text/plain",
+          "uri": "mncs-forge://compiler/candidates"
+        },
+        {
+          "mime_type": "text/plain",
           "uri": "mncs-forge://compiler/experiments"
         },
         {
           "mime_type": "text/plain",
           "uri": "mncs-forge://evidence/latest-summary"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://execution/assessments"
         },
         {
           "mime_type": "text/plain",
@@ -1368,6 +2053,31 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_cell_document_validate": {
+          "input_properties": [
+            "document",
+            "kind"
+          ],
+          "input_schema_sha256": "035d30d5cf0da2261cfea79ad0f786317a5cab2f363af0fc3a1fd580f3239ed3",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "document",
+            "kind"
+          ]
+        },
+        "mncs_forge_cell_execution_assess": {
+          "input_properties": [
+            "expected_nonce",
+            "policy",
+            "record"
+          ],
+          "input_schema_sha256": "33b7b52f962de3d23228a4670e94f8ab55601fdb47f869c599c5aa1be7029b9e",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "policy",
+            "record"
+          ]
+        },
         "mncs_forge_claim_blockers": {
           "input_properties": [
             "requested_claim"
@@ -1377,6 +2087,152 @@
           "required_inputs": []
         },
         "mncs_forge_claim_status": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_compiler_candidate_attach": {
+          "input_properties": [
+            "candidate_id",
+            "claimed_relation",
+            "counterexample",
+            "expected_artifact_identity",
+            "judgement",
+            "limitations",
+            "stale",
+            "validator_identity"
+          ],
+          "input_schema_sha256": "5b853f4f26311f992fbc669453fadbea761d770bcfd8438fe9b15a4c00a59ffb",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_id",
+            "claimed_relation",
+            "judgement",
+            "validator_identity"
+          ]
+        },
+        "mncs_forge_compiler_candidate_inspect": {
+          "input_properties": [
+            "candidate_id"
+          ],
+          "input_schema_sha256": "f3bd97b88ef9e7ece668b5b8b970819e255ab4a2b6f1ba219b3d820505df7472",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_id"
+          ]
+        },
+        "mncs_forge_compiler_candidate_register": {
+          "input_properties": [
+            "baseline_artifact_identity",
+            "candidate_artifact_identity",
+            "claimed_relation",
+            "declared_transformation",
+            "expected_benefit",
+            "generator_identity",
+            "protected_properties",
+            "required_validation",
+            "target_envelope"
+          ],
+          "input_schema_sha256": "9831be773080b22dea15a4efa28abb5ce058db9b61428c2d1dd57d07faef63f0",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "baseline_artifact_identity",
+            "candidate_artifact_identity",
+            "claimed_relation",
+            "declared_transformation",
+            "expected_benefit",
+            "generator_identity"
+          ]
+        },
+        "mncs_forge_compiler_candidate_select": {
+          "input_properties": [
+            "candidate_id",
+            "policy"
+          ],
+          "input_schema_sha256": "f99f91a047d854422e25630bcabac4f6b1569ef094da91189789d0d61c03286d",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_id"
+          ]
+        },
+        "mncs_forge_compiler_candidates_compare": {
+          "input_properties": [
+            "left_candidate_id",
+            "right_candidate_id"
+          ],
+          "input_schema_sha256": "c7e09c0418e638805d53b553fefef0fb2d468714fa8af3569a8deef4274c4c9c",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "left_candidate_id",
+            "right_candidate_id"
+          ]
+        },
+        "mncs_forge_compiler_candidates_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_compiler_experiment_record": {
+          "input_properties": [
+            "language_record"
+          ],
+          "input_schema_sha256": "8ccb8fdc7f85509e96e44d68878e0c993178b9fe45c463165e6716d0faba7956",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "language_record"
+          ]
+        },
+        "mncs_forge_compiler_experiments_compare": {
+          "input_properties": [
+            "left_experiment_id",
+            "right_experiment_id"
+          ],
+          "input_schema_sha256": "684bca3ccbac4c6e00d9a77c9b616b5416f0a99a7c6c038d75034ba91656c855",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "left_experiment_id",
+            "right_experiment_id"
+          ]
+        },
+        "mncs_forge_compiler_experiments_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_compiler_tournament": {
+          "input_properties": [
+            "candidate_ids"
+          ],
+          "input_schema_sha256": "1e8660ca1ffce8d19380bf176d385306d3cde866eab8efb9106b7e64213d06f6",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_ids"
+          ]
+        },
+        "mncs_forge_concept_evaluation_get": {
+          "input_properties": [
+            "evaluation_id"
+          ],
+          "input_schema_sha256": "50ed8603fc181528696da7257a755402ff4b9d7e877ba36c04113c2a69b13abc",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluation_id"
+          ]
+        },
+        "mncs_forge_concept_evaluation_record": {
+          "input_properties": [
+            "evaluation"
+          ],
+          "input_schema_sha256": "0f10f29002d91c4d19675f0a5dc47b784f68a79864622aa0d026ef1ade9405e5",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluation"
+          ]
+        },
+        "mncs_forge_concept_evaluations_list": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
@@ -1443,6 +2299,28 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_execution_assurance_assess": {
+          "input_properties": [
+            "binding_id",
+            "policy_identity",
+            "requested_properties"
+          ],
+          "input_schema_sha256": "0df5e838eea2dbde068172e2d381faf203b144586420da2cabd6b45a7010dc17",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "binding_id",
+            "requested_properties"
+          ]
+        },
+        "mncs_forge_execution_assurance_list": {
+          "input_properties": [
+            "binding_identity",
+            "candidate_identity"
+          ],
+          "input_schema_sha256": "dc41ed401af367abd76a817d9cfe5c8d9d8114222e63208247690eb5a2787d58",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_execution_receipts_get": {
           "input_properties": [
             "binding_id"
@@ -1467,6 +2345,29 @@
             "output_identity"
           ],
           "input_schema_sha256": "4e50bc85b5dd365d75059ec3792f53d04f3188784f653dde48f1c01397a75cc9",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_learned_specialist_shadow": {
+          "input_properties": [
+            "artifact_path",
+            "context_observations",
+            "lineage_identity",
+            "provider_command",
+            "source_records",
+            "timeout_seconds"
+          ],
+          "input_schema_sha256": "0720dd246b2348acbbcf3b9bf5edbfcfa2ee740949ad9366e1b0b71fca3d2f0c",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "artifact_path",
+            "provider_command",
+            "source_records"
+          ]
+        },
+        "mncs_forge_license_evidence_scan": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
@@ -1587,11 +2488,19 @@
         },
         {
           "mime_type": "text/plain",
+          "uri": "mncs-forge://compiler/candidates"
+        },
+        {
+          "mime_type": "text/plain",
           "uri": "mncs-forge://compiler/experiments"
         },
         {
           "mime_type": "text/plain",
           "uri": "mncs-forge://evidence/latest-summary"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://execution/assessments"
         },
         {
           "mime_type": "text/plain",
@@ -1731,6 +2640,31 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_cell_document_validate": {
+          "input_properties": [
+            "document",
+            "kind"
+          ],
+          "input_schema_sha256": "035d30d5cf0da2261cfea79ad0f786317a5cab2f363af0fc3a1fd580f3239ed3",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "document",
+            "kind"
+          ]
+        },
+        "mncs_forge_cell_execution_assess": {
+          "input_properties": [
+            "expected_nonce",
+            "policy",
+            "record"
+          ],
+          "input_schema_sha256": "33b7b52f962de3d23228a4670e94f8ab55601fdb47f869c599c5aa1be7029b9e",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "policy",
+            "record"
+          ]
+        },
         "mncs_forge_claim_blockers": {
           "input_properties": [
             "requested_claim"
@@ -1740,6 +2674,34 @@
           "required_inputs": []
         },
         "mncs_forge_claim_status": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_compiler_candidate_inspect": {
+          "input_properties": [
+            "candidate_id"
+          ],
+          "input_schema_sha256": "f3bd97b88ef9e7ece668b5b8b970819e255ab4a2b6f1ba219b3d820505df7472",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "candidate_id"
+          ]
+        },
+        "mncs_forge_compiler_candidates_compare": {
+          "input_properties": [
+            "left_candidate_id",
+            "right_candidate_id"
+          ],
+          "input_schema_sha256": "c7e09c0418e638805d53b553fefef0fb2d468714fa8af3569a8deef4274c4c9c",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "left_candidate_id",
+            "right_candidate_id"
+          ]
+        },
+        "mncs_forge_compiler_candidates_list": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
@@ -1758,6 +2720,22 @@
           ]
         },
         "mncs_forge_compiler_experiments_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_concept_evaluation_get": {
+          "input_properties": [
+            "evaluation_id"
+          ],
+          "input_schema_sha256": "50ed8603fc181528696da7257a755402ff4b9d7e877ba36c04113c2a69b13abc",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluation_id"
+          ]
+        },
+        "mncs_forge_concept_evaluations_list": {
           "input_properties": [],
           "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
@@ -1793,6 +2771,15 @@
             "candidate_identity"
           ],
           "input_schema_sha256": "7e41882a711ff8da421f6acfc984dd65e65bbf269740f4d28df564d4e5cd301b",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_execution_assurance_list": {
+          "input_properties": [
+            "binding_identity",
+            "candidate_identity"
+          ],
+          "input_schema_sha256": "dc41ed401af367abd76a817d9cfe5c8d9d8114222e63208247690eb5a2787d58",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
@@ -1832,6 +2819,29 @@
           "required_inputs": [
             "workflow_names"
           ]
+        },
+        "mncs_forge_learned_specialist_shadow": {
+          "input_properties": [
+            "artifact_path",
+            "context_observations",
+            "lineage_identity",
+            "provider_command",
+            "source_records",
+            "timeout_seconds"
+          ],
+          "input_schema_sha256": "0720dd246b2348acbbcf3b9bf5edbfcfa2ee740949ad9366e1b0b71fca3d2f0c",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "artifact_path",
+            "provider_command",
+            "source_records"
+          ]
+        },
+        "mncs_forge_license_evidence_scan": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
         },
         "mncs_forge_project_inspect": {
           "input_properties": [],
@@ -1952,17 +2962,31 @@
       "candidates.register",
       "candidates.reject",
       "candidates.select",
+      "cell.documents.validate",
+      "cell.execution.assess",
       "claims.blockers",
       "claims.status",
+      "compiler.candidates.attach-validation",
+      "compiler.candidates.compare",
+      "compiler.candidates.inspect",
+      "compiler.candidates.list",
+      "compiler.candidates.register",
+      "compiler.candidates.select",
       "compiler.experiments.compare",
       "compiler.experiments.list",
       "compiler.experiments.record",
+      "compiler.tournament.run",
+      "concept.evaluations.get",
+      "concept.evaluations.list",
+      "concept.evaluations.record",
       "config.validate",
       "development.checks.run",
       "development.failure.explain",
       "epochs.begin",
       "evaluation.final.run",
       "evidence.reconcile",
+      "execution.assurance.assess",
+      "execution.assurance.list",
       "execution.receipts.get",
       "execution.receipts.list",
       "ledger.verify",
@@ -1971,8 +2995,10 @@
       "project.doctor",
       "project.inspect",
       "providers.capability-blockers",
+      "providers.learned-shadow",
       "providers.list",
       "providers.probe",
+      "rights.license-evidence.scan",
       "verifiers.batch",
       "verifiers.describe",
       "verifiers.explain",
@@ -1981,7 +3007,7 @@
       "verifiers.run"
     ],
     "schema_version": "1",
-    "semantic_sha256": "d262e5241b81ed330e8bf0bdfa83c51854575f18930ca04753da535e436a3438"
+    "semantic_sha256": "2df90ea4221ca5927ca788e12c17b5c1890a56d68c9e85d78e0f3c790e0a956e"
   },
   "packaging": {
     "dependencies": [
@@ -2009,21 +3035,37 @@
       "candidate_refresh": "(self, *, hypothesis: 'str', generator_identity: 'str', generator_config_identity: 'str', changed_files: 'list[str] | None' = None) -> 'dict[str, object]'",
       "candidate_register": "(self, *, changed_files: 'list[str]', hypothesis: 'str', generator_identity: 'str', generator_config_identity: 'str', parent_candidate: 'str | None' = None, expected_identity: 'str | None' = None) -> 'dict[str, object]'",
       "capability_blockers": "(self, required_capabilities: 'list[str] | None' = None) -> 'dict[str, object]'",
+      "cell_document_validate": "(self, kind: 'str', document: 'Mapping[str, object]') -> 'dict[str, object]'",
+      "cell_execution_assess": "(self, policy: 'Mapping[str, object]', record: 'Mapping[str, object]', expected_nonce: 'str | None' = None) -> 'dict[str, object]'",
       "claim_blockers": "(self, requested_claim: 'str') -> 'dict[str, object]'",
       "claim_status": "(self) -> 'dict[str, object]'",
+      "compiler_candidate_attach_validation": "(self, candidate_id: 'str', *, validator_identity: 'str', judgement: 'str', claimed_relation: 'str', counterexample: 'dict[str, object] | None' = None, limitations: 'list[str] | None' = None, stale: 'bool' = False, expected_artifact_identity: 'str | None' = None) -> 'dict[str, object]'",
+      "compiler_candidate_inspect": "(self, candidate_id: 'str') -> 'dict[str, object]'",
+      "compiler_candidate_register": "(self, *, baseline_artifact_identity: 'str', candidate_artifact_identity: 'str', generator_identity: 'str', declared_transformation: 'str', claimed_relation: 'str', expected_benefit: 'str', protected_properties: 'list[str] | None' = None, target_envelope: 'str' = 'unspecified', required_validation: 'str' = 'translation-validation') -> 'dict[str, object]'",
+      "compiler_candidate_select": "(self, candidate_id: 'str', policy: 'str') -> 'dict[str, object]'",
+      "compiler_candidates_compare": "(self, left_candidate_id: 'str', right_candidate_id: 'str') -> 'dict[str, object]'",
+      "compiler_candidates_list": "(self) -> 'dict[str, object]'",
       "compiler_experiment_record": "(self, language_record: 'Mapping[str, object]') -> 'dict[str, object]'",
       "compiler_experiments_compare": "(self, left_experiment_id: 'str', right_experiment_id: 'str') -> 'dict[str, object]'",
       "compiler_experiments_list": "(self) -> 'dict[str, object]'",
+      "compiler_tournament": "(self, candidate_ids: 'list[str]') -> 'dict[str, object]'",
+      "concept_evaluation_get": "(self, evaluation_id: 'str') -> 'dict[str, object]'",
+      "concept_evaluation_record": "(self, evaluation: 'Mapping[str, object]') -> 'dict[str, object]'",
+      "concept_evaluations_list": "(self) -> 'dict[str, object]'",
       "config_validate": "(self) -> 'dict[str, object]'",
       "development_checks_run": "(self, workflow_names: 'list[str]', candidate_id: 'str | None' = None) -> 'dict[str, object]'",
       "doctor": "(self) -> 'dict[str, object]'",
       "epoch_begin": "(self, *, generator_identity: 'str', evaluator_identity: 'str', parent_epoch: 'str | None' = None, authority_overlap: 'list[str] | None' = None) -> 'dict[str, object]'",
       "evidence_reconcile": "(self, candidate_id: 'str | None' = None) -> 'dict[str, object]'",
+      "execution_assurance_assess": "(self, *, binding_id: 'str', requested_properties: 'list[str]', policy_identity: 'str | None' = None) -> 'dict[str, object]'",
+      "execution_assurance_list": "(self, binding_identity: 'str | None' = None, candidate_identity: 'str | None' = None) -> 'dict[str, object]'",
       "execution_receipts_get": "(self, binding_id: 'str') -> 'dict[str, object]'",
       "execution_receipts_list": "(self, candidate_identity: 'str | None' = None, action_identity: 'str | None' = None) -> 'dict[str, object]'",
       "failure_explain": "(self, output_identity: 'str | None' = None) -> 'dict[str, object]'",
       "final_evaluation_run": "(self, workflow_names: 'list[str]') -> 'dict[str, object]'",
+      "learned_specialist_shadow": "(self, artifact_path: 'str', provider_command: 'list[str]', source_records: 'list[dict[str, object]]', *, context_observations: 'list[dict[str, object]] | None' = None, lineage_identity: 'str | None' = None, timeout_seconds: 'float' = 5.0) -> 'dict[str, object]'",
       "ledger_verify": "(self) -> 'dict[str, object]'",
+      "license_evidence_scan": "(self) -> 'dict[str, object]'",
       "project_inspect": "(self) -> 'dict[str, object]'",
       "provider_list": "(self) -> 'dict[str, object]'",
       "provider_probe": "(self, provider_id: 'str') -> 'dict[str, object]'",
@@ -2147,6 +3189,57 @@
           "selection_rule"
         ]
       },
+      "compiler_candidate": {
+        "properties": [
+          "assurance_status",
+          "baseline_artifact_identity",
+          "benchmark_observation",
+          "candidate_artifact_identity",
+          "candidate_id",
+          "claimed_relation",
+          "conformance_status",
+          "declared_transformation",
+          "expected_benefit",
+          "extensions",
+          "generator_certified",
+          "generator_identity",
+          "interpretation",
+          "isolated",
+          "policy_disposition",
+          "protected_properties",
+          "record_type",
+          "recorded_at",
+          "required_validation",
+          "schema_version",
+          "semantic_status",
+          "target_envelope",
+          "validation"
+        ],
+        "required": [
+          "assurance_status",
+          "baseline_artifact_identity",
+          "benchmark_observation",
+          "candidate_artifact_identity",
+          "candidate_id",
+          "claimed_relation",
+          "conformance_status",
+          "declared_transformation",
+          "expected_benefit",
+          "generator_certified",
+          "generator_identity",
+          "interpretation",
+          "isolated",
+          "policy_disposition",
+          "protected_properties",
+          "record_type",
+          "recorded_at",
+          "required_validation",
+          "schema_version",
+          "semantic_status",
+          "target_envelope",
+          "validation"
+        ]
+      },
       "compiler_experiment": {
         "properties": [
           "assurance_status",
@@ -2184,6 +3277,63 @@
           "schema_version"
         ]
       },
+      "concept_evaluation": {
+        "properties": [
+          "assurance_status",
+          "backend_identity",
+          "candidate_identity",
+          "compiler_identity",
+          "concept_experiment_id",
+          "conformance_status",
+          "content_digest",
+          "evaluation_id",
+          "evaluation_material",
+          "evaluator_policy_identity",
+          "evidence_identities",
+          "execution_identities",
+          "extensions",
+          "generator_certified",
+          "generator_identity",
+          "interpretation",
+          "language_profile",
+          "obligation",
+          "record_type",
+          "recorded_at",
+          "schema_version",
+          "stable_id",
+          "status",
+          "unresolved_obligations",
+          "verifier_identity",
+          "verifier_version"
+        ],
+        "required": [
+          "assurance_status",
+          "backend_identity",
+          "candidate_identity",
+          "compiler_identity",
+          "concept_experiment_id",
+          "conformance_status",
+          "content_digest",
+          "evaluation_id",
+          "evaluation_material",
+          "evaluator_policy_identity",
+          "evidence_identities",
+          "execution_identities",
+          "generator_certified",
+          "generator_identity",
+          "interpretation",
+          "language_profile",
+          "obligation",
+          "record_type",
+          "recorded_at",
+          "schema_version",
+          "stable_id",
+          "status",
+          "unresolved_obligations",
+          "verifier_identity",
+          "verifier_version"
+        ]
+      },
       "epoch": {
         "properties": [
           "authority_identities",
@@ -2215,6 +3365,41 @@
           "record_type",
           "schema_version",
           "visible_partition_identities"
+        ]
+      },
+      "execution_assurance": {
+        "properties": [
+          "action_identity",
+          "action_kind",
+          "assessed_at",
+          "assessment_id",
+          "assurance_status",
+          "binding_identity",
+          "candidate_identity",
+          "extensions",
+          "policy_identity",
+          "project_identity",
+          "reasons",
+          "record_type",
+          "requested_properties",
+          "schema_version",
+          "unmet_properties"
+        ],
+        "required": [
+          "action_identity",
+          "action_kind",
+          "assessed_at",
+          "assessment_id",
+          "assurance_status",
+          "binding_identity",
+          "candidate_identity",
+          "policy_identity",
+          "project_identity",
+          "reasons",
+          "record_type",
+          "requested_properties",
+          "schema_version",
+          "unmet_properties"
         ]
       },
       "execution_receipt_binding": {
@@ -2698,7 +3883,7 @@
     },
     "root_properties": [],
     "root_required": [],
-    "semantic_sha256": "c95b1ffaf22aa3e84f31c5dec26ea1b48cc331549898c6399d4208a6f4cb51f7"
+    "semantic_sha256": "8cf9911159be91755afb2abe864c33473d22d4e9996094a1a32848df49c32a99"
   },
   "snapshot_schema": "1"
 }
