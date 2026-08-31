@@ -631,6 +631,26 @@ reads a copied historical state corpus without mutating the frozen fixtures. Ben
 is operator-controlled development telemetry: it reports environment differences and metric deltas
 but has no repository performance threshold and does not establish correctness or assurance.
 
+Run the package artifact verification locally with:
+
+```bash
+python scripts/verify-package.py
+```
+
+Capture and compare benchmark telemetry explicitly when investigating a change:
+
+```bash
+python scripts/benchmark-micro-verifiers.py --iterations 25 > baseline.json
+python scripts/benchmark-micro-verifiers.py --iterations 25 > candidate.json
+python scripts/compare-benchmarks.py baseline.json candidate.json
+```
+
+The artifact verifier builds and installs the wheel and source distribution in temporary virtual
+environments, checks import origin and packaged resources, exercises public entry points, and
+reads a copied historical state corpus without mutating the frozen fixtures. Benchmark comparison
+is operator-controlled development telemetry: it reports environment differences and metric deltas
+but has no repository performance threshold and does not establish correctness or assurance.
+
 ### Objective
 
 Create a release gate for dependable local operation rather than adding another feature wave.
