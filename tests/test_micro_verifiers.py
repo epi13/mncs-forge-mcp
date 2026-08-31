@@ -260,10 +260,15 @@ def test_action_result_records_and_identities_are_immutable(config: ForgeConfig)
         dependency_slice_identities=None,
     )
     entries = forge.ledger.records()
-    assert [entry["kind"] for entry in entries[-2:]] == [
+    assert [entry["kind"] for entry in entries[-3:]] == [
         "verifier_action",
+        "execution_receipt_binding",
         "verifier_result",
     ]
+    binding = entries[-2]["payload"]
+    assert binding["action_kind"] == "verifier_action"
+    assert binding["action_identity"] == entries[-3]["payload"]["action_id"]
+    assert binding["status"] == "UNKNOWN"
     payload = entries[-1]["payload"]
     assert payload["candidate_identity"] == candidate["candidate_id"]
     assert payload["verifier_identity"].startswith("forge-json-sha256-v1:")

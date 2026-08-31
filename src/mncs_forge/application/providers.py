@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import importlib.util
+import os
 from pathlib import Path
 
 from ..config import ForgeConfig, Provider
 from ..errors import ForgeError
 from ..execution import parse_provider_capabilities
-from ..ports import CommandExecutor, ProjectObserver, RecordCommitter, RecordReader
+from ..ports import ProjectObserver, RecordCommitter, RecordReader, Runner
 from ..records import ForgeRecord, RecordType, new_record
 from ..serialization import canonical_bytes, local_json_identity
 from .support import aggregate_status, now, redact
@@ -21,7 +23,7 @@ class ProviderService:
         mode: str,
         records: RecordReader,
         record_store: RecordCommitter,
-        executor: CommandExecutor,
+        executor: Runner,
         observer: ProjectObserver,
     ) -> None:
         self.config = config
@@ -61,6 +63,20 @@ class ProviderService:
             "expected_executable_identity": provider.executable_identity,
             "descriptor": provider.descriptor,
         }
+
+    @staticmethod
+    def _package_importable(name: str, environment: dict[str, str]) -> bool:
+        pythonpath = environment.get("PYTHONPATH", "")
+        for root in pythonpath.split(os.pathsep):
+            if not root:
+                continue
+            package = Path(root) / name
+            if (package / "__init__.py").is_file() or package.with_suffix(".py").is_file():
+                return True
+        try:
+            return importlib.util.find_spec(name) is not None
+        except (ImportError, ModuleNotFoundError, ValueError):
+            return False
 
     def _inventory_item(self, provider: Provider) -> dict[str, object]:
         item = self._declared_model(provider)
@@ -154,6 +170,29 @@ class ProviderService:
                 ).split(":", 1)[1][:24],
                 "extensions": {},
             }
+            runtime_modules = [
+                {
+                    "declared": declared,
+                    "path": str(path),
+                    "identity": identity,
+                    "mechanism": "mncs-forge.family-module-roots.v0.1",
+                }
+                for declared, (path, identity) in zip(
+                    provider.module_roots,
+                    self.config.resolved_module_roots(provider),
+                    strict=True,
+                )
+            ]
+            missing_packages = [
+                name
+                for name in provider.python_packages
+                if not self._package_importable(name, self.config.provider_environment(provider))
+            ]
+            if missing_packages:
+                raise ForgeError(
+                    "PROVIDER_RUNTIME_UNAVAILABLE",
+                    "provider python_packages are not importable: " + ", ".join(missing_packages),
+                )
             with self.observer.provider_workspace() as workspace:
                 execution = self.executor.execute(
                     [str(executable), *provider.command[1:]],
@@ -208,6 +247,14 @@ class ProviderService:
                 "provider_identity": response_identity,
                 "executable": str(executable),
                 "executable_identity": executable_identity,
+                "extensions": {
+                    **extensions,
+                    "mncs_forge": {
+                        **dict(extensions.get("mncs_forge") or {}),
+                        "family_module_roots": runtime_modules,
+                        "python_packages": list(provider.python_packages),
+                    },
+                },
                 "probed_capabilities": list(response["analyses"]),
                 "supported_constructs": list(
                     extensions.get("supported_constructs", provider.supported_constructs)

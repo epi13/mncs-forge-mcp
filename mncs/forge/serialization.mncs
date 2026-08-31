@@ -1,0 +1,79 @@
+mncs 0.10;
+
+// MNCS-native Forge canonical record material.
+//
+// The output is a fixed, deterministic byte sequence. It is deliberately a
+// materialization boundary rather than a cryptographic claim: the explicit
+// host adapter hashes these bytes with SHA-256 and passes the resulting
+// Digest32 back to the MNCS validation function.
+module mncs.forge.serialization.v1;
+
+use mncs.core.identity as idlib;
+use mncs.core.status as statlib;
+use mncs.std.encoding as enclib;
+
+record CandidateMaterial {
+    kind: byte,
+    schema: byte,
+    status: statlib.Status,
+    parent: idlib.Digest32,
+    source: idlib.Digest32,
+    changed_files: [byte; 4]
+}
+
+// Profile 0.10 exact sequences are bounded to 64 elements. The canonical
+// material is 71 bytes, so it crosses the source ABI as fixed chunks rather
+// than as an oversized sequence. The host adapter concatenates these fields in
+// this declared order before hashing; no map iteration or implicit padding is
+// involved.
+record CanonicalMaterial {
+    header: [byte; 3],
+    parent: [byte; 32],
+    source: [byte; 32],
+    changed_files: [byte; 4]
+}
+
+fn status_code(value: statlib.Status) -> (result: byte) {
+    return match value {
+        PASS => 1,
+        FAIL => 2,
+        UNKNOWN => 3,
+    };
+}
+
+fn make_candidate_material(
+    parent: idlib.Digest32,
+    source: idlib.Digest32,
+    status: statlib.Status,
+    changed_files: [byte; 4]
+) -> (result: CandidateMaterial) {
+    return CandidateMaterial {
+        kind: 67,
+        schema: 1,
+        status: status,
+        parent: parent,
+        source: source,
+        changed_files: changed_files
+    };
+}
+
+// Canonical order is the schema order above, not source or host map order:
+// kind, schema, status, parent digest, source digest, changed-file window.
+fn encode_candidate_material(value: CandidateMaterial) -> (result: CanonicalMaterial) {
+    let parent: [byte; 32] = value.parent.bytes;
+    let source: [byte; 32] = value.source.bytes;
+    let changed: [byte; 4] = value.changed_files;
+    let header: [byte; 3] = [value.kind, value.schema, status_code(value.status)];
+    return CanonicalMaterial {
+        header: header,
+        parent: parent,
+        source: source,
+        changed_files: changed
+    };
+}
+
+// A versioned u32 encoding is part of the shared standard library contract;
+// keep one small witness here so the Forge consumer exercises that import.
+fn encode_material_length() -> (result: [byte; 4]) {
+    return enclib.encode_u32(71);
+}

@@ -14,6 +14,19 @@ limitations, executable identity, and the last explicit probe. A recognized capa
 response can satisfy discovery policy; it is not structural-analysis or conformance PASS.
 Missing capability remains UNKNOWN.
 
+## MNCS-native migration boundary
+
+The repository contains an incremental MNCS-native Forge source spine under
+`mncs/forge/`. It owns the first bounded identity, canonical-material,
+typed-record, and lifecycle seams, while `src/mncs_forge/` remains the Python
+compatibility shell. `NativeForgeAdapter` invokes the language-owned CLI through
+Forge’s existing bounded runner and returns its structured observation. Host-side
+SHA-256 is explicit and limited to material declared by the MNCS module; no
+cryptographic authority is implied by the source helper. The migration is
+deliberately additive: native availability, backend support, and response validity
+are all independently observable, and missing or unsupported capabilities remain
+`UNKNOWN` rather than being treated as success.
+
 ## Control-plane composition
 
 `Forge` is the stable compatibility and composition facade used by both existing interfaces. It
@@ -26,7 +39,7 @@ CLI / MCP
     -> Forge compatibility facade
     -> project | provider | candidate | workflow | evaluation | evidence | recovery services
     -> typed records and ForgeStateMachine
-    -> RecordReader | RecordCommitter | CommandExecutor | ProjectObserver ports
+    -> RecordReader | RecordCommitter | Runner | ProjectObserver ports
     -> local ledger/store/process/filesystem adapters
 ```
 
@@ -56,21 +69,32 @@ Forge extensions attach at explicit inward-facing boundaries:
 | Micro-verifier | typed verifier declaration over a declared provider method | a whole-program proof, result cache, or normative validator |
 | Application service | focused service with typed ports and shared composition-root dependencies | a replacement lifecycle policy or interface adapter |
 | Storage | `RecordReader`/`RecordCommitter` ports implemented by `LocalRecordStore` | external anchoring, custody, witnessing, or remote storage |
-| Execution | current `CommandExecutor` port and local adapter | runner receipts, sandbox assurance, containers, SSH, or attestation |
+| Execution | typed `Runner` port, `LocalProcessRunner`, identity-bound receipt bindings, and Fabric adapter seam | sandbox assurance, containers, Fabric scheduling, or attestation |
 | Public operation | frozen definition in `operations.py` with CLI/MCP/resource metadata | lifecycle authorization, which remains in `ForgeStateMachine` |
 
 The operation registry is the public dispatch extension point; application services are the
 behavior extension point; ports are the adapter substitution points. New providers or verifiers
-must remain declared and capability-bound. A future Task 7 runner may replace the local execution
-adapter only after it records the properties needed for any stronger assurance claim. See
+must remain declared and capability-bound. Future Task 7 adapters may join the runner boundary
+only after they record the properties needed for any stronger assurance claim. See
 [Provider Protocol integration](provider-protocol.md), [Machine-native micro-verifiers](micro-verifiers.md),
 [Transactional local storage](storage.md), and [Canonical Forge operation registry](operation-registry.md)
 for the detailed contracts.
 
-`CommandExecutor` is dependency inversion over the existing bounded local process behavior only.
-It does not add runner receipts, sandbox assurance, containers, SSH, mount/network policy, or
-attestation; those remain Task 7. Likewise, project observation centralizes existing filesystem
-identity and workspace behavior without changing identity algorithms or authority semantics.
+`Runner` is dependency inversion over bounded execution. The `LocalProcessRunner` adapter preserves
+argument-array, no-shell, explicit cwd/environment, stdin, output, timeout, return-code, and
+platform-specific termination behavior. `Runner.run()` returns one `ExecutionSession` with retained
+bytes and raw observation facts. Capability inspection reports local process facts and enforced
+bounds while marking sandbox, network, and filesystem isolation as `not-provided`.
+
+Task 7B-2 persists an identity-bound `execution_receipt_binding` after declared workflow
+execution. The binding links Forge action, project, epoch, candidate, result, runner, and
+environment identities to an optional upstream MNCS `mncs-execution-receipt` envelope. Incomplete
+observations remain explicit `UNKNOWN` and cannot become evidence `PASS`. The envelope is a
+referenced companion, not a forked Forge schema. A Fabric-backed runner is supported only as a
+translation adapter over the same observation boundary; Forge does not import Fabric or own fleet
+scheduling. See [ADR 0011](adr/0011-forge-fabric-execution-boundary.md). `CommandExecutor` and
+`LocalCommandExecutor` remain compatibility aliases. Podman, Docker, and stronger isolation
+remain later Task 7 work.
 
 Development mode can see declared contracts, references, and development evidence, register
 candidates, run declared development workflows, compare candidates under the configured policy,

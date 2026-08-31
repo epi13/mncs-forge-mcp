@@ -221,6 +221,59 @@ def test_self_parent_and_historical_cycle_are_rejected_or_ambiguous(
     assert any(item["code"] == "CANDIDATE_LINEAGE_CONFLICT" for item in inspected["limitations"])
 
 
+def test_candidate_refresh_is_noop_when_current(config: ForgeConfig) -> None:
+    forge = Forge(config)
+    begin(forge)
+    candidate = register(forge)
+    refreshed = forge.candidate_refresh(
+        hypothesis="no content change",
+        generator_identity="generator-v1",
+        generator_config_identity="generator-config-v1",
+        changed_files=["candidate/main.py"],
+    )
+    assert refreshed["refreshed"] is False
+    assert refreshed["candidate_identity"] == candidate["candidate_id"]
+    assert refreshed["previous_candidate_identity"] == candidate["candidate_id"]
+
+
+def test_candidate_refresh_after_modification_preserves_prior_evidence(
+    config: ForgeConfig, project: Path
+) -> None:
+    forge = Forge(config)
+    begin(forge)
+    first = register(forge)
+    first_result = forge.development_checks_run(["pass-check"], str(first["candidate_id"]))
+    assert first_result["candidate_identity"] == first["candidate_id"]
+    (project / "candidate/main.py").write_text("VALUE = 2\n", encoding="utf-8")
+    assert_code(
+        "STALE_CANDIDATE",
+        lambda: forge.development_checks_run(["pass-check"], str(first["candidate_id"])),
+    )
+    refreshed = forge.candidate_refresh(
+        hypothesis="value changed after baseline",
+        generator_identity="generator-v1",
+        generator_config_identity="generator-config-v1",
+        changed_files=["candidate/main.py"],
+    )
+    assert refreshed["refreshed"] is True
+    assert refreshed["previous_candidate_identity"] == first["candidate_id"]
+    assert refreshed["candidate_identity"] != first["candidate_id"]
+    second = forge.development_checks_run(["pass-check"], str(refreshed["candidate_identity"]))
+    assert second["candidate_identity"] == refreshed["candidate_identity"]
+    inspected = forge.state_inspect()
+    assert inspected["candidate"]["identity"] == refreshed["candidate_identity"]
+    assert inspected["candidate"]["freshness"] == "CURRENT"
+    assert first["candidate_id"] in inspected["candidate"]["lineage"]
+    prior_results = [
+        entry.payload
+        for entry in forge.ledger.records()
+        if entry.payload.get("candidate_identity") == first["candidate_id"]
+        and entry.payload.get("workflow") == "pass-check"
+    ]
+    assert prior_results
+    assert all(item.get("candidate_identity") == first["candidate_id"] for item in prior_results)
+
+
 def test_stale_candidate_cannot_continue_as_current(config: ForgeConfig, project: Path) -> None:
     forge = Forge(config)
     begin(forge)

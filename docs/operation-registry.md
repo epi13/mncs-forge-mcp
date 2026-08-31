@@ -45,6 +45,8 @@ Intentional asymmetries are explicit:
 - final evaluation remains a CLI command whose development invocation fails closed and an MCP
   tool registered only in evaluator mode.
 
+Compiler evolution adds one explicit asymmetry: `compiler.experiments.record` is a development-only mutation, while `compiler.experiments.list` and `compiler.experiments.compare` are read-only local-storage projections available in both server modes. The list operation owns the `mncs-forge://compiler/experiments` resource projection.
+
 ## Machine-readable inventory
 
 Run:
@@ -58,6 +60,9 @@ IDs, modes, mutation class, input/output model identifiers, authority/lifecycle 
 disclosure, CLI command paths, MCP tool names and visibility, resource projections, and reasons
 for intentional exclusions. It excludes Python callables, object representations, memory
 addresses, environment values, and descriptive wording from compatibility-sensitive metadata.
+
+The `0.1.0b1` semantic digest also omits the exact explanatory text for an interface exclusion;
+tests require every asymmetry to remain explicitly documented, but do not freeze that prose.
 
 The registry changes dispatch consistency only. It does not add evidence authority, execution
 assurance, isolation, independent custody, witnessing, certification, promotion, or normative

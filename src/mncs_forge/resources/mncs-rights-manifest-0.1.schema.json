@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mncs.dev/schemas/rights-provenance/v0.1.0/manifest.schema.json",
+  "title": "MNCS Rights & Provenance Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact", "provenance", "rights", "review"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {"enum": ["source-code", "documentation", "dataset", "model-weights", "configuration", "experiment-output", "receipt", "binary", "other"]},
+        "repository": {"type": "string"},
+        "commit": {"type": "string"},
+        "paths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin_classification", "participants", "process_evidence"],
+      "properties": {
+        "origin_classification": {"enum": ["human-authored", "human-ai-assisted", "human-directed-machine-generated", "autonomous-machine-generated", "mixed-machine-origin", "third-party-derived", "generated-from-licensed-source", "generated-from-public-domain-source", "origin-uncertain"]},
+        "participants": {"type": "array", "items": {"$ref": "#/$defs/participant"}},
+        "process_evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+        "notes": {"type": "string"}
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution_license", "copyright_status", "rights_basis", "third_party_material", "sources"],
+      "properties": {
+        "distribution_license": {"type": "string", "minLength": 1},
+        "copyright_status": {"enum": ["human-authorship-confirmed", "human-authorship-material", "mixed-or-undetermined", "machine-originated-unresolved", "third-party-licensed", "public-domain-asserted", "unresolved"]},
+        "rights_basis": {"enum": ["project-owned-or-controlled", "contributor-attested", "third-party-license", "public-domain-basis", "no-exclusive-right-asserted", "unknown-needs-review"]},
+        "third_party_material": {"enum": ["none-known", "present", "possible", "unknown"]},
+        "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+        "notes": {"type": "string"}
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["technical_validation", "provenance_validation", "human_acceptance"],
+      "properties": {
+        "technical_validation": {"enum": ["passed", "failed", "not-run", "not-applicable"]},
+        "provenance_validation": {"enum": ["passed", "failed", "incomplete", "not-run"]},
+        "human_acceptance": {"enum": ["accepted", "rejected", "not-reviewed", "not-required"]},
+        "reviewer": {"type": "string"},
+        "notes": {"type": "string"}
+      }
+    }
+  },
+  "$defs": {
+    "participant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "role"],
+      "properties": {
+        "type": {"enum": ["human", "model", "agent", "tool", "organization", "unknown"]},
+        "role": {"type": "string", "minLength": 1},
+        "name": {"type": "string"},
+        "model": {"type": "string"},
+        "provider": {"type": "string"},
+        "runtime": {"type": "string"},
+        "digest": {"type": "string"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference"],
+      "properties": {
+        "kind": {"enum": ["fabric-receipt", "prompt", "tool-log", "validation-receipt", "commit", "external-record", "other"]},
+        "reference": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference", "license_status"],
+      "properties": {
+        "kind": {"enum": ["repository", "file", "dataset", "model", "documentation", "conversation", "other"]},
+        "reference": {"type": "string", "minLength": 1},
+        "license_status": {"enum": ["compatible", "incompatible", "unknown", "not-applicable"]},
+        "license": {"type": "string"},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}
