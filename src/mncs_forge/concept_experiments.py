@@ -10,6 +10,7 @@ from typing import Any
 from .errors import ForgeError
 
 CONCEPT_EVALUATION_SCHEMA = "mncs-forge.concept-evaluation.v0.1"
+CONCEPT_EVALUATION_INTERPRETATION = "bounded_forge_evaluation_not_mncs_conformance"
 
 
 def _text(value: object, field: str, maximum: int = 4096) -> str:
@@ -86,3 +87,70 @@ def build_concept_evaluation(
         "stable_id": f"mncs-forge://evaluation/{content_digest[7:]}",
         "content_digest": content_digest,
     }
+
+
+def verify_concept_evaluation(evaluation: Mapping[str, Any]) -> dict[str, Any]:
+    """Re-derive a built evaluation's identity; reject any tampering.
+
+    Returns the normalized material (the evaluation without its derived
+    ``stable_id``/``content_digest`` fields).  The digest and stable id are
+    recomputed from that material so persisted copies cannot drift.
+    """
+
+    if not isinstance(evaluation, Mapping):
+        raise ForgeError("CONCEPT_EVALUATION_INVALID", "evaluation must be an object")
+    if evaluation.get("schema_version") != CONCEPT_EVALUATION_SCHEMA:
+        raise ForgeError("CONCEPT_EVALUATION_INVALID", "unsupported evaluation schema version")
+    unknown = sorted(
+        set(evaluation)
+        - set(
+            build_concept_evaluation(
+                concept_experiment_id="x",
+                candidate_identity="x",
+                language_profile="x",
+                compiler_identity="x",
+                backend_identity="x",
+                execution_identities=[],
+                verifier_identity="x",
+                verifier_version="x",
+                obligation="x",
+                evidence_identities=[],
+                status="UNKNOWN",
+            )
+        )
+    )
+    if unknown:
+        raise ForgeError(
+            "CONCEPT_EVALUATION_INVALID",
+            f"evaluation has unknown fields: {', '.join(unknown)}",
+        )
+    if "stable_id" not in evaluation or "content_digest" not in evaluation:
+        raise ForgeError(
+            "CONCEPT_EVALUATION_INVALID",
+            "evaluation must carry derived stable_id and content_digest fields",
+        )
+    derived_fields = {"stable_id", "content_digest"}
+    material = {key: value for key, value in evaluation.items() if key not in derived_fields}
+    expected_digest = _digest(material)
+    if evaluation["content_digest"] != expected_digest:
+        raise ForgeError(
+            "RECORD_IDENTITY",
+            "concept evaluation content digest does not reproduce from its material",
+        )
+    expected_stable = f"mncs-forge://evaluation/{expected_digest[7:]}"
+    if evaluation["stable_id"] != expected_stable:
+        raise ForgeError(
+            "RECORD_IDENTITY",
+            "concept evaluation stable id does not reproduce from its material",
+        )
+    if material.get("generator_certified") is not False:
+        raise ForgeError(
+            "CONCEPT_EVALUATION_SELF_CERTIFICATION",
+            "concept evaluations must record generator_certified as false",
+        )
+    if material.get("interpretation") != CONCEPT_EVALUATION_INTERPRETATION:
+        raise ForgeError(
+            "CONCEPT_EVALUATION_INVALID",
+            "concept evaluations must keep the bounded Forge interpretation",
+        )
+    return material

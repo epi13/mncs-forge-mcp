@@ -403,6 +403,116 @@
       ],
       "type": "object"
     },
+    "concept_evaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "assurance_status": {
+          "type": "null"
+        },
+        "backend_identity": {
+          "type": "string"
+        },
+        "candidate_identity": {
+          "type": "string"
+        },
+        "compiler_identity": {
+          "type": "string"
+        },
+        "concept_experiment_id": {
+          "type": "string"
+        },
+        "conformance_status": {
+          "type": "null"
+        },
+        "content_digest": {
+          "type": "string"
+        },
+        "evaluation_id": {
+          "type": "string"
+        },
+        "evaluation_material": {
+          "type": "object"
+        },
+        "evaluator_policy_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_identities": {},
+        "execution_identities": {},
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "generator_certified": {},
+        "generator_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "interpretation": {
+          "type": "string"
+        },
+        "language_profile": {
+          "type": "string"
+        },
+        "obligation": {
+          "type": "string"
+        },
+        "record_type": {
+          "const": "concept_evaluation"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "stable_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "unresolved_obligations": {},
+        "verifier_identity": {
+          "type": "string"
+        },
+        "verifier_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "assurance_status",
+        "backend_identity",
+        "candidate_identity",
+        "compiler_identity",
+        "concept_experiment_id",
+        "conformance_status",
+        "content_digest",
+        "evaluation_id",
+        "evaluation_material",
+        "evaluator_policy_identity",
+        "evidence_identities",
+        "execution_identities",
+        "generator_certified",
+        "generator_identity",
+        "interpretation",
+        "language_profile",
+        "obligation",
+        "recorded_at",
+        "stable_id",
+        "status",
+        "unresolved_obligations",
+        "verifier_identity",
+        "verifier_version"
+      ],
+      "type": "object"
+    },
     "epoch": {
       "additionalProperties": false,
       "properties": {
@@ -460,6 +570,102 @@
         "objective_identity",
         "parent_epoch",
         "visible_partition_identities"
+      ],
+      "type": "object"
+    },
+    "execution_assurance": {
+      "additionalProperties": false,
+      "properties": {
+        "action_identity": {
+          "type": "string"
+        },
+        "action_kind": {
+          "enum": [
+            "workflow_action",
+            "verifier_action"
+          ]
+        },
+        "assessed_at": {
+          "type": "string"
+        },
+        "assessment_id": {
+          "type": "string"
+        },
+        "assurance_status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "binding_identity": {
+          "type": "string"
+        },
+        "candidate_identity": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "Non-normative extension data. It round-trips and participates in current record-derived identities, but cannot affect authority or status semantics.",
+          "type": "object"
+        },
+        "policy_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project_identity": {
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "record_type": {
+          "const": "execution_assurance"
+        },
+        "requested_properties": {
+          "items": {
+            "enum": [
+              "containerization",
+              "filesystem_isolation",
+              "network_isolation",
+              "runner_capability",
+              "same_operator_execution"
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "unmet_properties": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "action_identity",
+        "action_kind",
+        "assessed_at",
+        "assessment_id",
+        "assurance_status",
+        "binding_identity",
+        "candidate_identity",
+        "policy_identity",
+        "project_identity",
+        "reasons",
+        "requested_properties",
+        "unmet_properties"
       ],
       "type": "object"
     },
@@ -878,6 +1084,25 @@
           "if": {
             "properties": {
               "kind": {
+                "const": "concept_evaluation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/concept_evaluation"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
                 "const": "disposition"
               }
             },
@@ -927,6 +1152,25 @@
             "properties": {
               "payload": {
                 "$ref": "#/$defs/final_evaluation"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "execution_assurance"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/execution_assurance"
               }
             }
           }
@@ -1076,9 +1320,11 @@
             "candidate",
             "compiler_candidate",
             "compiler_experiment",
+            "concept_evaluation",
             "disposition",
             "epoch",
             "evaluation",
+            "execution_assurance",
             "execution_receipt_binding",
             "freeze",
             "provider_probe",
@@ -1106,7 +1352,13 @@
               "$ref": "#/$defs/compiler_experiment"
             },
             {
+              "$ref": "#/$defs/concept_evaluation"
+            },
+            {
               "$ref": "#/$defs/epoch"
+            },
+            {
+              "$ref": "#/$defs/execution_assurance"
             },
             {
               "$ref": "#/$defs/execution_receipt_binding"
@@ -1750,6 +2002,12 @@
     },
     {
       "$ref": "#/$defs/compiler_candidate"
+    },
+    {
+      "$ref": "#/$defs/concept_evaluation"
+    },
+    {
+      "$ref": "#/$defs/execution_assurance"
     },
     {
       "$ref": "#/$defs/ledger_entry"

@@ -116,6 +116,35 @@
           "namespace": "reason"
         }
       ],
+      "cell.documents.validate": [
+        {
+          "decoder": "value",
+          "input": "kind",
+          "namespace": "kind"
+        },
+        {
+          "decoder": "value",
+          "input": "document",
+          "namespace": "json-object"
+        }
+      ],
+      "cell.execution.assess": [
+        {
+          "decoder": "value",
+          "input": "policy",
+          "namespace": "json-object"
+        },
+        {
+          "decoder": "value",
+          "input": "record",
+          "namespace": "json-object"
+        },
+        {
+          "decoder": "value",
+          "input": "expected_nonce",
+          "namespace": "nonce"
+        }
+      ],
       "claims.blockers": [
         {
           "decoder": "value",
@@ -159,6 +188,11 @@
           "decoder": "value",
           "input": "stale",
           "namespace": "stale"
+        },
+        {
+          "decoder": "value",
+          "input": "expected_artifact_identity",
+          "namespace": "expected_artifact"
         }
       ],
       "compiler.candidates.compare": [
@@ -267,6 +301,21 @@
           "namespace": "candidates"
         }
       ],
+      "concept.evaluations.get": [
+        {
+          "decoder": "value",
+          "input": "evaluation_id",
+          "namespace": "id"
+        }
+      ],
+      "concept.evaluations.list": [],
+      "concept.evaluations.record": [
+        {
+          "decoder": "json-object",
+          "input": "evaluation",
+          "namespace": "evaluation"
+        }
+      ],
       "config.validate": [],
       "development.checks.run": [
         {
@@ -323,6 +372,35 @@
           "namespace": "candidate"
         }
       ],
+      "execution.assurance.assess": [
+        {
+          "decoder": "value",
+          "input": "binding_id",
+          "namespace": "binding"
+        },
+        {
+          "decoder": "value",
+          "input": "requested_properties",
+          "namespace": "requested"
+        },
+        {
+          "decoder": "value",
+          "input": "policy_identity",
+          "namespace": "policy"
+        }
+      ],
+      "execution.assurance.list": [
+        {
+          "decoder": "value",
+          "input": "binding_identity",
+          "namespace": "binding"
+        },
+        {
+          "decoder": "value",
+          "input": "candidate_identity",
+          "namespace": "candidate"
+        }
+      ],
       "execution.receipts.get": [
         {
           "decoder": "value",
@@ -354,6 +432,38 @@
           "namespace": "capabilities"
         }
       ],
+      "providers.learned-shadow": [
+        {
+          "decoder": "value",
+          "input": "artifact_path",
+          "namespace": "artifact"
+        },
+        {
+          "decoder": "value",
+          "input": "provider_command",
+          "namespace": "provider_command"
+        },
+        {
+          "decoder": "json-value",
+          "input": "source_records",
+          "namespace": "source_records"
+        },
+        {
+          "decoder": "json-value",
+          "input": "context_observations",
+          "namespace": "context_observations"
+        },
+        {
+          "decoder": "value",
+          "input": "lineage_identity",
+          "namespace": "lineage"
+        },
+        {
+          "decoder": "value",
+          "input": "timeout_seconds",
+          "namespace": "timeout"
+        }
+      ],
       "providers.list": [],
       "providers.probe": [
         {
@@ -362,6 +472,7 @@
           "namespace": "provider_id"
         }
       ],
+      "rights.license-evidence.scan": [],
       "verifiers.batch": [
         {
           "decoder": "value",
@@ -515,6 +626,59 @@
       ]
     },
     "commands": {
+      "assessments list": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "binding_identity",
+            "nargs": null,
+            "options": [
+              "--binding"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "candidate_identity",
+            "nargs": null,
+            "options": [
+              "--candidate"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "execution.assurance.list"
+      },
+      "assessments request": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "binding",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": [],
+            "destination": "requested",
+            "nargs": null,
+            "options": [
+              "--requested"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "policy",
+            "nargs": null,
+            "options": [
+              "--policy"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "execution.assurance.assess"
+      },
       "blockers": {
         "arguments": [
           {
@@ -702,6 +866,58 @@
         ],
         "operation_id": "candidates.select"
       },
+      "cell assess": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "policy",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "record",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "expected_nonce",
+            "nargs": null,
+            "options": [
+              "--nonce"
+            ],
+            "required": false
+          }
+        ],
+        "operation_id": "cell.execution.assess"
+      },
+      "cell validate": {
+        "arguments": [
+          {
+            "choices": [
+              "policy",
+              "test-bundle",
+              "execution-record"
+            ],
+            "default": null,
+            "destination": "kind",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "document",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "cell.documents.validate"
+      },
       "check development": {
         "arguments": [
           {
@@ -778,6 +994,15 @@
             "nargs": 0,
             "options": [
               "--stale"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "expected_artifact_identity",
+            "nargs": null,
+            "options": [
+              "--expected-artifact"
             ],
             "required": false
           }
@@ -1022,6 +1247,34 @@
         ],
         "operation_id": "evaluation.final.run"
       },
+      "evaluations get": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "id",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "concept.evaluations.get"
+      },
+      "evaluations list": {
+        "arguments": [],
+        "operation_id": "concept.evaluations.list"
+      },
+      "evaluations record": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "evaluation",
+            "nargs": null,
+            "options": [],
+            "required": true
+          }
+        ],
+        "operation_id": "concept.evaluations.record"
+      },
       "explain": {
         "arguments": [
           {
@@ -1074,6 +1327,10 @@
         "arguments": [],
         "operation_id": "ledger.verify"
       },
+      "license-evidence scan": {
+        "arguments": [],
+        "operation_id": "rights.license-evidence.scan"
+      },
       "operations": {
         "arguments": [],
         "operation_id": "operations.inventory"
@@ -1089,6 +1346,64 @@
           }
         ],
         "operation_id": "providers.capability-blockers"
+      },
+      "providers learned-shadow": {
+        "arguments": [
+          {
+            "default": null,
+            "destination": "artifact",
+            "nargs": null,
+            "options": [],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "provider_command",
+            "nargs": null,
+            "options": [
+              "--provider-command"
+            ],
+            "required": true
+          },
+          {
+            "default": null,
+            "destination": "source_records",
+            "nargs": null,
+            "options": [
+              "--source-records"
+            ],
+            "required": true
+          },
+          {
+            "default": "[]",
+            "destination": "context_observations",
+            "nargs": null,
+            "options": [
+              "--context-observations"
+            ],
+            "required": false
+          },
+          {
+            "default": null,
+            "destination": "lineage",
+            "nargs": null,
+            "options": [
+              "--lineage"
+            ],
+            "required": false
+          },
+          {
+            "default": 5.0,
+            "destination": "timeout",
+            "nargs": null,
+            "options": [
+              "--timeout"
+            ],
+            "required": false,
+            "value_type": "float"
+          }
+        ],
+        "operation_id": "providers.learned-shadow"
       },
       "providers list": {
         "arguments": [],
@@ -1518,6 +1833,7 @@
       "providers",
       "required_capabilities",
       "rights_provenance",
+      "runner",
       "verifier_limits",
       "verifiers",
       "version",
@@ -1532,7 +1848,7 @@
       "version",
       "workflows"
     ],
-    "semantic_sha256": "72364b155b9f4c7d437529154f31f6185c9038a73a8716e8afa3337902bf6d57"
+    "semantic_sha256": "8b2724ebc7fd9059c5b1f789dd8d2c7cdd3982cd247208bd42ebc4cbd9977f77"
   },
   "intentional_exclusions": [
     "human-readable help and error prose",
@@ -1559,6 +1875,10 @@
         {
           "mime_type": "text/plain",
           "uri": "mncs-forge://evidence/latest-summary"
+        },
+        {
+          "mime_type": "text/plain",
+          "uri": "mncs-forge://execution/assessments"
         },
         {
           "mime_type": "text/plain",
@@ -1698,6 +2018,31 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_cell_document_validate": {
+          "input_properties": [
+            "document",
+            "kind"
+          ],
+          "input_schema_sha256": "035d30d5cf0da2261cfea79ad0f786317a5cab2f363af0fc3a1fd580f3239ed3",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "document",
+            "kind"
+          ]
+        },
+        "mncs_forge_cell_execution_assess": {
+          "input_properties": [
+            "expected_nonce",
+            "policy",
+            "record"
+          ],
+          "input_schema_sha256": "33b7b52f962de3d23228a4670e94f8ab55601fdb47f869c599c5aa1be7029b9e",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "policy",
+            "record"
+          ]
+        },
         "mncs_forge_claim_blockers": {
           "input_properties": [
             "requested_claim"
@@ -1717,12 +2062,13 @@
             "candidate_id",
             "claimed_relation",
             "counterexample",
+            "expected_artifact_identity",
             "judgement",
             "limitations",
             "stale",
             "validator_identity"
           ],
-          "input_schema_sha256": "ee5f6ce569e078dc22560a254717639203ea0d64426c0fd4fff80a67fa23c3b4",
+          "input_schema_sha256": "5b853f4f26311f992fbc669453fadbea761d770bcfd8438fe9b15a4c00a59ffb",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": [
             "candidate_id",
@@ -1831,6 +2177,32 @@
             "candidate_ids"
           ]
         },
+        "mncs_forge_concept_evaluation_get": {
+          "input_properties": [
+            "evaluation_id"
+          ],
+          "input_schema_sha256": "50ed8603fc181528696da7257a755402ff4b9d7e877ba36c04113c2a69b13abc",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluation_id"
+          ]
+        },
+        "mncs_forge_concept_evaluation_record": {
+          "input_properties": [
+            "evaluation"
+          ],
+          "input_schema_sha256": "0f10f29002d91c4d19675f0a5dc47b784f68a79864622aa0d026ef1ade9405e5",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluation"
+          ]
+        },
+        "mncs_forge_concept_evaluations_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_development_checks_run": {
           "input_properties": [
             "candidate_identity",
@@ -1864,6 +2236,28 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_execution_assurance_assess": {
+          "input_properties": [
+            "binding_id",
+            "policy_identity",
+            "requested_properties"
+          ],
+          "input_schema_sha256": "0df5e838eea2dbde068172e2d381faf203b144586420da2cabd6b45a7010dc17",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "binding_id",
+            "requested_properties"
+          ]
+        },
+        "mncs_forge_execution_assurance_list": {
+          "input_properties": [
+            "binding_identity",
+            "candidate_identity"
+          ],
+          "input_schema_sha256": "dc41ed401af367abd76a817d9cfe5c8d9d8114222e63208247690eb5a2787d58",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_execution_receipts_get": {
           "input_properties": [
             "binding_id"
@@ -1888,6 +2282,29 @@
             "output_identity"
           ],
           "input_schema_sha256": "4e50bc85b5dd365d75059ec3792f53d04f3188784f653dde48f1c01397a75cc9",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_learned_specialist_shadow": {
+          "input_properties": [
+            "artifact_path",
+            "context_observations",
+            "lineage_identity",
+            "provider_command",
+            "source_records",
+            "timeout_seconds"
+          ],
+          "input_schema_sha256": "0720dd246b2348acbbcf3b9bf5edbfcfa2ee740949ad9366e1b0b71fca3d2f0c",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "artifact_path",
+            "provider_command",
+            "source_records"
+          ]
+        },
+        "mncs_forge_license_evidence_scan": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
@@ -2020,6 +2437,10 @@
         },
         {
           "mime_type": "text/plain",
+          "uri": "mncs-forge://execution/assessments"
+        },
+        {
+          "mime_type": "text/plain",
           "uri": "mncs-forge://guide/usage"
         },
         {
@@ -2156,6 +2577,31 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_cell_document_validate": {
+          "input_properties": [
+            "document",
+            "kind"
+          ],
+          "input_schema_sha256": "035d30d5cf0da2261cfea79ad0f786317a5cab2f363af0fc3a1fd580f3239ed3",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "document",
+            "kind"
+          ]
+        },
+        "mncs_forge_cell_execution_assess": {
+          "input_properties": [
+            "expected_nonce",
+            "policy",
+            "record"
+          ],
+          "input_schema_sha256": "33b7b52f962de3d23228a4670e94f8ab55601fdb47f869c599c5aa1be7029b9e",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "policy",
+            "record"
+          ]
+        },
         "mncs_forge_claim_blockers": {
           "input_properties": [
             "requested_claim"
@@ -2216,6 +2662,22 @@
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
+        "mncs_forge_concept_evaluation_get": {
+          "input_properties": [
+            "evaluation_id"
+          ],
+          "input_schema_sha256": "50ed8603fc181528696da7257a755402ff4b9d7e877ba36c04113c2a69b13abc",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "evaluation_id"
+          ]
+        },
+        "mncs_forge_concept_evaluations_list": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
         "mncs_forge_development_checks_run": {
           "input_properties": [
             "candidate_identity",
@@ -2246,6 +2708,15 @@
             "candidate_identity"
           ],
           "input_schema_sha256": "7e41882a711ff8da421f6acfc984dd65e65bbf269740f4d28df564d4e5cd301b",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
+        },
+        "mncs_forge_execution_assurance_list": {
+          "input_properties": [
+            "binding_identity",
+            "candidate_identity"
+          ],
+          "input_schema_sha256": "dc41ed401af367abd76a817d9cfe5c8d9d8114222e63208247690eb5a2787d58",
           "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
           "required_inputs": []
         },
@@ -2285,6 +2756,29 @@
           "required_inputs": [
             "workflow_names"
           ]
+        },
+        "mncs_forge_learned_specialist_shadow": {
+          "input_properties": [
+            "artifact_path",
+            "context_observations",
+            "lineage_identity",
+            "provider_command",
+            "source_records",
+            "timeout_seconds"
+          ],
+          "input_schema_sha256": "0720dd246b2348acbbcf3b9bf5edbfcfa2ee740949ad9366e1b0b71fca3d2f0c",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": [
+            "artifact_path",
+            "provider_command",
+            "source_records"
+          ]
+        },
+        "mncs_forge_license_evidence_scan": {
+          "input_properties": [],
+          "input_schema_sha256": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+          "output_schema_sha256": "82ef96cebaf5fbe16269fd18b0240d78f5b9b90a4155a17eb797115b09148ecf",
+          "required_inputs": []
         },
         "mncs_forge_project_inspect": {
           "input_properties": [],
@@ -2405,6 +2899,8 @@
       "candidates.register",
       "candidates.reject",
       "candidates.select",
+      "cell.documents.validate",
+      "cell.execution.assess",
       "claims.blockers",
       "claims.status",
       "compiler.candidates.attach-validation",
@@ -2417,12 +2913,17 @@
       "compiler.experiments.list",
       "compiler.experiments.record",
       "compiler.tournament.run",
+      "concept.evaluations.get",
+      "concept.evaluations.list",
+      "concept.evaluations.record",
       "config.validate",
       "development.checks.run",
       "development.failure.explain",
       "epochs.begin",
       "evaluation.final.run",
       "evidence.reconcile",
+      "execution.assurance.assess",
+      "execution.assurance.list",
       "execution.receipts.get",
       "execution.receipts.list",
       "ledger.verify",
@@ -2431,8 +2932,10 @@
       "project.doctor",
       "project.inspect",
       "providers.capability-blockers",
+      "providers.learned-shadow",
       "providers.list",
       "providers.probe",
+      "rights.license-evidence.scan",
       "verifiers.batch",
       "verifiers.describe",
       "verifiers.explain",
@@ -2441,7 +2944,7 @@
       "verifiers.run"
     ],
     "schema_version": "1",
-    "semantic_sha256": "d42f7a390f7814ea24f898c466e7d4cc5cea64767c4019a09f7375af00ba4742"
+    "semantic_sha256": "2df90ea4221ca5927ca788e12c17b5c1890a56d68c9e85d78e0f3c790e0a956e"
   },
   "packaging": {
     "dependencies": [
@@ -2469,9 +2972,11 @@
       "candidate_refresh": "(self, *, hypothesis: 'str', generator_identity: 'str', generator_config_identity: 'str', changed_files: 'list[str] | None' = None) -> 'dict[str, object]'",
       "candidate_register": "(self, *, changed_files: 'list[str]', hypothesis: 'str', generator_identity: 'str', generator_config_identity: 'str', parent_candidate: 'str | None' = None, expected_identity: 'str | None' = None) -> 'dict[str, object]'",
       "capability_blockers": "(self, required_capabilities: 'list[str] | None' = None) -> 'dict[str, object]'",
+      "cell_document_validate": "(self, kind: 'str', document: 'Mapping[str, object]') -> 'dict[str, object]'",
+      "cell_execution_assess": "(self, policy: 'Mapping[str, object]', record: 'Mapping[str, object]', expected_nonce: 'str | None' = None) -> 'dict[str, object]'",
       "claim_blockers": "(self, requested_claim: 'str') -> 'dict[str, object]'",
       "claim_status": "(self) -> 'dict[str, object]'",
-      "compiler_candidate_attach_validation": "(self, candidate_id: 'str', *, validator_identity: 'str', judgement: 'str', claimed_relation: 'str', counterexample: 'dict[str, object] | None' = None, limitations: 'list[str] | None' = None, stale: 'bool' = False) -> 'dict[str, object]'",
+      "compiler_candidate_attach_validation": "(self, candidate_id: 'str', *, validator_identity: 'str', judgement: 'str', claimed_relation: 'str', counterexample: 'dict[str, object] | None' = None, limitations: 'list[str] | None' = None, stale: 'bool' = False, expected_artifact_identity: 'str | None' = None) -> 'dict[str, object]'",
       "compiler_candidate_inspect": "(self, candidate_id: 'str') -> 'dict[str, object]'",
       "compiler_candidate_register": "(self, *, baseline_artifact_identity: 'str', candidate_artifact_identity: 'str', generator_identity: 'str', declared_transformation: 'str', claimed_relation: 'str', expected_benefit: 'str', protected_properties: 'list[str] | None' = None, target_envelope: 'str' = 'unspecified', required_validation: 'str' = 'translation-validation') -> 'dict[str, object]'",
       "compiler_candidate_select": "(self, candidate_id: 'str', policy: 'str') -> 'dict[str, object]'",
@@ -2481,16 +2986,23 @@
       "compiler_experiments_compare": "(self, left_experiment_id: 'str', right_experiment_id: 'str') -> 'dict[str, object]'",
       "compiler_experiments_list": "(self) -> 'dict[str, object]'",
       "compiler_tournament": "(self, candidate_ids: 'list[str]') -> 'dict[str, object]'",
+      "concept_evaluation_get": "(self, evaluation_id: 'str') -> 'dict[str, object]'",
+      "concept_evaluation_record": "(self, evaluation: 'Mapping[str, object]') -> 'dict[str, object]'",
+      "concept_evaluations_list": "(self) -> 'dict[str, object]'",
       "config_validate": "(self) -> 'dict[str, object]'",
       "development_checks_run": "(self, workflow_names: 'list[str]', candidate_id: 'str | None' = None) -> 'dict[str, object]'",
       "doctor": "(self) -> 'dict[str, object]'",
       "epoch_begin": "(self, *, generator_identity: 'str', evaluator_identity: 'str', parent_epoch: 'str | None' = None, authority_overlap: 'list[str] | None' = None) -> 'dict[str, object]'",
       "evidence_reconcile": "(self, candidate_id: 'str | None' = None) -> 'dict[str, object]'",
+      "execution_assurance_assess": "(self, *, binding_id: 'str', requested_properties: 'list[str]', policy_identity: 'str | None' = None) -> 'dict[str, object]'",
+      "execution_assurance_list": "(self, binding_identity: 'str | None' = None, candidate_identity: 'str | None' = None) -> 'dict[str, object]'",
       "execution_receipts_get": "(self, binding_id: 'str') -> 'dict[str, object]'",
       "execution_receipts_list": "(self, candidate_identity: 'str | None' = None, action_identity: 'str | None' = None) -> 'dict[str, object]'",
       "failure_explain": "(self, output_identity: 'str | None' = None) -> 'dict[str, object]'",
       "final_evaluation_run": "(self, workflow_names: 'list[str]') -> 'dict[str, object]'",
+      "learned_specialist_shadow": "(self, artifact_path: 'str', provider_command: 'list[str]', source_records: 'list[dict[str, object]]', *, context_observations: 'list[dict[str, object]] | None' = None, lineage_identity: 'str | None' = None, timeout_seconds: 'float' = 5.0) -> 'dict[str, object]'",
       "ledger_verify": "(self) -> 'dict[str, object]'",
+      "license_evidence_scan": "(self) -> 'dict[str, object]'",
       "project_inspect": "(self) -> 'dict[str, object]'",
       "provider_list": "(self) -> 'dict[str, object]'",
       "provider_probe": "(self, provider_id: 'str') -> 'dict[str, object]'",
@@ -2702,6 +3214,63 @@
           "schema_version"
         ]
       },
+      "concept_evaluation": {
+        "properties": [
+          "assurance_status",
+          "backend_identity",
+          "candidate_identity",
+          "compiler_identity",
+          "concept_experiment_id",
+          "conformance_status",
+          "content_digest",
+          "evaluation_id",
+          "evaluation_material",
+          "evaluator_policy_identity",
+          "evidence_identities",
+          "execution_identities",
+          "extensions",
+          "generator_certified",
+          "generator_identity",
+          "interpretation",
+          "language_profile",
+          "obligation",
+          "record_type",
+          "recorded_at",
+          "schema_version",
+          "stable_id",
+          "status",
+          "unresolved_obligations",
+          "verifier_identity",
+          "verifier_version"
+        ],
+        "required": [
+          "assurance_status",
+          "backend_identity",
+          "candidate_identity",
+          "compiler_identity",
+          "concept_experiment_id",
+          "conformance_status",
+          "content_digest",
+          "evaluation_id",
+          "evaluation_material",
+          "evaluator_policy_identity",
+          "evidence_identities",
+          "execution_identities",
+          "generator_certified",
+          "generator_identity",
+          "interpretation",
+          "language_profile",
+          "obligation",
+          "record_type",
+          "recorded_at",
+          "schema_version",
+          "stable_id",
+          "status",
+          "unresolved_obligations",
+          "verifier_identity",
+          "verifier_version"
+        ]
+      },
       "epoch": {
         "properties": [
           "authority_identities",
@@ -2733,6 +3302,41 @@
           "record_type",
           "schema_version",
           "visible_partition_identities"
+        ]
+      },
+      "execution_assurance": {
+        "properties": [
+          "action_identity",
+          "action_kind",
+          "assessed_at",
+          "assessment_id",
+          "assurance_status",
+          "binding_identity",
+          "candidate_identity",
+          "extensions",
+          "policy_identity",
+          "project_identity",
+          "reasons",
+          "record_type",
+          "requested_properties",
+          "schema_version",
+          "unmet_properties"
+        ],
+        "required": [
+          "action_identity",
+          "action_kind",
+          "assessed_at",
+          "assessment_id",
+          "assurance_status",
+          "binding_identity",
+          "candidate_identity",
+          "policy_identity",
+          "project_identity",
+          "reasons",
+          "record_type",
+          "requested_properties",
+          "schema_version",
+          "unmet_properties"
         ]
       },
       "execution_receipt_binding": {
@@ -3216,7 +3820,7 @@
     },
     "root_properties": [],
     "root_required": [],
-    "semantic_sha256": "26efe5822fa860d4833ea231a6f494cc7172bb16190a693560c8da92072b81b8"
+    "semantic_sha256": "8cf9911159be91755afb2abe864c33473d22d4e9996094a1a32848df49c32a99"
   },
   "snapshot_schema": "1"
 }

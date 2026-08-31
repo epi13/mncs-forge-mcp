@@ -1,0 +1,23 @@
+mncs 0.10;
+
+// MNCS-native Forge identity boundary.
+//
+// Digest production is intentionally supplied by the host adapter. MNCS owns
+// the fixed-width logical value and its portable comparisons; it does not
+// pretend that a research implementation of SHA-256 is a normative Forge
+// authority.
+module mncs.forge.identity.v1;
+
+use mncs.core.identity as idlib;
+
+fn make_digest(bytes: [byte; 32]) -> (result: idlib.Digest32) {
+    return idlib.make(bytes);
+}
+
+fn same_digest(left: idlib.Digest32, right: idlib.Digest32) -> (result: bool) {
+    return idlib.equal(left, right);
+}
+
+fn missing_digest(value: idlib.Digest32) -> (result: bool) {
+    return idlib.is_zero(value);
+}
