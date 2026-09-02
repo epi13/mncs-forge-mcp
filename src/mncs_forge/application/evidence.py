@@ -367,9 +367,14 @@ class EvidenceService:
     def build_bundle(
         self, workflow_name: str, candidate_id: str | None = None
     ) -> dict[str, object]:
-        candidate = self.lifecycle.machine().authorize_bundle(candidate_id)
         workflow = self.workflows.workflow(workflow_name, self.mode)
-        if workflow.category not in {"mncs_bundle_validation", "mncds_record_validation"}:
+        valid_category = workflow.category in {"mncs_bundle_validation", "mncds_record_validation"}
+        machine = self.lifecycle.machine()
+        candidate = machine.authorize_bundle(
+            candidate_id,
+            request_valid=valid_category if self.lifecycle.native is not None else True,
+        )
+        if not valid_category:
             raise ForgeError("WORKFLOW_CATEGORY", "bundle requires an MNCS or MNCDS workflow")
         execution = self.workflows.execute(
             workflow,

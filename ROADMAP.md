@@ -69,12 +69,16 @@ ordered Cell work below.
 The MNCS-native spine is now consumed at runtime for bounded lifecycle projection, transition
 preflight, technical evidence reconciliation, and candidate evidence-readiness projection. It
 projects epoch/candidate successors, evidence dominance, disposition, freeze, evaluation, lineage,
-candidate freshness, per-category status counts/conflicts, per-requirement readiness classes, and
-aggregate technical/readiness status through typed records. The host still owns Forge record
-persistence and identity production, category/requirement labels, authority/evidence envelopes,
-evaluator custody, and bundle semantics. The next native tranche is bundle-precondition projection;
-the corresponding host materialization should move only after differential and adversarial coverage
-proves the typed boundary.
+candidate freshness, per-category status counts/conflicts, per-requirement readiness classes,
+aggregate technical/readiness status, and bundle preconditions through typed records. The host
+still owns Forge record persistence and identity production, category/requirement labels,
+authority/evidence envelopes, evaluator custody, and bundle materialization. Bundle preconditions
+compare opaque candidate identities in the language kernel and preserve the development/evaluator
+distinction without moving workflow execution or custody authority across the boundary.
+
+The next native tranche is a broader bundle-materialization projection only if a future pressure
+demonstrates a reusable language-owned contract; packaging, signing, custody, and certification
+remain explicit host/validator boundaries.
 
 Task 5 completed the service and dependency decomposition without changing public CLI/MCP
 dispatch. Task 6's shared typed operation registry is the current `0.1.0b1` priority. Full runner

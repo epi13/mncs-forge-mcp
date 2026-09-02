@@ -1,0 +1,120 @@
+mncs 0.10;
+
+// Bounded MNCS-native Forge bundle-precondition projection.
+//
+// This module decides whether the host may attempt a declared bundle
+// workflow. It performs no file I/O, persistence, packaging, signing, custody,
+// or authority operation. Those remain explicit host boundaries.
+module mncs.forge.bundle.v1;
+
+use mncs.core.identity as idlib;
+use mncs.core.logic as boollib;
+use mncs.core.status as statlib;
+
+enum BundleMode { Development, Evaluator }
+
+enum BundleReason {
+    Ready,
+    InvalidRequest,
+    NoCandidate,
+    CandidateMismatch,
+    CandidateStale,
+    FreezeMissing,
+    FreezeStale,
+    SelectionMissing,
+    Invalid
+}
+
+record BundleInput {
+    requested_candidate: idlib.Digest32,
+    current_candidate: idlib.Digest32,
+    candidate_present: bool,
+    candidate_matches: bool,
+    candidate_current: bool,
+    selected: bool,
+    frozen: bool,
+    freeze_current: bool,
+    mode: BundleMode,
+    request_valid: bool,
+    evidence_status: statlib.Status,
+    evidence_ready: bool
+}
+
+record BundleState {
+    ready: bool,
+    status: statlib.Status,
+    reason: BundleReason,
+    valid: bool,
+    evidence_status: statlib.Status,
+    evidence_ready: bool
+}
+
+record BundleResult { state: BundleState, status: statlib.Status, reason: BundleReason }
+
+fn output(
+    input: BundleInput,
+    ready: bool,
+    status_value: statlib.Status,
+    reason_value: BundleReason,
+    valid: bool
+) -> (result: BundleResult) {
+    let state: BundleState = BundleState {
+        ready: ready,
+        status: status_value,
+        reason: reason_value,
+        valid: valid,
+        evidence_status: input.evidence_status,
+        evidence_ready: input.evidence_ready
+    };
+    return BundleResult {
+        state: state,
+        status: status_value,
+        reason: reason_value
+    };
+}
+
+fn mode_is_evaluator(value: BundleMode) -> (result: bool) {
+    return match value {
+        Development => false,
+        Evaluator => true,
+    };
+}
+
+fn project(input: BundleInput) -> (result: BundleResult) {
+    let identities_valid: bool = input.candidate_present
+        && boollib.bool_not(idlib.is_zero(input.current_candidate))
+        && boollib.bool_not(idlib.is_zero(input.requested_candidate));
+    if boollib.bool_not(input.request_valid) {
+        return output(input, false, statlib.Status.FAIL, BundleReason.InvalidRequest, true);
+    }
+    if boollib.bool_not(input.candidate_present) || boollib.bool_not(identities_valid) {
+        return output(input, false, statlib.Status.UNKNOWN, BundleReason.NoCandidate, true);
+    }
+    let identity_matches: bool = input.candidate_matches
+        && idlib.equal(input.current_candidate, input.requested_candidate);
+    if mode_is_evaluator(input.mode) {
+        if boollib.bool_not(input.frozen) {
+            return output(input, false, statlib.Status.UNKNOWN, BundleReason.FreezeMissing, true);
+        }
+        if boollib.bool_not(identity_matches) {
+            return output(input, false, statlib.Status.FAIL, BundleReason.CandidateMismatch, true);
+        }
+        if boollib.bool_not(input.candidate_current) {
+            return output(input, false, statlib.Status.UNKNOWN, BundleReason.CandidateStale, true);
+        }
+        if boollib.bool_not(input.selected) {
+            return output(input, false, statlib.Status.UNKNOWN, BundleReason.SelectionMissing, true);
+        }
+        if boollib.bool_not(input.freeze_current) {
+            return output(input, false, statlib.Status.UNKNOWN, BundleReason.FreezeStale, true);
+        }
+    } else {
+        if boollib.bool_not(identity_matches) {
+            return output(input, false, statlib.Status.FAIL, BundleReason.CandidateMismatch, true);
+        }
+        if boollib.bool_not(input.candidate_current) {
+            return output(input, false, statlib.Status.UNKNOWN, BundleReason.CandidateStale, true);
+        }
+    }
+    return output(input, true, statlib.Status.PASS, BundleReason.Ready, true);
+}

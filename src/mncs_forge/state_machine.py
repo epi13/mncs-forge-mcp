@@ -12,7 +12,7 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from .errors import ForgeError
-from .mncs_native import NativeForgeAdapter
+from .mncs_native import NativeForgeAdapter, NativeReadinessRequirement
 from .records import (
     BundleRecord,
     CandidateDispositionRecord,
@@ -472,7 +472,27 @@ class ForgeStateMachine:
             "Stale": stale,
             "NonComparable": noncomparable,
         }
-        for requirement, projected in zip(requirements, native.requirements, strict=True):
+        projected_by_identity: dict[bytes, NativeReadinessRequirement] = {}
+        for projected in native.requirements:
+            if projected.identity in projected_by_identity:
+                raise ForgeError(
+                    "NATIVE_READINESS_MISMATCH",
+                    "native readiness returned duplicate requirement identities",
+                )
+            projected_by_identity[projected.identity] = projected
+        if len(projected_by_identity) != len(requirements):
+            raise ForgeError(
+                "NATIVE_READINESS_MISMATCH",
+                "native readiness returned an unexpected requirement count",
+            )
+        for requirement in requirements:
+            identity = NativeForgeAdapter.readiness_requirement_identity(requirement)
+            projected = projected_by_identity.get(identity)
+            if projected is None:
+                raise ForgeError(
+                    "NATIVE_READINESS_MISMATCH",
+                    f"native readiness omitted requirement {requirement}",
+                )
             # ``present`` is the historical host-facing meaning: an
             # observation exists, regardless of whether its native
             # classification is PASS, FAIL, UNKNOWN, or stale.  Keep that
@@ -500,7 +520,7 @@ class ForgeStateMachine:
             failed=tuple(sorted(failed)),
             stale=tuple(sorted(set(stale))),
             noncomparable=tuple(sorted(set(noncomparable))),
-            records=identities,
+            records=identities if candidate is not None else {},
             ready=native.ready,
             status=native.status,
             policy_identity=self.selection_policy_identity,
@@ -1331,13 +1351,91 @@ class ForgeStateMachine:
         current = self.projection.current_candidate
         return str(current["candidate_id"]) if current is not None else None
 
-    def authorize_bundle(self, candidate_id: str | None) -> CandidateRecord:
+    def authorize_bundle(
+        self, candidate_id: str | None, *, request_valid: bool = True
+    ) -> CandidateRecord:
         self._require_unambiguous()
+        if self.native is not None:
+            return self._authorize_bundle_native(candidate_id, request_valid=request_valid)
         if self.mode == "evaluator":
             _, candidate = self.authorize_evaluator_entry(candidate_id)
             return candidate
         self._require_mode("development")
         return self._require_candidate(candidate_id)
+
+    def _authorize_bundle_native(
+        self, candidate_id: str | None, *, request_valid: bool
+    ) -> CandidateRecord:
+        """Authorize a bundle only after the typed MNCS precondition projection passes."""
+
+        if self.mode not in {"development", "evaluator"}:
+            raise ForgeError("INVALID_MODE", "mode must be development or evaluator")
+        candidate = self.projection.current_candidate
+        current_identity = str(candidate["candidate_id"]) if candidate is not None else None
+        candidate_matches = candidate_id is None or candidate_id == current_identity
+        candidate_known = candidate_id is None or self.candidate_record(candidate_id) is not None
+        native = self.native
+        if native is None:
+            raise ForgeError("NATIVE_BUNDLE_UNKNOWN", "native bundle adapter is unavailable")
+        result = native.bundle_precondition_projection(
+            requested_candidate=candidate_id,
+            current_candidate=current_identity,
+            candidate_present=candidate is not None,
+            candidate_matches=candidate_matches,
+            candidate_current=candidate is not None
+            and self.projection.candidate_freshness == "CURRENT",
+            selected=(
+                self.projection.disposition is not None
+                and self.projection.disposition_status == "selected"
+            ),
+            frozen=self.projection.freeze is not None,
+            freeze_current=self.projection.freeze_status == "current",
+            mode=self.mode,
+            request_valid=request_valid,
+            evidence_status=self.projection.evidence.status,
+            evidence_ready=self.projection.evidence.ready,
+        )
+        if not result.valid:
+            raise ForgeError(
+                "NATIVE_BUNDLE_UNKNOWN",
+                "native bundle precondition projection is invalid",
+            )
+        if result.ready:
+            if candidate is None:
+                raise ForgeError(
+                    "NATIVE_BUNDLE_UNKNOWN", "native bundle returned ready without candidate"
+                )
+            return candidate
+        if result.reason == "InvalidRequest":
+            raise ForgeError("WORKFLOW_CATEGORY", "bundle requires an MNCS or MNCDS workflow")
+        if result.reason == "NoCandidate":
+            raise ForgeError("NO_CANDIDATE", "no candidate exists in the active epoch")
+        if result.reason == "CandidateMismatch":
+            if self.mode == "evaluator":
+                raise ForgeError(
+                    "EVALUATOR_CANDIDATE_MISMATCH",
+                    "evaluator candidate differs from the frozen candidate",
+                )
+            if candidate_known:
+                raise ForgeError(
+                    "CANDIDATE_NOT_CURRENT",
+                    "candidate is superseded within the active development lineage",
+                )
+            raise ForgeError("RECORD_NOT_FOUND", f"no candidate record for {candidate_id}")
+        if result.reason == "CandidateStale":
+            raise ForgeError("STALE_CANDIDATE", "candidate no longer matches current content")
+        if result.reason == "FreezeMissing":
+            raise ForgeError("NO_FREEZE", "evaluator mode requires a frozen candidate")
+        if result.reason == "SelectionMissing":
+            raise ForgeError(
+                "FREEZE_NOT_SELECTED", "freeze no longer belongs to a selected candidate"
+            )
+        if result.reason == "FreezeStale":
+            raise ForgeError("FREEZE_DRIFT", "frozen identities drifted")
+        raise ForgeError(
+            "NATIVE_BUNDLE_UNKNOWN",
+            f"native bundle precondition rejected with unknown reason {result.reason}",
+        )
 
     def authorize_terminal_result(
         self,

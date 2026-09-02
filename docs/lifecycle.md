@@ -18,7 +18,8 @@ The state machine projects the bounded lifecycle event material through the MNCS
 module when native execution is selected. That projection owns epoch/candidate parentage,
 evidence dominance, disposition, freeze/evaluation sequencing, freshness, and the compact stage;
 Forge retains persistence, record identity production, authority checks, evidence envelopes, and
-bundle semantics. Covered mutations also require a bounded language-owned preflight before
+bundle materialization. Bundle authorization uses a separate typed native precondition projection.
+Covered mutations also require a bounded language-owned preflight before
 authorization returns. An unavailable runtime uses the explicit compatibility path, while a
 selected native adapter that times out, returns malformed data, or disagrees with the expected
 transition blocks the operation.
@@ -100,6 +101,16 @@ comparability, and authority matches are explicit host observations. Native
 classification is fail-closed and separate from the host-facing `present`
 list: any observed record is present even if its class is failed, unknown,
 stale, or non-comparable. Bundle file creation and custody remain host-owned.
+
+Bundle authorization is projected through `mncs.forge.bundle.v1`. It receives
+opaque requested/current candidate digests and explicit host observations for
+candidate presence, identity match, freshness, selection, freeze, freeze drift,
+request validity, and evidence. The kernel independently compares the two
+non-zero identities and returns `Ready`, `NoCandidate`, `CandidateMismatch`,
+`CandidateStale`, `FreezeMissing`, `SelectionMissing`, `FreezeStale`, or
+`InvalidRequest` with the corresponding status. Forge maps these typed reasons
+to its stable transition errors and still owns workflow execution and bundle
+materialization.
 
 ## Stable transition errors
 
