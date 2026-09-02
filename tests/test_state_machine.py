@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 
@@ -9,7 +10,12 @@ from mncs_forge.config import ForgeConfig
 from mncs_forge.engine import Forge
 from mncs_forge.errors import ForgeError
 from mncs_forge.ledger import Ledger
-from mncs_forge.mncs_native import NativeLifecycleResult
+from mncs_forge.mncs_native import (
+    NativeForgeAdapter,
+    NativeLifecycleResult,
+    NativeReadinessProjection,
+    NativeReadinessRequirement,
+)
 from mncs_forge.records import RecordType, new_record
 from mncs_forge.state_machine import ForgeStateMachine
 
@@ -84,12 +90,203 @@ def test_native_lifecycle_mismatch_fails_closed() -> None:
     assert issue.value.code == "NATIVE_LIFECYCLE_MISMATCH"
 
 
+def test_native_readiness_reconstructs_blockers_by_identity_not_return_order(
+    config: ForgeConfig, project: Path
+) -> None:
+    raw = {**config.raw, "native": {"mode": "off"}}
+    policy = project / "evaluator/policy.json"
+    policy.write_text(
+        '{"required":["zeta-check","alpha-check","middle-check"]}\n', encoding="utf-8"
+    )
+    workflows = {
+        **config.workflows,
+        "zeta-check": replace(config.workflows["pass-check"], name="zeta-check"),
+        "alpha-check": replace(config.workflows["fail-check"], name="alpha-check"),
+        "middle-check": replace(config.workflows["provider-unknown"], name="middle-check"),
+    }
+    configured = replace(config, raw=raw, workflows=workflows)
+    forge = Forge(configured)
+    begin(forge)
+    candidate = register(forge)
+    candidate_id = str(candidate["candidate_id"])
+    forge.development_checks_run(["zeta-check", "alpha-check", "middle-check"], candidate_id)
+
+    class PermutingNative:
+        @staticmethod
+        def readiness_projection(
+            requirements: Mapping[str, Mapping[str, object]],
+            *,
+            candidate_present: bool,
+            policy_valid: bool,
+        ) -> NativeReadinessProjection:
+            assert candidate_present is True
+            assert policy_valid is True
+            projected: list[NativeReadinessRequirement] = []
+            for requirement, normalized in requirements.items():
+                raw_records = normalized["records"]
+                statuses = [str(record.get("status") or "UNKNOWN") for record in raw_records]
+                failed = statuses.count("FAIL")
+                unknown = statuses.count("UNKNOWN")
+                passed = statuses.count("PASS")
+                classification = (
+                    "Missing"
+                    if not statuses
+                    else "Failed"
+                    if failed
+                    else "Unknown"
+                    if unknown
+                    else "Present"
+                )
+                projected.append(
+                    NativeReadinessRequirement(
+                        identity=NativeForgeAdapter.readiness_requirement_identity(requirement),
+                        classification=classification,
+                        pass_count=passed,
+                        fail_count=failed,
+                        unknown_count=unknown,
+                        observed_count=len(statuses),
+                        stale=False,
+                        noncomparable=False,
+                        valid=True,
+                    )
+                )
+            failed_count = sum(item.classification == "Failed" for item in projected)
+            unknown_count = sum(item.classification == "Unknown" for item in projected)
+            missing_count = sum(item.classification == "Missing" for item in projected)
+            ready = not (failed_count or unknown_count or missing_count)
+            return NativeReadinessProjection(
+                requirements=tuple(reversed(projected)),
+                status="PASS" if ready else "FAIL" if failed_count else "UNKNOWN",
+                reason="Ready" if ready else "Failed" if failed_count else "Unknown",
+                present_count=sum(item.observed_count > 0 for item in projected),
+                missing_count=missing_count,
+                failed_count=failed_count,
+                unknown_count=unknown_count,
+                stale_count=0,
+                noncomparable_count=0,
+                ready=ready,
+                valid=True,
+            )
+
+    base = forge._state_machine()
+    machine = ForgeStateMachine(
+        mode=forge.mode,
+        history=forge.ledger.records(),
+        current_candidate_identity=forge._current_candidate_identity(),
+        current_authority_identities=forge._current_authority_identities(),
+        current_freeze_bindings=forge._current_freeze_bindings(),
+        selection_policy_identity=base.selection_policy_identity,
+        required_evidence=base.required_evidence,
+        selection_policy_error=base.selection_policy_error,
+        evidence_freshness=base.evidence_freshness,
+        evidence_comparability=base.evidence_comparability,
+        evidence_environment_keys=base.evidence_environment_keys,
+        evidence_environment_identities=base.evidence_environment_identities,
+        evidence_policy_identities=base.evidence_policy_identities,
+        native=PermutingNative(),  # type: ignore[arg-type]
+    )
+
+    assert machine.projection.evidence.failed == ("alpha-check",)
+    assert machine.projection.evidence.unknown == ("middle-check",)
+    assert machine.projection.evidence.present == (
+        "alpha-check",
+        "middle-check",
+        "zeta-check",
+    )
+    assert machine.projection.evidence.blocker is not None
+    assert machine.projection.evidence.blocker.message == (
+        "required candidate evidence is FAIL: alpha-check"
+    )
+
+
+@pytest.mark.native
+@pytest.mark.parametrize(
+    ("scenario", "expected_blocker"),
+    [
+        (
+            "missing",
+            ("EVIDENCE_INCOMPLETE", "required candidate evidence is missing: pass-check"),
+        ),
+        ("pass", None),
+        (
+            "fail",
+            ("EVIDENCE_FAILED", "required candidate evidence is FAIL: fail-check"),
+        ),
+        (
+            "unknown",
+            ("EVIDENCE_UNKNOWN", "required candidate evidence is UNKNOWN: provider-unknown"),
+        ),
+        ("stale", ("EVIDENCE_STALE", "required candidate evidence is stale: pass-check")),
+        (
+            "noncomparable",
+            (
+                "EVIDENCE_NOT_COMPARABLE",
+                "required candidate evidence is not comparable: pass-check",
+            ),
+        ),
+    ],
+)
+def test_native_evidence_readiness_matches_compatibility_surface(
+    config: ForgeConfig,
+    project: Path,
+    scenario: str,
+    expected_blocker: tuple[str, str] | None,
+) -> None:
+    requirement = {
+        "fail": "fail-check",
+        "unknown": "provider-unknown",
+    }.get(scenario, "pass-check")
+    (project / "evaluator/policy.json").write_text(
+        f'{{"required":["{requirement}"]}}\n', encoding="utf-8"
+    )
+    forge = Forge(replace(config, raw={**config.raw, "native": {"mode": "off"}}))
+    output_identity: str | None = None
+    if scenario != "missing":
+        begin(forge)
+        candidate = register(forge)
+        candidate_id = str(candidate["candidate_id"])
+        forge.development_checks_run([requirement], candidate_id)
+        if scenario in {"stale", "noncomparable"}:
+            output_identity = str(forge._result_records(candidate_id)[-1]["output_identity"])
+
+    compatibility = state_with_overrides(
+        forge,
+        **(
+            {"freshness": {output_identity: "STALE"}}
+            if scenario == "stale" and output_identity is not None
+            else {"comparability": {output_identity: False}}
+            if scenario == "noncomparable" and output_identity is not None
+            else {}
+        ),
+    )
+    native = state_with_overrides(
+        forge,
+        **(
+            {"freshness": {output_identity: "STALE"}}
+            if scenario == "stale" and output_identity is not None
+            else {"comparability": {output_identity: False}}
+            if scenario == "noncomparable" and output_identity is not None
+            else {}
+        ),
+        native=NativeForgeAdapter(forge.config.root),
+    )
+
+    assert native.projection.evidence.to_dict() == compatibility.projection.evidence.to_dict()
+    blocker = native.projection.evidence.blocker
+    if expected_blocker is None:
+        assert blocker is None
+    else:
+        assert blocker is not None
+        assert (blocker.code, blocker.message) == expected_blocker
+
+
 def state_with_overrides(
     forge: Forge,
     *,
     freshness: dict[str, str] | None = None,
     comparability: dict[str, bool | None] | None = None,
     mode: str | None = None,
+    native: object | None = None,
 ) -> ForgeStateMachine:
     base = forge._state_machine()
     return ForgeStateMachine(
@@ -103,6 +300,7 @@ def state_with_overrides(
         selection_policy_error=base.selection_policy_error,
         evidence_freshness=freshness,
         evidence_comparability=comparability,
+        native=native,  # type: ignore[arg-type]
     )
 
 

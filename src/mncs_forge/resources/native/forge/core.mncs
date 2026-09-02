@@ -9,6 +9,7 @@ use mncs.core.identity as idlib;
 use mncs.core.status as statlib;
 use mncs.core.version as verlib;
 use mncs.forge.lifecycle as lifelib;
+use mncs.forge.bundle as bundlelib;
 use mncs.forge.reconciliation as reconlib;
 use mncs.forge.records as recslib;
 use mncs.forge.readiness as readylib;
@@ -83,6 +84,10 @@ fn evidence_reconcile(input: reconlib.ReconciliationInput) -> (result: reconlib.
 
 fn evidence_readiness(input: readylib.ReadinessInput) -> (result: readylib.ReadinessResult) {
     return readylib.project(input);
+}
+
+fn bundle_preconditions(input: bundlelib.BundleInput) -> (result: bundlelib.BundleResult) {
+    return bundlelib.project(input);
 }
 
 fn status_join(first: statlib.Status, second: statlib.Status, third: statlib.Status, fourth: statlib.Status) -> (result: statlib.Status) {

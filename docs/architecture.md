@@ -35,7 +35,11 @@ counts, and category conflicts over a fixed 16-by-8 envelope; Forge retains
 labels, record identity, disclosure, persistence, and authority policy.
 Readiness follows the same rule over a fixed 16-requirement by 8-observation
 envelope: MNCS owns bounded status/classification projection, while Forge
-retains labels, records, policy errors, and bundle materialization.
+retains labels, records, policy errors, and bundle materialization. Bundle
+authorization is a separate opaque-identity precondition projection; the
+language compares requested/current candidate identities and evaluates the
+development/evaluator freeze and selection envelope, while Forge retains
+workflow execution, custody, and file writes.
 
 ## Control-plane composition
 

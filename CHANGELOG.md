@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add a typed `mncs.forge.bundle.v1` precondition projection. Native mode now
+  checks request validity, opaque candidate identity correspondence, candidate
+  freshness, and evaluator selection/freeze coherence before bundle workflow
+  execution. Forge retains workflow execution, persistence, custody, and
+  materialization; malformed or inconsistent native results fail closed.
+
 - Move candidate evidence-readiness classification through the typed
   `mncs.forge.readiness.v1` kernel. Native mode now projects bounded
   per-requirement status counts, freshness/comparability classification, and

@@ -7,7 +7,7 @@ candidate validation, lifecycle projection, bounded technical evidence
 reconciliation, and evidence-readiness projection; the Python CLI and MCP server
 remain the stable integration surface during the migration. Forge invokes the
 lifecycle module for both bounded history projection and covered transition
-preflight.
+preflight, and invokes a bundle-precondition module before bundle materialization.
 
 | Module | Responsibility |
 | --- | --- |
@@ -17,6 +17,7 @@ preflight.
 | `mncs.forge.lifecycle.v1` | Epoch/candidate lineage, evidence, disposition, freeze, evaluation, freshness, and stage projection |
 | `mncs.forge.reconciliation.v1` | Bounded per-category status counts, conflict classification, unsupported-count accounting, and aggregate technical status |
 | `mncs.forge.readiness.v1` | Bounded per-requirement status summaries, freshness/comparability classification, readiness reason, and aggregate counts |
+| `mncs.forge.bundle.v1` | Deterministic development/evaluator bundle preconditions over opaque candidate identities and explicit freeze/selection/evidence observations |
 | `mncs.forge.core.v1` | Public entrypoints used by the adapter and service drift fixture |
 
 The authoritative Forge source files are package data under
@@ -78,10 +79,21 @@ An observed record remains in the host-facing `present` envelope even when the
 native class is `Failed`, `Unknown`, or stale, preserving the compatibility
 state-machine semantics. Oversized or malformed readiness input fails closed.
 
-Bundle materialization remains host-owned in this tranche. The readiness
-projection supplies a typed precondition view, but it does not grant custody,
-write files, or turn a bundle result into certification or MNCS/MNCDS
-conformance. Bundle-precondition projection is the next narrower bundle seam.
+Bundle authorization now crosses a separate typed precondition seam. The host
+supplies the requested/current candidate identities plus explicit booleans for
+candidate freshness, selection, freeze, freeze drift, request validity, and
+evidence. The MNCS module compares the opaque identities itself and returns a
+typed reason/status pair. Development mode requires a current candidate;
+evaluator mode additionally requires a current freeze, selected candidate, and
+current freeze bindings. Bundle materialization, custody, file writes, and any
+certification or MNCS/MNCDS conformance claim remain host-owned.
+
+The adapter consumes compiler-emitted ABI contracts dynamically: record,
+finite, and digest identities come from `mncs abi`, while malformed or
+identity-inconsistent results fail closed. Readiness reconstruction is keyed by
+the returned opaque requirement identity rather than native array position, so
+the public `EvidenceReadiness.to_dict()` surface remains permutation-invariant
+and compatible with the legacy path.
 
 The pure preflight/projection caches are keyed by the native contract, full
 packaged Forge source content, language library/compiler/runtime content, exact

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import pytest
 from mncs_forge import mncs_native
 from mncs_forge.errors import ForgeError
 from mncs_forge.mncs_native import (
+    NativeBundlePreconditionProjection,
     NativeForgeAdapter,
     NativeInvocation,
     NativeLifecycleProjection,
@@ -116,6 +118,9 @@ def test_language_owned_abi_metadata_is_available_to_external_consumers() -> Non
     assert abi.source_artifact_identity
     assert "evidence_readiness" in abi.functions
     readiness = abi.functions["evidence_readiness"]
+    assert readiness["declaring_module"] == "mncs.forge.core.v1"
+    assert readiness["name"] == "evidence_readiness"
+    assert readiness["function_identity"].startswith("mncs:0.2:function:")
     assert readiness["inputs"][0]["record"]["name"] == "ReadinessInput"
     assert readiness["outputs"][0]["record"]["name"] == "ReadinessResult"
     assert any(
@@ -379,6 +384,163 @@ def test_native_readiness_projection_preserves_classification_and_observation_en
     assert by_name["unknown"].classification == "Unknown"
     assert by_name["stale"].classification == "Stale"
     assert by_name["noncomparable"].classification == "NonComparable"
+
+
+def test_native_readiness_projection_is_permutation_invariant_by_opaque_identity() -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+    values = {
+        "zeta-check": _readiness_requirement(["PASS"]),
+        "alpha-check": _readiness_requirement(["FAIL"]),
+        "middle-check": _readiness_requirement(["UNKNOWN"]),
+    }
+
+    first = adapter.readiness_projection(values, candidate_present=True, policy_valid=True)
+    second = adapter.readiness_projection(
+        {
+            "middle-check": values["middle-check"],
+            "zeta-check": values["zeta-check"],
+            "alpha-check": values["alpha-check"],
+        },
+        candidate_present=True,
+        policy_valid=True,
+    )
+
+    def semantic_projection(result: object) -> dict[bytes, tuple[str, int, int, int, str]]:
+        assert isinstance(result, mncs_native.NativeReadinessProjection)
+        return {
+            item.identity: (
+                item.classification,
+                item.pass_count,
+                item.fail_count,
+                item.unknown_count,
+                "stale" if item.stale else "current",
+            )
+            for item in result.requirements
+        }
+
+    assert semantic_projection(first) == semantic_projection(second)
+    by_identity = semantic_projection(first)
+    assert by_identity[adapter.readiness_requirement_identity("zeta-check")][0] == "Present"
+    assert by_identity[adapter.readiness_requirement_identity("alpha-check")][0] == "Failed"
+    assert by_identity[adapter.readiness_requirement_identity("middle-check")][0] == "Unknown"
+
+
+def test_native_readiness_rejects_duplicate_active_requirement_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+    original_execute = adapter.execute
+
+    def duplicate_execute(*args: object, **kwargs: object) -> NativeInvocation:
+        invocation = original_execute(*args, **kwargs)
+        request = args[1] if len(args) > 1 else None
+        if isinstance(request, Path) and request.name == "readiness-request.json":
+            payload = copy.deepcopy(invocation.payload)
+            assert isinstance(payload, dict)
+            returned = payload["returned"]
+            assert isinstance(returned, list)
+            root = returned[0]
+            assert isinstance(root, dict)
+            root_record = root["record"]
+            assert isinstance(root_record, dict)
+            result_fields = root_record["fields"]
+            assert isinstance(result_fields, list)
+            state = next(value for name, value in result_fields if name == "state")
+            assert isinstance(state, dict)
+            state_record = state["record"]
+            assert isinstance(state_record, dict)
+            state_fields = state_record["fields"]
+            assert isinstance(state_fields, list)
+            requirements = next(value for name, value in state_fields if name == "requirements")
+            assert isinstance(requirements, dict)
+            sequence = requirements["sequence"]
+            assert isinstance(sequence, dict)
+            values = sequence["values"]
+            assert isinstance(values, list)
+            values[1] = copy.deepcopy(values[0])
+            return NativeInvocation(
+                command=invocation.command,
+                returncode=invocation.returncode,
+                stdout=invocation.stdout,
+                stderr=invocation.stderr,
+                payload=payload,
+            )
+        return invocation
+
+    monkeypatch.setattr(adapter, "execute", duplicate_execute)
+    mncs_native._READINESS_CACHE.clear()
+
+    with pytest.raises(ForgeError, match="duplicate requirement identity"):
+        adapter.readiness_projection(
+            {
+                "alpha-check": _readiness_requirement(["PASS"]),
+                "zeta-check": _readiness_requirement(["FAIL"]),
+            },
+            candidate_present=True,
+            policy_valid=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("overrides", "ready", "status", "reason"),
+    [
+        ({}, True, "PASS", "Ready"),
+        ({"candidate_present": False, "current_candidate": None}, False, "UNKNOWN", "NoCandidate"),
+        ({"candidate_matches": False}, False, "FAIL", "CandidateMismatch"),
+        (
+            {"requested_candidate": "forge-tree-sha256-v1:" + "02" * 32},
+            False,
+            "FAIL",
+            "CandidateMismatch",
+        ),
+        ({"candidate_current": False}, False, "UNKNOWN", "CandidateStale"),
+        ({"mode": "evaluator", "frozen": False}, False, "UNKNOWN", "FreezeMissing"),
+        (
+            {"mode": "evaluator", "frozen": True, "selected": False},
+            False,
+            "UNKNOWN",
+            "SelectionMissing",
+        ),
+        (
+            {"mode": "evaluator", "frozen": True, "selected": True, "freeze_current": False},
+            False,
+            "UNKNOWN",
+            "FreezeStale",
+        ),
+        ({"request_valid": False}, False, "FAIL", "InvalidRequest"),
+    ],
+)
+def test_native_bundle_preconditions_are_typed_and_fail_closed(
+    overrides: dict[str, object], ready: bool, status: str, reason: str
+) -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+    values: dict[str, object] = {
+        "requested_candidate": None,
+        "current_candidate": "forge-tree-sha256-v1:" + "01" * 32,
+        "candidate_present": True,
+        "candidate_matches": True,
+        "candidate_current": True,
+        "selected": True,
+        "frozen": True,
+        "freeze_current": True,
+        "mode": "development",
+        "request_valid": True,
+        "evidence_status": "PASS",
+        "evidence_ready": True,
+    }
+    values.update(overrides)
+    result = adapter.bundle_precondition_projection(**values)  # type: ignore[arg-type]
+
+    assert isinstance(result, NativeBundlePreconditionProjection)
+    assert result.ready is ready
+    assert result.status == status
+    assert result.reason == reason
+    assert result.evidence_status == "PASS"
+    assert result.evidence_ready is True
+    assert result.valid is True
 
 
 def test_native_readiness_projection_reports_global_policy_and_candidate_reasons() -> None:
