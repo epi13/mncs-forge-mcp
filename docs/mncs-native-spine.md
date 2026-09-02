@@ -3,8 +3,8 @@
 Forge now carries a packaged MNCS-native source spine alongside the established
 Python compatibility surface. The source modules are an incremental authority
 boundary for identity-shaped values, canonical candidate material, typed
-candidate validation, lifecycle projection, and bounded technical evidence
-reconciliation; the Python CLI and MCP server
+candidate validation, lifecycle projection, bounded technical evidence
+reconciliation, and evidence-readiness projection; the Python CLI and MCP server
 remain the stable integration surface during the migration. Forge invokes the
 lifecycle module for both bounded history projection and covered transition
 preflight.
@@ -16,6 +16,7 @@ preflight.
 | `mncs.forge.records.v1` | Candidate/validation records and fail-closed checks |
 | `mncs.forge.lifecycle.v1` | Epoch/candidate lineage, evidence, disposition, freeze, evaluation, freshness, and stage projection |
 | `mncs.forge.reconciliation.v1` | Bounded per-category status counts, conflict classification, unsupported-count accounting, and aggregate technical status |
+| `mncs.forge.readiness.v1` | Bounded per-requirement status summaries, freshness/comparability classification, readiness reason, and aggregate counts |
 | `mncs.forge.core.v1` | Public entrypoints used by the adapter and service drift fixture |
 
 The authoritative Forge source files are package data under
@@ -64,6 +65,23 @@ authority remain host concerns. The 16-category/8-observation limits are
 explicit; native mode never truncates an oversized envelope or treats malformed
 input as a compatibility success. Compatibility classification remains only
 for explicit `off` mode or unavailable language runtimes.
+
+Evidence readiness now crosses the boundary as a separate bounded projection.
+Forge normalizes candidate-scoped records into up to 16 named requirements,
+with at most eight status observations per requirement and explicit freshness,
+environment, policy, comparability, and authority-match booleans. The MNCS
+module owns the requirement classification precedence (`Missing`, `Failed`,
+`Unknown`, `Stale`, or `NonComparable`) and the global reason (`PolicyInvalid`,
+`NoCandidate`, or the first blocking class); Forge maps that result back to its
+stable evidence view while retaining record identities and policy disclosure.
+An observed record remains in the host-facing `present` envelope even when the
+native class is `Failed`, `Unknown`, or stale, preserving the compatibility
+state-machine semantics. Oversized or malformed readiness input fails closed.
+
+Bundle materialization remains host-owned in this tranche. The readiness
+projection supplies a typed precondition view, but it does not grant custody,
+write files, or turn a bundle result into certification or MNCS/MNCDS
+conformance. Bundle-precondition projection is the next narrower bundle seam.
 
 The pure preflight/projection caches are keyed by the native contract, full
 packaged Forge source content, language library/compiler/runtime content, exact

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Move candidate evidence-readiness classification through the typed
+  `mncs.forge.readiness.v1` kernel. Native mode now projects bounded
+  per-requirement status counts, freshness/comparability classification, and
+  aggregate readiness reasons over a 16-by-8 envelope while Forge retains
+  record identities, policy disclosure, persistence, custody, and bundle
+  materialization. The adapter consumes language-emitted ABI metadata and
+  fails closed on stale, malformed, or mismatching contracts.
+
 - Add a typed MNCS-native reconciliation kernel for Forge technical evidence.
   Native mode now classifies bounded per-category status counts, conflict flags,
   unsupported counts, and aggregate status over a 16-category/8-observation

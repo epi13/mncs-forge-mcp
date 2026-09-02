@@ -67,12 +67,13 @@ Remaining Task 7 follow-ups are optional Docker/SSH adapters; Forge Cell Linux i
 ordered Cell work below.
 
 The MNCS-native spine is now consumed at runtime for bounded lifecycle projection, transition
-preflight, and technical evidence reconciliation. It projects epoch/candidate successors, evidence
-dominance, disposition, freeze, evaluation, lineage, candidate freshness, per-category status
-counts/conflicts, and aggregate technical status through typed records. The host still owns Forge
-record persistence and identity production, category labels, authority/evidence envelopes,
-evaluator custody, and bundle semantics. The next native tranche is bundle/readiness projection;
-the corresponding host classification should move only after differential and adversarial coverage
+preflight, technical evidence reconciliation, and candidate evidence-readiness projection. It
+projects epoch/candidate successors, evidence dominance, disposition, freeze, evaluation, lineage,
+candidate freshness, per-category status counts/conflicts, per-requirement readiness classes, and
+aggregate technical/readiness status through typed records. The host still owns Forge record
+persistence and identity production, category/requirement labels, authority/evidence envelopes,
+evaluator custody, and bundle semantics. The next native tranche is bundle-precondition projection;
+the corresponding host materialization should move only after differential and adversarial coverage
 proves the typed boundary.
 
 Task 5 completed the service and dependency decomposition without changing public CLI/MCP
