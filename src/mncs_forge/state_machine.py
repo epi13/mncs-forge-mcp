@@ -331,6 +331,188 @@ class ForgeStateMachine:
         *,
         required: Sequence[str] | None = None,
     ) -> EvidenceReadiness:
+        """Project evidence readiness through MNCS when the native spine is selected."""
+
+        if self.native is None:
+            return self._compat_evidence_readiness(candidate, required=required)
+        project_native = getattr(self.native, "readiness_projection", None)
+        if not callable(project_native):
+            return self._compat_evidence_readiness(candidate, required=required)
+        requirements = (
+            tuple(dict.fromkeys(required)) if required is not None else self.required_evidence
+        )
+        policy_error = None if required is not None else self.selection_policy_error
+        candidate_id = str(candidate["candidate_id"]) if candidate is not None else None
+        evidence: dict[str, list[ForgeRecord]] = defaultdict(list)
+        for _, record in self._records(RecordType.WORKFLOW_RESULT):
+            if (
+                isinstance(record, WorkflowResultRecord)
+                and candidate_id is not None
+                and record.get("candidate_identity") == candidate_id
+                and record.get("subject_type") != "project"
+            ):
+                evidence[str(record["workflow"])].append(record)
+        for _, record in self._records(RecordType.VERIFIER_RESULT):
+            if (
+                isinstance(record, VerifierResultRecord)
+                and candidate_id is not None
+                and record.get("candidate_identity") == candidate_id
+                and record.get("mode") == "development"
+            ):
+                evidence[str(record["verifier_id"])].append(record)
+
+        candidate_epoch = (
+            next(
+                (
+                    record
+                    for _, record in reversed(self._records(RecordType.EPOCH))
+                    if record.get("epoch_id") == candidate.get("source_epoch")
+                ),
+                None,
+            )
+            if candidate is not None
+            else None
+        )
+        authority_match = True
+        if candidate_epoch is not None and self.current_authority_identities:
+            authority = candidate_epoch.get("authority_identities")
+            authority_match = (
+                isinstance(authority, Mapping)
+                and dict(authority) == self.current_authority_identities
+            )
+
+        normalized: dict[str, dict[str, object]] = {}
+        identities: dict[str, tuple[str, ...]] = {}
+        for requirement in requirements:
+            matches = evidence.get(requirement, [])
+            identities[requirement] = tuple(self._identity(item) for item in matches)
+            freshness = "CURRENT"
+            comparable = True
+            environment_match = True
+            policy_match = True
+            for evidence_record in matches:
+                output_identity = self._identity(evidence_record)
+                input_identities = evidence_record.get("input_identities")
+                verifier_candidate_current = (
+                    evidence_record.record_type is RecordType.VERIFIER_RESULT
+                    and isinstance(input_identities, Mapping)
+                    and input_identities.get("candidate_identity")
+                    == self.current_candidate_identity
+                )
+                observed_freshness = self.evidence_freshness.get(
+                    output_identity,
+                    "CURRENT"
+                    if candidate_id == self.current_candidate_identity
+                    and (
+                        evidence_record.record_type is RecordType.WORKFLOW_RESULT
+                        or verifier_candidate_current
+                    )
+                    else "UNKNOWN",
+                )
+                if observed_freshness == "STALE":
+                    freshness = "STALE"
+                elif observed_freshness != "CURRENT" and freshness != "STALE":
+                    freshness = "UNKNOWN"
+                comparable = (
+                    comparable and self.evidence_comparability.get(output_identity, True) is True
+                )
+                if evidence_record.record_type is RecordType.WORKFLOW_RESULT:
+                    expected_keys = self.evidence_environment_keys.get(requirement)
+                    recorded_environment = evidence_record.get("environment")
+                    recorded_keys = (
+                        recorded_environment.get("allowlisted_keys")
+                        if isinstance(recorded_environment, Mapping)
+                        else None
+                    )
+                    environment_match = environment_match and (
+                        expected_keys is None
+                        or (
+                            isinstance(recorded_keys, Sequence)
+                            and not isinstance(recorded_keys, (str, bytes))
+                            and tuple(sorted(str(item) for item in recorded_keys)) == expected_keys
+                        )
+                    )
+                elif evidence_record.record_type is RecordType.VERIFIER_RESULT:
+                    expected_environment = self.evidence_environment_identities.get(requirement)
+                    expected_policy = self.evidence_policy_identities.get(requirement)
+                    environment_match = environment_match and (
+                        expected_environment is None
+                        or evidence_record.get("environment_identity") == expected_environment
+                    )
+                    policy_match = policy_match and (
+                        expected_policy is None
+                        or evidence_record.get("policy_identity") == expected_policy
+                    )
+            normalized[requirement] = {
+                "records": matches,
+                "freshness": freshness,
+                "comparable": comparable,
+                "environment_match": environment_match,
+                "policy_match": policy_match,
+                "authority_match": authority_match,
+            }
+        native = project_native(
+            normalized,
+            candidate_present=candidate is not None,
+            policy_valid=policy_error is None,
+        )
+        if not native.valid or len(native.requirements) != len(requirements):
+            raise ForgeError("NATIVE_READINESS_UNKNOWN", "native readiness projection is invalid")
+        present: list[str] = []
+        missing: list[str] = []
+        unknown: list[str] = []
+        failed: list[str] = []
+        stale: list[str] = []
+        noncomparable: list[str] = []
+        classes = {
+            "Present": present,
+            "Missing": missing,
+            "Unknown": unknown,
+            "Failed": failed,
+            "Stale": stale,
+            "NonComparable": noncomparable,
+        }
+        for requirement, projected in zip(requirements, native.requirements, strict=True):
+            # ``present`` is the historical host-facing meaning: an
+            # observation exists, regardless of whether its native
+            # classification is PASS, FAIL, UNKNOWN, or stale.  Keep that
+            # envelope separate from the language-owned classification so
+            # stage selection remains equivalent to the compatibility path.
+            if projected.observed_count > 0:
+                present.append(requirement)
+            try:
+                if projected.classification != "Present":
+                    classes[projected.classification].append(requirement)
+            except KeyError as exc:
+                raise ForgeError(
+                    "NATIVE_READINESS_UNKNOWN",
+                    "native readiness returned an unknown classification",
+                ) from exc
+            if projected.stale:
+                stale.append(requirement)
+            if projected.noncomparable:
+                noncomparable.append(requirement)
+        return EvidenceReadiness(
+            required=requirements,
+            present=tuple(sorted(present)),
+            missing=tuple(sorted(missing)),
+            unknown=tuple(sorted(unknown)),
+            failed=tuple(sorted(failed)),
+            stale=tuple(sorted(set(stale))),
+            noncomparable=tuple(sorted(set(noncomparable))),
+            records=identities,
+            ready=native.ready,
+            status=native.status,
+            policy_identity=self.selection_policy_identity,
+            policy_error=policy_error,
+        )
+
+    def _compat_evidence_readiness(
+        self,
+        candidate: CandidateRecord | None,
+        *,
+        required: Sequence[str] | None = None,
+    ) -> EvidenceReadiness:
         requirements = (
             tuple(dict.fromkeys(required)) if required is not None else self.required_evidence
         )

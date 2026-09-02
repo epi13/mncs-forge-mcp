@@ -93,6 +93,14 @@ policy identities; unavailable bindings remain non-comparable rather than being 
 Without an explicit evidence-supersession rule, all matching records remain in the envelope and
 status dominance is `FAIL > UNKNOWN > PASS`.
 
+When native execution is selected, this readiness view is projected through
+`mncs.forge.readiness.v1`. The input is a fixed 16-requirement envelope with
+eight status slots per requirement; freshness, environment, policy,
+comparability, and authority matches are explicit host observations. Native
+classification is fail-closed and separate from the host-facing `present`
+list: any observed record is present even if its class is failed, unknown,
+stale, or non-comparable. Bundle file creation and custody remain host-owned.
+
 ## Stable transition errors
 
 Established codes such as `MODE_FORBIDDEN`, `NO_ACTIVE_EPOCH`, `STALE_CANDIDATE`, `STALE_BASELINE`,

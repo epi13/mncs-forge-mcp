@@ -55,6 +55,7 @@ _LIFECYCLE_OPERATIONS = {
 }
 _LIFECYCLE_MODULE = "mncs.forge.lifecycle.v1"
 _RECONCILIATION_MODULE = "mncs.forge.reconciliation.v1"
+_CORE_MODULE = "mncs.forge.core.v1"
 _IDENTITY_MODULE = "mncs.core.identity.v1"
 
 
@@ -214,6 +215,7 @@ _FINITE_VARIANTS: dict[str, dict[str, int]] = {
 NATIVE_EXECUTION_CONTRACT = "mncs-forge.native-execution.v1"
 NATIVE_LIFECYCLE_PROJECTION_CONTRACT = "mncs-forge.lifecycle-projection.v1"
 NATIVE_RECONCILIATION_CONTRACT = "mncs-forge.reconciliation-projection.v1"
+NATIVE_READINESS_CONTRACT = "mncs-forge.readiness-projection.v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -292,9 +294,53 @@ class NativeReconciliationProjection:
     reason: int
 
 
+@dataclass(frozen=True, slots=True)
+class NativeReadinessRequirement:
+    """Typed MNCS readiness classification for one host-normalized requirement."""
+
+    identity: bytes
+    classification: str
+    pass_count: int
+    fail_count: int
+    unknown_count: int
+    observed_count: int
+    stale: bool
+    noncomparable: bool
+    valid: bool
+
+
+@dataclass(frozen=True, slots=True)
+class NativeReadinessProjection:
+    """Typed MNCS projection of the bounded evidence-readiness envelope."""
+
+    requirements: tuple[NativeReadinessRequirement, ...]
+    status: str
+    reason: str
+    present_count: int
+    missing_count: int
+    failed_count: int
+    unknown_count: int
+    stale_count: int
+    noncomparable_count: int
+    ready: bool
+    valid: bool
+
+
+@dataclass(frozen=True, slots=True)
+class NativeAbi:
+    """Language-emitted ABI metadata consumed at the Forge boundary."""
+
+    source_artifact_identity: str
+    module: str
+    functions: Mapping[str, Mapping[str, object]]
+    composites: Mapping[str, Mapping[str, object]]
+
+
 _LIFECYCLE_CACHE: dict[tuple[object, ...], NativeLifecycleResult] = {}
 _LIFECYCLE_PROJECTION_CACHE: dict[tuple[object, ...], NativeLifecycleProjection] = {}
 _RECONCILIATION_CACHE: dict[tuple[object, ...], NativeReconciliationProjection] = {}
+_READINESS_CACHE: dict[tuple[object, ...], NativeReadinessProjection] = {}
+_ABI_CACHE: dict[tuple[object, ...], NativeAbi] = {}
 
 
 def canonical_candidate_material(
@@ -400,6 +446,7 @@ class NativeForgeAdapter:
                 "identity.mncs",
                 "lifecycle.mncs",
                 "reconciliation.mncs",
+                "readiness.mncs",
                 "records.mncs",
                 "serialization.mncs",
             )
@@ -555,6 +602,133 @@ class NativeForgeAdapter:
         return self.invoke([command, str(source.resolve()), str(request.resolve())])
 
     @staticmethod
+    def _abi_shape(abi: NativeAbi, kind: str, name: str, *, context: str) -> Mapping[str, object]:
+        for key, contract in abi.composites.items():
+            if not isinstance(contract, Mapping):
+                continue
+            shape = contract.get(kind)
+            if isinstance(shape, Mapping) and (
+                shape.get("name") == name or (kind == "finite" and key == name)
+            ):
+                return shape
+        raise ForgeError("NATIVE_ABI_UNKNOWN", f"{context} is absent from language-owned ABI")
+
+    @classmethod
+    def _abi_record_type(cls, abi: NativeAbi, name: str, *, context: str) -> str:
+        shape = cls._abi_shape(abi, "record", name, context=context)
+        identity = shape.get("type_identity")
+        if not isinstance(identity, str) or not identity:
+            raise ForgeError("NATIVE_ABI_UNKNOWN", f"{context} has no record identity")
+        return identity
+
+    @classmethod
+    def _abi_finite_value(
+        cls, abi: NativeAbi, name: str, variant: str, *, context: str
+    ) -> dict[str, object]:
+        shape = cls._abi_shape(abi, "finite", name, context=context)
+        type_identity = shape.get("type_identity")
+        variants = shape.get("variants")
+        if not isinstance(type_identity, str) or not isinstance(variants, Mapping):
+            raise ForgeError("NATIVE_ABI_UNKNOWN", f"{context} has malformed finite metadata")
+        for discriminant_text, variant_identity in variants.items():
+            if not isinstance(discriminant_text, str) or not isinstance(variant_identity, str):
+                continue
+            if variant_identity.endswith(f"::{variant}"):
+                try:
+                    discriminant = int(discriminant_text)
+                except ValueError as exc:
+                    raise ForgeError(
+                        "NATIVE_ABI_UNKNOWN", f"{context} has an invalid discriminant"
+                    ) from exc
+                return {
+                    "finite": {
+                        "type_identity": type_identity,
+                        "variant_identity": variant_identity,
+                        "discriminant": discriminant,
+                    }
+                }
+        raise ForgeError("NATIVE_ABI_UNKNOWN", f"{context} variant {variant!r} is absent")
+
+    @classmethod
+    def _abi_finite_variant(cls, value: object, abi: NativeAbi, name: str, *, context: str) -> str:
+        shape = cls._abi_shape(abi, "finite", name, context=context)
+        type_identity = shape.get("type_identity")
+        variants = shape.get("variants")
+        if (
+            not isinstance(type_identity, str)
+            or not isinstance(variants, Mapping)
+            or not isinstance(value, Mapping)
+            or not isinstance(value.get("finite"), Mapping)
+        ):
+            raise ForgeError("NATIVE_ABI_UNKNOWN", f"{context} is malformed")
+        finite = value["finite"]
+        if finite.get("type_identity") != type_identity:
+            raise ForgeError("NATIVE_ABI_UNKNOWN", f"{context} has an invalid type")
+        variant_identity = finite.get("variant_identity")
+        discriminant = finite.get("discriminant")
+        if (
+            not isinstance(variant_identity, str)
+            or not isinstance(discriminant, int)
+            or isinstance(discriminant, bool)
+        ):
+            raise ForgeError("NATIVE_ABI_UNKNOWN", f"{context} is malformed")
+        expected = variants.get(str(discriminant))
+        if expected != variant_identity:
+            raise ForgeError("NATIVE_ABI_UNKNOWN", f"{context} has an invalid variant")
+        return variant_identity.rsplit("::", 1)[-1]
+
+    def language_owned_abi(self) -> NativeAbi:
+        """Load and validate ABI metadata emitted by the language compiler."""
+
+        self.ensure_available()
+        cache_key = ("language-owned-abi", self.semantic_input_identity())
+        cached = _ABI_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+        invocation = self.invoke(["abi", str(self.native_source.resolve())])
+        if not invocation.ok or invocation.payload is None:
+            raise ForgeError(
+                "NATIVE_ABI_UNKNOWN",
+                "language-owned ABI metadata did not return valid JSON",
+            )
+        payload = invocation.payload
+        if payload.get("schema_version") != "0.1" or payload.get("module") != _CORE_MODULE:
+            raise ForgeError(
+                "NATIVE_ABI_UNKNOWN", "language-owned ABI metadata has an invalid header"
+            )
+        source_identity = payload.get("source_artifact_identity")
+        functions = payload.get("functions")
+        composites = payload.get("composites")
+        if (
+            not isinstance(source_identity, str)
+            or not isinstance(functions, Mapping)
+            or not isinstance(composites, Mapping)
+            or not isinstance(functions.get("evidence_readiness"), Mapping)
+        ):
+            raise ForgeError("NATIVE_ABI_UNKNOWN", "language-owned ABI metadata is incomplete")
+        result = NativeAbi(
+            source_artifact_identity=source_identity,
+            module=str(payload["module"]),
+            functions=functions,
+            composites=composites,
+        )
+        function = result.functions["evidence_readiness"]
+        inputs = function.get("inputs")
+        outputs = function.get("outputs")
+        if (
+            not isinstance(inputs, list)
+            or not isinstance(outputs, list)
+            or len(inputs) != 1
+            or len(outputs) != 1
+        ):
+            raise ForgeError("NATIVE_ABI_UNKNOWN", "readiness ABI has an invalid arity")
+        for value, context in ((inputs[0], "readiness input"), (outputs[0], "readiness result")):
+            if not isinstance(value, Mapping) or not isinstance(value.get("record"), Mapping):
+                raise ForgeError("NATIVE_ABI_UNKNOWN", f"{context} is not a record contract")
+        _ABI_CACHE[cache_key] = result
+        return result
+
+    @staticmethod
     def _finite_argument(type_name: str, variant: str, discriminant: int) -> dict[str, object]:
         type_identity = (
             type_name
@@ -605,7 +779,9 @@ class NativeForgeAdapter:
         return {"sequence": {"values": list(values)}}
 
     @staticmethod
-    def _digest_value(value: object, *, context: str) -> dict[str, object]:
+    def _digest_value(
+        value: object, *, context: str, type_identity: str = _DIGEST_TYPE
+    ) -> dict[str, object]:
         if value is None or value == "":
             raw = bytes(32)
         elif isinstance(value, bytes):
@@ -623,7 +799,7 @@ class NativeForgeAdapter:
         if len(raw) != 32:
             raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} is not a 32-byte digest")
         return NativeForgeAdapter._record_value(
-            _DIGEST_TYPE,
+            type_identity,
             "Digest32",
             {
                 "bytes": NativeForgeAdapter._sequence_value(
@@ -733,6 +909,101 @@ class NativeForgeAdapter:
         )
 
     @staticmethod
+    def readiness_requirement_identity(requirement: str) -> bytes:
+        """Bind a host requirement label without putting the label in the ABI."""
+
+        if not isinstance(requirement, str) or not requirement:
+            raise ForgeError("NATIVE_READINESS_UNKNOWN", "evidence requirement is malformed")
+        return hashlib.sha256(
+            b"mncs-forge.readiness.requirement.v1\0" + requirement.encode("utf-8")
+        ).digest()
+
+    @classmethod
+    def _readiness_requirement_value(
+        cls,
+        requirement: str,
+        normalized: Mapping[str, object],
+        *,
+        abi: NativeAbi,
+    ) -> dict[str, object]:
+        records = normalized.get("records")
+        if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
+            raise ForgeError(
+                "NATIVE_READINESS_UNKNOWN",
+                f"native readiness records are malformed for requirement {requirement}",
+            )
+        if len(records) > 8:
+            raise ForgeError(
+                "NATIVE_READINESS_UNKNOWN",
+                f"native readiness exceeds the eight-record bound for requirement {requirement}",
+            )
+        statuses: list[dict[str, object]] = []
+        for record in records:
+            if not isinstance(record, Mapping):
+                raise ForgeError(
+                    "NATIVE_READINESS_UNKNOWN",
+                    f"native readiness record is malformed for requirement {requirement}",
+                )
+            status = record.get("status")
+            if not isinstance(status, str) or status not in _STATUS_VARIANTS:
+                raise ForgeError(
+                    "NATIVE_READINESS_UNKNOWN",
+                    f"native readiness status is invalid for requirement {requirement}",
+                )
+            statuses.append(
+                cls._abi_finite_value(abi, "Status", status, context="readiness status")
+            )
+        statuses.extend(
+            cls._abi_finite_value(abi, "Status", "UNKNOWN", context="readiness status")
+            for _ in range(8 - len(statuses))
+        )
+        freshness = normalized.get("freshness")
+        freshness_variants = _FINITE_VARIANTS[_FRESHNESS_TYPE]
+        if not isinstance(freshness, str):
+            raise ForgeError(
+                "NATIVE_READINESS_UNKNOWN",
+                f"native readiness freshness is invalid for requirement {requirement}",
+            )
+        freshness = next(
+            (variant for variant in freshness_variants if variant.upper() == freshness.upper()),
+            None,
+        )
+        if freshness is None:
+            raise ForgeError(
+                "NATIVE_READINESS_UNKNOWN",
+                f"native readiness freshness is invalid for requirement {requirement}",
+            )
+        flags: dict[str, bool] = {}
+        for name in ("comparable", "environment_match", "policy_match", "authority_match"):
+            value = normalized.get(name)
+            if not isinstance(value, bool):
+                raise ForgeError(
+                    "NATIVE_READINESS_UNKNOWN",
+                    f"native readiness {name} flag is invalid for requirement {requirement}",
+                )
+            flags[name] = value
+        return cls._record_value(
+            cls._abi_record_type(abi, "RequirementInput", context="RequirementInput"),
+            "RequirementInput",
+            {
+                "authority_match": {"boolean": {"value": flags["authority_match"]}},
+                "comparable": {"boolean": {"value": flags["comparable"]}},
+                "count": {"byte": {"value": len(records)}},
+                "environment_match": {"boolean": {"value": flags["environment_match"]}},
+                "freshness": cls._abi_finite_value(
+                    abi, "Freshness", freshness, context="readiness freshness"
+                ),
+                "identity": cls._digest_value(
+                    cls.readiness_requirement_identity(requirement),
+                    context="readiness requirement identity",
+                    type_identity=cls._abi_record_type(abi, "Digest32", context="Digest32"),
+                ),
+                "policy_match": {"boolean": {"value": flags["policy_match"]}},
+                "statuses": cls._sequence_value(statuses),
+            },
+        )
+
+    @staticmethod
     def _record_fields(payload: dict[str, Any], *, context: str) -> dict[str, Any]:
         if payload.get("status") != "returned":
             raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} did not return a value")
@@ -830,8 +1101,10 @@ class NativeForgeAdapter:
         return result
 
     @classmethod
-    def _digest_bytes(cls, value: object, *, context: str) -> bytes:
-        fields = cls._record_value_fields(value, _DIGEST_TYPE, context=context)
+    def _digest_bytes(
+        cls, value: object, *, context: str, type_identity: str = _DIGEST_TYPE
+    ) -> bytes:
+        fields = cls._record_value_fields(value, type_identity, context=context)
         sequence = fields.get("bytes")
         if not isinstance(sequence, dict) or not isinstance(sequence.get("sequence"), dict):
             raise ForgeError("NATIVE_LIFECYCLE_UNKNOWN", f"{context} bytes are malformed")
@@ -1291,4 +1564,283 @@ class NativeForgeAdapter:
                 "native reconciliation unsupported count is inconsistent",
             )
         _RECONCILIATION_CACHE[cache_key] = result
+        return result
+
+    def readiness_projection(
+        self,
+        requirements: Mapping[str, Mapping[str, object]],
+        *,
+        candidate_present: bool,
+        policy_valid: bool,
+    ) -> NativeReadinessProjection:
+        """Project normalized evidence readiness through the MNCS kernel.
+
+        The host supplies records and comparison observations. MNCS owns the
+        bounded fold and the precedence of the readiness classification; it
+        never sees requirement labels, provider payloads, or custody records.
+        """
+
+        if not isinstance(requirements, Mapping):
+            raise ForgeError(
+                "NATIVE_READINESS_UNKNOWN", "native readiness requirements are malformed"
+            )
+        if not isinstance(candidate_present, bool) or not isinstance(policy_valid, bool):
+            raise ForgeError("NATIVE_READINESS_UNKNOWN", "native readiness flags are malformed")
+        ordered = sorted(requirements.items())
+        if len(ordered) > 16:
+            raise ForgeError(
+                "NATIVE_READINESS_UNKNOWN", "native readiness exceeds the 16-requirement bound"
+            )
+        for requirement, normalized in ordered:
+            if (
+                not isinstance(requirement, str)
+                or not requirement
+                or not isinstance(normalized, Mapping)
+            ):
+                raise ForgeError(
+                    "NATIVE_READINESS_UNKNOWN", "native readiness requirement is malformed"
+                )
+        self.ensure_available()
+        abi = self.language_owned_abi()
+        function_contract = abi.functions["evidence_readiness"]
+        input_contract = function_contract["inputs"][0]
+        output_contract = function_contract["outputs"][0]
+        if (
+            not isinstance(input_contract, Mapping)
+            or not isinstance(input_contract.get("record"), Mapping)
+            or not isinstance(output_contract, Mapping)
+            or not isinstance(output_contract.get("record"), Mapping)
+        ):
+            raise ForgeError("NATIVE_ABI_UNKNOWN", "readiness ABI record contracts are malformed")
+        readiness_input_type = input_contract["record"].get("type_identity")
+        readiness_result_type = output_contract["record"].get("type_identity")
+        if not isinstance(readiness_input_type, str) or not isinstance(readiness_result_type, str):
+            raise ForgeError("NATIVE_ABI_UNKNOWN", "readiness ABI record identities are malformed")
+        values = [
+            self._readiness_requirement_value(requirement, normalized, abi=abi)
+            for requirement, normalized in ordered
+        ]
+        empty = self._readiness_requirement_value(
+            "__unused__",
+            {
+                "records": [],
+                "freshness": "NotApplicable",
+                "comparable": True,
+                "environment_match": True,
+                "policy_match": True,
+                "authority_match": True,
+            },
+            abi=abi,
+        )
+        values.extend(empty for _ in range(16 - len(values)))
+        cache_material = [
+            {
+                "requirement": requirement,
+                "records": [record.get("status") for record in normalized["records"]],
+                "freshness": normalized["freshness"],
+                "comparable": normalized["comparable"],
+                "environment_match": normalized["environment_match"],
+                "policy_match": normalized["policy_match"],
+                "authority_match": normalized["authority_match"],
+            }
+            for requirement, normalized in ordered
+        ]
+        cache_key = (
+            NATIVE_READINESS_CONTRACT,
+            self.semantic_input_identity(),
+            json.dumps(
+                {
+                    "requirements": cache_material,
+                    "candidate_present": candidate_present,
+                    "policy_valid": policy_valid,
+                },
+                sort_keys=True,
+            ),
+        )
+        cached = _READINESS_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+        request_value = self._record_value(
+            readiness_input_type,
+            "ReadinessInput",
+            {
+                "candidate_present": {"boolean": {"value": candidate_present}},
+                "policy_valid": {"boolean": {"value": policy_valid}},
+                "requirement_count": {"byte": {"value": len(ordered)}},
+                "requirements": self._sequence_value(values),
+            },
+        )
+        request = {
+            "schema_version": NATIVE_SCHEMA_VERSION,
+            "target": {"module": "mncs.forge.core.v1", "function": "evidence_readiness"},
+            "arguments": [request_value],
+            "step_budget": 700_000,
+        }
+        with tempfile.TemporaryDirectory(prefix=".mncs-native-", dir=self.forge_root) as directory:
+            request_path = Path(directory) / "readiness-request.json"
+            request_path.write_text(json.dumps(request), encoding="utf-8")
+            invocation = self.execute(self.native_source, request_path)
+        if not invocation.ok or invocation.payload is None:
+            raise ForgeError(
+                "NATIVE_READINESS_UNKNOWN",
+                "language-owned readiness did not return valid JSON "
+                f"(returncode {invocation.returncode})",
+            )
+        result_fields = self._record_fields(invocation.payload, context="readiness")
+        returned = invocation.payload.get("returned")
+        if (
+            not isinstance(returned, list)
+            or len(returned) != 1
+            or not isinstance(returned[0], Mapping)
+            or not isinstance(returned[0].get("record"), Mapping)
+            or returned[0]["record"].get("type_identity") != readiness_result_type
+        ):
+            raise ForgeError(
+                "NATIVE_ABI_MISMATCH", "readiness result type disagrees with language ABI"
+            )
+        state_type = self._abi_record_type(abi, "ReadinessState", context="ReadinessState")
+        projection_type = self._abi_record_type(
+            abi, "RequirementProjection", context="RequirementProjection"
+        )
+        state_fields = self._record_value_fields(
+            result_fields.get("state"), state_type, context="readiness state"
+        )
+        requirement_sequence = state_fields.get("requirements")
+        if not isinstance(requirement_sequence, dict) or not isinstance(
+            requirement_sequence.get("sequence"), dict
+        ):
+            raise ForgeError("NATIVE_READINESS_UNKNOWN", "readiness requirements are malformed")
+        requirement_items = requirement_sequence["sequence"].get("values")
+        if not isinstance(requirement_items, list) or len(requirement_items) != 16:
+            raise ForgeError("NATIVE_READINESS_UNKNOWN", "readiness requirements are malformed")
+        requirement_count = self._integer(
+            state_fields.get("requirement_count"), context="readiness requirement count"
+        )
+        if requirement_count != len(ordered) or not 0 <= requirement_count <= 16:
+            raise ForgeError(
+                "NATIVE_READINESS_UNKNOWN",
+                "readiness requirement count disagrees with the request",
+            )
+        result_status = self._abi_finite_variant(
+            result_fields.get("status"), abi, "Status", context="readiness result status"
+        )
+        state_status = self._abi_finite_variant(
+            state_fields.get("status"), abi, "Status", context="readiness state status"
+        )
+        reason = self._abi_finite_variant(
+            result_fields.get("reason"), abi, "ReadinessReason", context="readiness reason"
+        )
+        valid = self._boolean(state_fields.get("valid"), context="readiness validity")
+        ready = self._boolean(state_fields.get("ready"), context="readiness ready flag")
+        if not valid or reason == "Invalid" or state_status != result_status:
+            raise ForgeError(
+                "NATIVE_READINESS_UNKNOWN",
+                "language-owned readiness reported an invalid bounded projection",
+            )
+        projected: list[NativeReadinessRequirement] = []
+        for index, (requirement, normalized) in enumerate(ordered):
+            fields = self._record_value_fields(
+                requirement_items[index],
+                projection_type,
+                context="readiness requirement projection",
+            )
+            identity = self._digest_bytes(
+                fields.get("identity"),
+                context="readiness requirement identity",
+                type_identity=self._abi_record_type(abi, "Digest32", context="Digest32"),
+            )
+            expected_identity = self.readiness_requirement_identity(requirement)
+            if identity != expected_identity:
+                raise ForgeError(
+                    "NATIVE_READINESS_MISMATCH",
+                    "native readiness requirement identity disagrees with the request",
+                )
+            statuses = [record.get("status") for record in normalized["records"]]
+            pass_count = self._integer(fields.get("pass_count"), context="readiness pass count")
+            fail_count = self._integer(fields.get("fail_count"), context="readiness fail count")
+            unknown_count = self._integer(
+                fields.get("unknown_count"), context="readiness unknown count"
+            )
+            observed_count = self._integer(
+                fields.get("observed_count"), context="readiness observed count"
+            )
+            if (pass_count, fail_count, unknown_count, observed_count) != (
+                statuses.count("PASS"),
+                statuses.count("FAIL"),
+                statuses.count("UNKNOWN"),
+                len(statuses),
+            ):
+                raise ForgeError(
+                    "NATIVE_READINESS_MISMATCH",
+                    "native readiness status counts disagree with the request",
+                )
+            projected.append(
+                NativeReadinessRequirement(
+                    identity=identity,
+                    classification=self._abi_finite_variant(
+                        fields.get("classification"),
+                        abi,
+                        "RequirementClass",
+                        context="readiness requirement classification",
+                    ),
+                    pass_count=pass_count,
+                    fail_count=fail_count,
+                    unknown_count=unknown_count,
+                    observed_count=observed_count,
+                    stale=self._boolean(fields.get("stale"), context="readiness stale flag"),
+                    noncomparable=self._boolean(
+                        fields.get("noncomparable"), context="readiness comparability flag"
+                    ),
+                    valid=self._boolean(
+                        fields.get("valid"), context="readiness requirement validity"
+                    ),
+                )
+            )
+        aggregate_fields = {
+            "present_count": self._integer(
+                state_fields.get("present_count"), context="readiness present count"
+            ),
+            "missing_count": self._integer(
+                state_fields.get("missing_count"), context="readiness missing count"
+            ),
+            "failed_count": self._integer(
+                state_fields.get("failed_count"), context="readiness failed count"
+            ),
+            "unknown_count": self._integer(
+                state_fields.get("unknown_count"), context="readiness unknown count"
+            ),
+            "stale_count": self._integer(
+                state_fields.get("stale_count"), context="readiness stale count"
+            ),
+            "noncomparable_count": self._integer(
+                state_fields.get("noncomparable_count"), context="readiness noncomparable count"
+            ),
+        }
+        expected_aggregate = {
+            "present_count": sum(item.observed_count > 0 for item in projected),
+            "missing_count": sum(item.classification == "Missing" for item in projected),
+            "failed_count": sum(item.classification == "Failed" for item in projected),
+            "unknown_count": sum(item.classification == "Unknown" for item in projected),
+            "stale_count": sum(item.stale for item in projected),
+            "noncomparable_count": sum(item.noncomparable for item in projected),
+        }
+        if aggregate_fields != expected_aggregate:
+            raise ForgeError(
+                "NATIVE_READINESS_MISMATCH",
+                "native readiness aggregate counts are inconsistent",
+            )
+        result = NativeReadinessProjection(
+            requirements=tuple(projected),
+            status=result_status,
+            reason=reason,
+            present_count=aggregate_fields["present_count"],
+            missing_count=aggregate_fields["missing_count"],
+            failed_count=aggregate_fields["failed_count"],
+            unknown_count=aggregate_fields["unknown_count"],
+            stale_count=aggregate_fields["stale_count"],
+            noncomparable_count=aggregate_fields["noncomparable_count"],
+            ready=ready,
+            valid=valid,
+        )
+        _READINESS_CACHE[cache_key] = result
         return result

@@ -1,0 +1,352 @@
+mncs 0.10;
+
+// Bounded MNCS-native Forge evidence readiness projection.
+//
+// The host gathers records and turns external bindings into opaque identities
+// and boolean observations. This module owns only the deterministic
+// interpretation of that normalized envelope. It does not inspect files,
+// produce identities, persist evidence, build bundles, or grant authority.
+module mncs.forge.readiness.v1;
+
+use mncs.core.identity as idlib;
+use mncs.core.logic as boollib;
+use mncs.core.status as statlib;
+use mncs.forge.lifecycle as lifelib;
+
+enum RequirementClass { Present, Missing, Failed, Unknown, Stale, NonComparable }
+
+enum ReadinessReason {
+    Ready,
+    PolicyInvalid,
+    NoCandidate,
+    Failed,
+    Missing,
+    Unknown,
+    Stale,
+    NonComparable,
+    Invalid
+}
+
+record RequirementInput {
+    identity: idlib.Digest32,
+    statuses: [statlib.Status; 8],
+    count: byte,
+    freshness: lifelib.Freshness,
+    comparable: bool,
+    environment_match: bool,
+    policy_match: bool,
+    authority_match: bool
+}
+
+record RequirementProjection {
+    identity: idlib.Digest32,
+    classification: RequirementClass,
+    pass_count: i64,
+    fail_count: i64,
+    unknown_count: i64,
+    observed_count: i64,
+    stale: bool,
+    noncomparable: bool,
+    valid: bool
+}
+
+record ReadinessInput {
+    requirements: [RequirementInput; 16],
+    requirement_count: byte,
+    candidate_present: bool,
+    policy_valid: bool
+}
+
+record ReadinessState {
+    requirements: [RequirementProjection; 16],
+    requirement_count: i64,
+    active_requirement_count: i64,
+    present_count: i64,
+    missing_count: i64,
+    failed_count: i64,
+    unknown_count: i64,
+    stale_count: i64,
+    noncomparable_count: i64,
+    ready: bool,
+    status: statlib.Status,
+    valid: bool
+}
+
+record ReadinessResult { state: ReadinessState, status: statlib.Status, reason: ReadinessReason }
+
+fn freshness_is_stale(value: lifelib.Freshness) -> (result: bool) {
+    return match value {
+        NotApplicable => false,
+        Current => false,
+        Stale => true,
+        Unknown => false,
+    };
+}
+
+fn freshness_is_unknown(value: lifelib.Freshness) -> (result: bool) {
+    return match value {
+        NotApplicable => true,
+        Current => false,
+        Stale => false,
+        Unknown => true,
+    };
+}
+
+fn class_is_missing(value: RequirementClass) -> (result: bool) {
+    return match value {
+        Present => false,
+        Missing => true,
+        Failed => false,
+        Unknown => false,
+        Stale => false,
+        NonComparable => false,
+    };
+}
+
+fn class_is_failed(value: RequirementClass) -> (result: bool) {
+    return match value {
+        Present => false,
+        Missing => false,
+        Failed => true,
+        Unknown => false,
+        Stale => false,
+        NonComparable => false,
+    };
+}
+
+fn class_is_unknown(value: RequirementClass) -> (result: bool) {
+    return match value {
+        Present => false,
+        Missing => false,
+        Failed => false,
+        Unknown => true,
+        Stale => false,
+        NonComparable => false,
+    };
+}
+
+fn classify_requirement(
+    summary: statlib.StatusSummary,
+    identity: idlib.Digest32,
+    stale: bool,
+    noncomparable: bool
+) -> (result: RequirementClass) {
+    if boollib.bool_not(summary.valid) || idlib.is_zero(identity) {
+        return RequirementClass.NonComparable;
+    }
+    if summary.observed_count == 0 {
+        return RequirementClass.Missing;
+    }
+    if summary.fail_count > 0 {
+        return RequirementClass.Failed;
+    }
+    if summary.unknown_count > 0 {
+        return RequirementClass.Unknown;
+    }
+    if stale {
+        return RequirementClass.Stale;
+    }
+    if noncomparable {
+        return RequirementClass.NonComparable;
+    }
+    return RequirementClass.Present;
+}
+
+fn readiness_status(ready: bool, failed_count: i64) -> (result: statlib.Status) {
+    if ready {
+        return statlib.Status.PASS;
+    }
+    if failed_count > 0 {
+        return statlib.Status.FAIL;
+    }
+    return statlib.Status.UNKNOWN;
+}
+
+fn readiness_reason(
+    policy_valid: bool,
+    candidate_present: bool,
+    ready: bool,
+    failed_count: i64,
+    missing_count: i64,
+    unknown_count: i64,
+    stale_count: i64
+) -> (result: ReadinessReason) {
+    if boollib.bool_not(policy_valid) {
+        return ReadinessReason.PolicyInvalid;
+    }
+    if boollib.bool_not(candidate_present) {
+        return ReadinessReason.NoCandidate;
+    }
+    if ready {
+        return ReadinessReason.Ready;
+    }
+    if failed_count > 0 {
+        return ReadinessReason.Failed;
+    }
+    if missing_count > 0 {
+        return ReadinessReason.Missing;
+    }
+    if unknown_count > 0 {
+        return ReadinessReason.Unknown;
+    }
+    if stale_count > 0 {
+        return ReadinessReason.Stale;
+    }
+    return ReadinessReason.NonComparable;
+}
+
+fn requirement(input: RequirementInput) -> (result: RequirementProjection) {
+    let summary: statlib.StatusSummary = statlib.summarize_prefix<8>(input.statuses, input.count);
+    let stale: bool = freshness_is_stale(input.freshness);
+    let freshness_unknown: bool = freshness_is_unknown(input.freshness);
+    let noncomparable: bool = freshness_unknown
+        || boollib.bool_not(input.comparable)
+        || boollib.bool_not(input.environment_match)
+        || boollib.bool_not(input.policy_match)
+        || boollib.bool_not(input.authority_match);
+    let classification: RequirementClass = classify_requirement(
+        summary,
+        input.identity,
+        stale,
+        noncomparable
+    );
+    return RequirementProjection {
+        identity: input.identity,
+        classification: classification,
+        pass_count: summary.pass_count,
+        fail_count: summary.fail_count,
+        unknown_count: summary.unknown_count,
+        observed_count: summary.observed_count,
+        stale: stale,
+        noncomparable: noncomparable,
+        valid: summary.valid && boollib.bool_not(idlib.is_zero(input.identity))
+    };
+}
+
+fn empty_requirement() -> (result: RequirementProjection) {
+    return RequirementProjection {
+        identity: idlib.zero(),
+        classification: RequirementClass.Missing,
+        pass_count: 0,
+        fail_count: 0,
+        unknown_count: 0,
+        observed_count: 0,
+        stale: false,
+        noncomparable: false,
+        valid: true
+    };
+}
+
+fn initial() -> (result: ReadinessState) {
+    let empty: RequirementProjection = empty_requirement();
+    let requirements: [RequirementProjection; 16] = [
+        empty, empty, empty, empty, empty, empty, empty, empty,
+        empty, empty, empty, empty, empty, empty, empty, empty
+    ];
+    return ReadinessState {
+        requirements: requirements,
+        requirement_count: 0,
+        active_requirement_count: 0,
+        present_count: 0,
+        missing_count: 0,
+        failed_count: 0,
+        unknown_count: 0,
+        stale_count: 0,
+        noncomparable_count: 0,
+        ready: false,
+        status: statlib.Status.PASS,
+        valid: true
+    };
+}
+
+fn add_requirement(
+    current: ReadinessState,
+    input: RequirementInput,
+    include: bool
+) -> (result: ReadinessState) {
+    if include {
+        let projected: RequirementProjection = requirement(input);
+        let next_requirements: [RequirementProjection; 16] = replace(
+            current.requirements,
+            current.requirement_count as u64,
+            projected
+        );
+        let missing: i64 = class_is_missing(projected.classification) as i64;
+        let failed: i64 = class_is_failed(projected.classification) as i64;
+        let unknown: i64 = class_is_unknown(projected.classification) as i64;
+        let present: i64 = (projected.observed_count > 0) as i64;
+        return ReadinessState {
+            ..current,
+            requirements: next_requirements,
+            requirement_count: current.requirement_count +% 1,
+            active_requirement_count: current.active_requirement_count +% 1,
+            present_count: current.present_count +% present,
+            missing_count: current.missing_count +% missing,
+            failed_count: current.failed_count +% failed,
+            unknown_count: current.unknown_count +% unknown,
+            stale_count: current.stale_count +% (projected.stale as i64),
+            noncomparable_count: current.noncomparable_count +% (projected.noncomparable as i64),
+            valid: current.valid && projected.valid
+        };
+    }
+    return current;
+}
+
+record ReadinessFold { state: ReadinessState, reached: bool }
+
+fn project(input: ReadinessInput) -> (result: ReadinessResult) {
+    let initial_state: ReadinessState = initial();
+    let initial_fold: ReadinessFold = ReadinessFold {
+        state: initial_state,
+        reached: input.requirement_count == 0
+    };
+    let requirement_inputs: [RequirementInput; 16] = input.requirements;
+    iterate i over requirement_inputs carrying fold: ReadinessFold = initial_fold {
+        let include: bool = (i as i64) < (input.requirement_count as i64);
+        let requirement_input: RequirementInput = requirement_inputs[i];
+        let state: ReadinessState = add_requirement(fold.state, requirement_input, include);
+        next fold = ReadinessFold {
+            state: state,
+            reached: fold.reached || ((i as i64) +% 1) == (input.requirement_count as i64)
+        };
+    }
+    let bounded: bool = fold.reached;
+    let valid: bool = fold.state.valid && bounded;
+    if boollib.bool_not(valid) {
+        let invalid: ReadinessState = ReadinessState {
+            ..fold.state,
+            ready: false,
+            status: statlib.Status.UNKNOWN,
+            valid: false
+        };
+        return ReadinessResult {
+            state: invalid,
+            status: statlib.Status.UNKNOWN,
+            reason: ReadinessReason.Invalid
+        };
+    }
+    let ready: bool = input.candidate_present
+        && input.policy_valid
+        && fold.state.failed_count == 0
+        && fold.state.missing_count == 0
+        && fold.state.unknown_count == 0
+        && fold.state.stale_count == 0
+        && fold.state.noncomparable_count == 0;
+    let status: statlib.Status = readiness_status(ready, fold.state.failed_count);
+    let reason: ReadinessReason = readiness_reason(
+        input.policy_valid,
+        input.candidate_present,
+        ready,
+        fold.state.failed_count,
+        fold.state.missing_count,
+        fold.state.unknown_count,
+        fold.state.stale_count
+    );
+    let final_state: ReadinessState = ReadinessState {
+        ..fold.state,
+        ready: ready,
+        status: status,
+        valid: true
+    };
+    return ReadinessResult { state: final_state, status: status, reason: reason };
+}

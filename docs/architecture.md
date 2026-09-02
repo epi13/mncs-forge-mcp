@@ -18,8 +18,8 @@ Missing capability remains UNKNOWN.
 
 The repository contains an incremental MNCS-native Forge source spine as
 packaged data under `src/mncs_forge/resources/native/forge/`. It owns the first
-bounded identity, canonical-material, typed-record, lifecycle, and technical
-evidence-reconciliation seams, while
+bounded identity, canonical-material, typed-record, lifecycle, technical
+evidence-reconciliation, and evidence-readiness seams, while
 `src/mncs_forge/` remains the Python compatibility shell. `NativeForgeAdapter` invokes the language-owned CLI through
 Forge’s existing bounded runner and returns its structured observation. Host-side
 SHA-256 is explicit and limited to material declared by the MNCS module; no
@@ -33,6 +33,9 @@ remain fail-closed `UNKNOWN` observations rather than being treated as success.
 Reconciliation follows the same rule: the native kernel classifies status,
 counts, and category conflicts over a fixed 16-by-8 envelope; Forge retains
 labels, record identity, disclosure, persistence, and authority policy.
+Readiness follows the same rule over a fixed 16-requirement by 8-observation
+envelope: MNCS owns bounded status/classification projection, while Forge
+retains labels, records, policy errors, and bundle materialization.
 
 ## Control-plane composition
 

@@ -106,6 +106,25 @@ def test_native_body_execution_returns_language_owned_status() -> None:
     assert result.payload["returned"][0]["finite"]["variant_identity"].endswith("::UNKNOWN")
 
 
+def test_language_owned_abi_metadata_is_available_to_external_consumers() -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+
+    abi = adapter.language_owned_abi()
+
+    assert abi.module == "mncs.forge.core.v1"
+    assert abi.source_artifact_identity
+    assert "evidence_readiness" in abi.functions
+    readiness = abi.functions["evidence_readiness"]
+    assert readiness["inputs"][0]["record"]["name"] == "ReadinessInput"
+    assert readiness["outputs"][0]["record"]["name"] == "ReadinessResult"
+    assert any(
+        value.get("record", {}).get("name") == "RequirementInput"
+        for value in abi.composites.values()
+        if isinstance(value, dict)
+    )
+
+
 def test_native_canonical_material_matches_host_materialization() -> None:
     adapter = NativeForgeAdapter(ROOT)
     adapter.ensure_available()
@@ -298,6 +317,146 @@ def test_native_reconciliation_projection_rejects_malformed_or_unbounded_input()
         adapter.reconciliation_projection([])  # type: ignore[arg-type]
     with pytest.raises(ForgeError, match="records are malformed"):
         adapter.reconciliation_projection({"malformed": "not-a-record-list"})  # type: ignore[arg-type]
+
+
+def _readiness_requirement(
+    statuses: list[str],
+    *,
+    freshness: str = "Current",
+    comparable: bool = True,
+    environment_match: bool = True,
+    policy_match: bool = True,
+    authority_match: bool = True,
+) -> dict[str, object]:
+    return {
+        "records": [{"status": status} for status in statuses],
+        "freshness": freshness,
+        "comparable": comparable,
+        "environment_match": environment_match,
+        "policy_match": policy_match,
+        "authority_match": authority_match,
+    }
+
+
+def test_native_readiness_projection_preserves_classification_and_observation_envelopes() -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+
+    result = adapter.readiness_projection(
+        {
+            "present": _readiness_requirement(["PASS"]),
+            "failed": _readiness_requirement(["FAIL"]),
+            "missing": _readiness_requirement([]),
+            "unknown": _readiness_requirement(["UNKNOWN"]),
+            "stale": _readiness_requirement(["PASS"], freshness="Stale"),
+            "noncomparable": _readiness_requirement(["PASS"], comparable=False),
+        },
+        candidate_present=True,
+        policy_valid=True,
+    )
+
+    assert result.valid is True
+    assert result.ready is False
+    assert result.status == "FAIL"
+    assert result.reason == "Failed"
+    assert result.present_count == 5
+    assert result.missing_count == 1
+    assert result.failed_count == 1
+    assert result.unknown_count == 1
+    assert result.stale_count == 1
+    assert result.noncomparable_count == 1
+    by_name = dict(
+        zip(
+            ("failed", "missing", "noncomparable", "present", "stale", "unknown"),
+            result.requirements,
+            strict=True,
+        )
+    )
+    assert by_name["present"].classification == "Present"
+    assert by_name["present"].observed_count == 1
+    assert by_name["failed"].classification == "Failed"
+    assert by_name["missing"].classification == "Missing"
+    assert by_name["unknown"].classification == "Unknown"
+    assert by_name["stale"].classification == "Stale"
+    assert by_name["noncomparable"].classification == "NonComparable"
+
+
+def test_native_readiness_projection_reports_global_policy_and_candidate_reasons() -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+    requirement = {
+        "records": [{"status": "PASS"}],
+        "freshness": "Current",
+        "comparable": True,
+        "environment_match": True,
+        "policy_match": True,
+        "authority_match": True,
+    }
+
+    policy = adapter.readiness_projection(
+        {"required": requirement}, candidate_present=True, policy_valid=False
+    )
+    assert policy.status == "UNKNOWN"
+    assert policy.reason == "PolicyInvalid"
+    assert policy.ready is False
+
+    no_candidate = adapter.readiness_projection(
+        {"required": requirement}, candidate_present=False, policy_valid=True
+    )
+    assert no_candidate.status == "UNKNOWN"
+    assert no_candidate.reason == "NoCandidate"
+    assert no_candidate.ready is False
+
+
+def test_native_readiness_projection_rejects_malformed_or_unbounded_input() -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+    requirement = _readiness_requirement(["PASS"])
+
+    with pytest.raises(ForgeError, match="16-requirement bound"):
+        adapter.readiness_projection(
+            {f"requirement-{index}": requirement for index in range(17)},
+            candidate_present=True,
+            policy_valid=True,
+        )
+    with pytest.raises(ForgeError, match="eight-record bound"):
+        adapter.readiness_projection(
+            {"too-many": _readiness_requirement(["PASS"] * 9)},
+            candidate_present=True,
+            policy_valid=True,
+        )
+    with pytest.raises(ForgeError, match="status is invalid"):
+        adapter.readiness_projection(
+            {"malformed": _readiness_requirement(["MAYBE"])},
+            candidate_present=True,
+            policy_valid=True,
+        )
+
+
+def test_native_readiness_projection_rejects_malformed_structured_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = NativeForgeAdapter(ROOT)
+    adapter.ensure_available()
+    monkeypatch.setattr(
+        adapter,
+        "execute",
+        lambda *args, **kwargs: NativeInvocation(
+            command=("fixture",),
+            returncode=0,
+            stdout=b"{}",
+            stderr=b"",
+            payload={"status": "returned", "returned": [{"record": {"fields": []}}]},
+        ),
+    )
+    mncs_native._READINESS_CACHE.clear()
+
+    with pytest.raises(ForgeError, match="readiness result type disagrees with language ABI"):
+        adapter.readiness_projection(
+            {"required": _readiness_requirement(["PASS"])},
+            candidate_present=True,
+            policy_valid=True,
+        )
 
 
 def test_native_cache_identity_changes_with_content_even_at_same_path(tmp_path: Path) -> None:

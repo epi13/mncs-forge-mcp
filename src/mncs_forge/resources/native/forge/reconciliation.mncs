@@ -52,56 +52,22 @@ fn category_is_present(value: idlib.Digest32) -> (result: bool) {
     return true;
 }
 
-fn category_step(current: CategoryProjection, observed: statlib.Status, include: bool) -> (result: CategoryProjection) {
-    if include {
-        let combined: statlib.Status = statlib.dominate(current.status, observed);
-        return match observed {
-            PASS => CategoryProjection {
-                ..current,
-                status: combined,
-                pass_count: current.pass_count +% 1,
-                observed_count: current.observed_count +% 1
-            },
-            FAIL => CategoryProjection {
-                ..current,
-                status: combined,
-                fail_count: current.fail_count +% 1,
-                observed_count: current.observed_count +% 1
-            },
-            UNKNOWN => CategoryProjection {
-                ..current,
-                status: combined,
-                unknown_count: current.unknown_count +% 1,
-                observed_count: current.observed_count +% 1
-            }
-        };
-    }
-    return current;
-}
-
 fn category(input: CategoryInput) -> (result: CategoryProjection) {
-    let statuses: [statlib.Status; 8] = input.statuses;
-    let count: byte = input.count;
-    let initial: CategoryProjection = CategoryProjection {
-        category: input.category,
-        status: statlib.Status.UNKNOWN,
-        pass_count: 0,
-        fail_count: 0,
-        unknown_count: 0,
-        observed_count: 0,
-        conflict: false,
-        unsupported_count: input.unsupported_count as i64,
-        valid: category_is_present(input.category)
-    };
-    iterate i over statuses carrying summary: CategoryProjection = initial {
-        let include: bool = (i as i64) < (count as i64);
-        next summary = category_step(summary, statuses[i], include);
-    }
+    let summary: statlib.StatusSummary = statlib.summarize_prefix<8>(input.statuses, input.count);
     let kinds: i64 = (summary.pass_count > 0) as i64
         +% (summary.fail_count > 0) as i64
         +% (summary.unknown_count > 0) as i64;
-    let valid: bool = summary.valid && (count as i64) <= 8 && summary.observed_count > 0;
-    return CategoryProjection { ..summary, conflict: kinds > 1, valid: valid };
+    return CategoryProjection {
+        category: input.category,
+        status: summary.status,
+        pass_count: summary.pass_count,
+        fail_count: summary.fail_count,
+        unknown_count: summary.unknown_count,
+        observed_count: summary.observed_count,
+        conflict: kinds > 1,
+        unsupported_count: input.unsupported_count as i64,
+        valid: category_is_present(input.category) && summary.valid && summary.observed_count > 0
+    };
 }
 
 fn empty_category() -> (result: CategoryProjection) {
