@@ -29,3 +29,25 @@
 - Keep local invariant results, attack-path reachability, freshness, severity, and workflow
   disposition separate. Absence of a demonstrated exploit chain does not convert a confirmed
   weakness into `PASS`.
+
+## MNCS agent execution contract
+
+This repository owns **assurance semantics** in the ecosystem authority table
+and adopts the ecosystem agent contract bound in mncs-actions (`AGENTS.md`
+there) with the language mirror in mncs-language. Enforced by
+`tests/test_agent_contract.py`: every path named below must exist.
+
+- Forge evaluates development workflows; it never replaces MNCS/MNCDS
+  validation and never closes obligations owned elsewhere. A Forge verdict
+  that contradicts an owning protocol's evidence is a defect in the
+  evaluation, not an override.
+- Evaluator or candidate scaffolding that reimplements MNCS-expressible
+  semantics is a language-pressure event routed to mncs-language as
+  development-pressure evidence; fix upstream, re-run that suite, then
+  resume here.
+- Missing or unsupported evidence remains `UNKNOWN`; a green evaluation
+  with no evidence behind it is a defect in the check, not a success.
+- This repository currently carries no MNCS conformance badge in its
+  readme; do not add a decorative one. A future badge must render the
+  evidence-driven verdict and must not overstate compile versus execution
+  or emulated versus physical proof.
